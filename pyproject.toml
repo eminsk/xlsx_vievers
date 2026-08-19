@@ -1,0 +1,14 @@
+[project]
+name = "xlsx-viewer"
+version = "1.0.0"
+description = "Modern Excel file viewer with professional UI"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "openpyxl>=3.1.0",
+    "ttkbootstrap>=1.10.0",
+]
+
+[project.scripts]
+xlsx-viewer = "main:main"
