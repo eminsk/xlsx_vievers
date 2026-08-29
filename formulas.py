@@ -6,6 +6,13 @@ relative/absolute reference shifting, and IntelliSense metadata.
 
 from __future__ import annotations
 
+import sys
+try:
+    if sys.getrecursionlimit() < 50000:
+        sys.setrecursionlimit(50000)
+except Exception:
+    pass
+
 import re
 import math
 import fnmatch
@@ -19,15 +26,15 @@ from openpyxl.utils import column_index_from_string, get_column_letter
 # Cell and Range Reference Regexes
 # =============================================================================
 
-# Matches A1, $A$1, A$1, $A1, Sheet1!A1, 'My Sheet'!$A$1
+# Matches A1, $A$1, A$1, $A1, Sheet1!A1, 'My Sheet'!$A$1, 'Дашборд и Сводка'!$C$5, Лист1!A1
 CELL_REF_PATTERN = re.compile(
-    r"(?:(?:'([^']+)'|([A-Za-z0-9_]+))!)?(\$?)([A-Za-z]+)(\$?)(\d+)",
+    r"(?:(?:'([^']+)'|([A-Za-z0-9_\u0400-\u04FF\s\-]+))!)?(\$?)([A-Za-z]+)(\$?)(\d+)",
     re.IGNORECASE
 )
 
-# Matches A1:B10, Sheet1!A1:B10, 'My Sheet'!$A$1:$B$10
+# Matches A1:B10, Sheet1!A1:B10, 'My Sheet'!$A$1:$B$10, 'Форекс (5 дней)'!G133:G153
 RANGE_PATTERN = re.compile(
-    r"(?:(?:'([^']+)'|([A-Za-z0-9_]+))!)?(\$?[A-Za-z]+\$?\d+):(\$?[A-Za-z]+\$?\d+)",
+    r"(?:(?:'([^']+)'|([A-Za-z0-9_\u0400-\u04FF\s\-]+))!)?(\$?[A-Za-z]+\$?\d+):(\$?[A-Za-z]+\$?\d+)",
     re.IGNORECASE
 )
 
@@ -48,6 +55,8 @@ class CellRef:
             raise ValueError(f"Invalid cell reference: {ref}")
         sheet1, sheet2, col_abs, col_str, row_abs, row_str = match.groups()
         sheet = sheet1 or sheet2
+        if sheet:
+            sheet = sheet.strip("'\"")
         return cls(
             col=column_index_from_string(col_str.upper()) - 1,
             row=int(row_str) - 1,
@@ -62,7 +71,7 @@ class CellRef:
         col_letter = get_column_letter(self.col + 1)
         ref = f"{col_prefix}{col_letter}{row_prefix}{self.row + 1}"
         if self.sheet:
-            if " " in self.sheet or "'" in self.sheet:
+            if " " in self.sheet or "'" in self.sheet or "-" in self.sheet:
                 return f"'{self.sheet}'!{ref}"
             return f"{self.sheet}!{ref}"
         return ref
@@ -76,6 +85,8 @@ def parse_range(range_str: str) -> list[CellRef]:
 
     sheet1, sheet2, start_str, end_str = match.groups()
     sheet = sheet1 or sheet2
+    if sheet:
+        sheet = sheet.strip("'\"")
 
     start = CellRef.from_string(start_str)
     end = CellRef.from_string(end_str)
@@ -101,9 +112,10 @@ def shift_formula_references(formula: str, row_delta: int, col_delta: int) -> st
         return formula
 
     def replace_cell_match(m: re.Match) -> str:
-        full_match = m.group(0)
         sheet1, sheet2, col_abs, col_str, row_abs, row_str = m.groups()
         sheet = sheet1 or sheet2
+        if sheet:
+            sheet = sheet.strip("'\"")
 
         col_idx = column_index_from_string(col_str.upper()) - 1
         row_idx = int(row_str) - 1
@@ -115,7 +127,7 @@ def shift_formula_references(formula: str, row_delta: int, col_delta: int) -> st
 
         new_ref = f"{'$' if col_abs else ''}{get_column_letter(col_idx + 1)}{'$' if row_abs else ''}{row_idx + 1}"
         if sheet:
-            if " " in sheet or "'" in sheet:
+            if " " in sheet or "'" in sheet or "-" in sheet:
                 return f"'{sheet}'!{new_ref}"
             return f"{sheet}!{new_ref}"
         return new_ref
@@ -281,7 +293,7 @@ FUNCTION_METADATA: dict[str, dict[str, Any]] = {
 # =============================================================================
 
 class FormulaEngine:
-    """Excel-like formula parser and evaluator with 80+ functions and multi-sheet support."""
+    """Excel-like formula parser and evaluator with 80+ functions, memoization, and multi-sheet support."""
 
     def __init__(self, get_cell_value_callback: Callable[[int, int, str | None], Any]) -> None:
         """
@@ -289,6 +301,13 @@ class FormulaEngine:
         """
         self._get_val = get_cell_value_callback
         self._functions = self._build_function_map()
+        self._cache: dict[tuple[str | None, str], Any] = {}
+        self._evaluating: set[tuple[str | None, str]] = set()
+
+    def clear_cache(self) -> None:
+        """Clear evaluation cache."""
+        self._cache.clear()
+        self._evaluating.clear()
 
     def evaluate(self, formula: str, current_sheet: str | None = None) -> Any:
         """Evaluate formula string, starting with '='."""
@@ -299,23 +318,42 @@ class FormulaEngine:
         if not expr:
             return ""
 
+        cache_key = (current_sheet, expr)
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+
+        if cache_key in self._evaluating:
+            return 0  # Break circular dependency
+
+        self._evaluating.add(cache_key)
         try:
             res = self._eval_expr(expr, current_sheet)
             if isinstance(res, float):
                 if math.isnan(res):
-                    return "#NUM!"
-                if math.isinf(res):
-                    return "#DIV/0!"
-                if res == int(res):
-                    return int(res)
-                return round(res, 10)
+                    res = "#NUM!"
+                elif math.isinf(res):
+                    res = "#DIV/0!"
+                elif res == int(res):
+                    res = int(res)
+                else:
+                    res = round(res, 10)
+            self._cache[cache_key] = res
             return res
         except ZeroDivisionError:
+            self._cache[cache_key] = "#DIV/0!"
             return "#DIV/0!"
-        except ValueError as e:
-            return f"#VALUE!"
+        except ValueError:
+            self._cache[cache_key] = "#VALUE!"
+            return "#VALUE!"
+        except RecursionError:
+            self._cache[cache_key] = 0
+            return 0
         except Exception as e:
-            return f"#ERROR: {e}"
+            err = f"#ERROR: {e}"
+            self._cache[cache_key] = err
+            return err
+        finally:
+            self._evaluating.discard(cache_key)
 
     def _eval_expr(self, expr: str, current_sheet: str | None) -> Any:
         expr = expr.strip()
@@ -334,6 +372,13 @@ class FormulaEngine:
             return int(expr)
         except ValueError:
             pass
+
+        # Percentage literal e.g. 5%
+        if expr.endswith("%") and len(expr) > 1:
+            try:
+                return self._to_number(self._eval_expr(expr[:-1], current_sheet)) / 100.0
+            except Exception:
+                pass
 
         # Boolean
         if expr.upper() == "TRUE":
@@ -372,6 +417,12 @@ class FormulaEngine:
                 right = self._to_number(self._eval_expr(parts[1], current_sheet))
                 return left + right if op == "+" else left - right
 
+        # Unary minus / plus
+        if expr.startswith("-") and len(expr) > 1:
+            return -self._to_number(self._eval_expr(expr[1:], current_sheet))
+        if expr.startswith("+") and len(expr) > 1:
+            return self._to_number(self._eval_expr(expr[1:], current_sheet))
+
         # Mult / Div / Mod (*, /, %)
         for op in ["*", "/", "%"]:
             parts = self._split_top_level(expr, op)
@@ -402,7 +453,7 @@ class FormulaEngine:
                 return self._eval_expr(inner, current_sheet)
 
         # Single Cell Reference
-        if CELL_REF_PATTERN.match(expr):
+        if CELL_REF_PATTERN.fullmatch(expr):
             ref = CellRef.from_string(expr)
             sheet = ref.sheet or current_sheet
             return self._get_val(ref.row, ref.col, sheet)
@@ -485,7 +536,7 @@ class FormulaEngine:
             return []
 
         # Check if it's a range like A1:B10 or Sheet1!A1:B10
-        if RANGE_PATTERN.match(arg_str):
+        if RANGE_PATTERN.fullmatch(arg_str):
             cells = parse_range(arg_str)
             vals = []
             for cell in cells:
@@ -494,7 +545,7 @@ class FormulaEngine:
             return vals
 
         # Check single cell ref
-        if CELL_REF_PATTERN.match(arg_str):
+        if CELL_REF_PATTERN.fullmatch(arg_str):
             cell = CellRef.from_string(arg_str)
             sheet = cell.sheet or current_sheet
             return [self._get_val(cell.row, cell.col, sheet)]
@@ -514,7 +565,7 @@ class FormulaEngine:
         if name in ("IF", "IFS", "IFERROR", "IFNA", "SWITCH", "CHOOSE"):
             return fn(raw_args, current_sheet, self)
 
-        if name in ("VLOOKUP", "HLOOKUP", "XLOOKUP", "INDEX", "MATCH", "COUNTIF", "COUNTIFS", "SUMIF", "SUMIFS", "AVERAGEIF", "AVERAGEIFS", "MINIFS", "MAXIFS", "LOOKUP", "COUNTBLANK", "ROWS", "COLUMNS"):
+        if name in ("VLOOKUP", "HLOOKUP", "XLOOKUP", "INDEX", "MATCH", "COUNTIF", "COUNTIFS", "SUMIF", "SUMIFS", "AVERAGEIF", "AVERAGEIFS", "MINIFS", "MAXIFS", "LOOKUP", "COUNTBLANK", "ROWS", "COLUMNS", "SUMPRODUCT", "ROW", "COLUMN", "RANK"):
             return fn(raw_args, current_sheet, self)
 
         # General functions: expand ranges and evaluate
@@ -711,10 +762,28 @@ class FormulaEngine:
         m["TODAY"] = lambda args: date.today().isoformat()
         m["NOW"] = lambda args: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         m["DATE"] = lambda args: date(int(self._to_number(args[0])), int(self._to_number(args[1])), int(self._to_number(args[2]))).isoformat() if len(args) >= 3 else "#VALUE!"
+        m["TIME"] = lambda args: f"{int(self._to_number(args[0])) % 24:02d}:{int(self._to_number(args[1])) % 60:02d}:{int(self._to_number(args[2])) % 60:02d}" if len(args) >= 3 else "#VALUE!"
         m["YEAR"] = lambda args: self._parse_date(args[0]).year if args and self._parse_date(args[0]) else "#VALUE!"
         m["MONTH"] = lambda args: self._parse_date(args[0]).month if args and self._parse_date(args[0]) else "#VALUE!"
         m["DAY"] = lambda args: self._parse_date(args[0]).day if args and self._parse_date(args[0]) else "#VALUE!"
+        m["HOUR"] = lambda args: self._parse_datetime(args[0]).hour if args and self._parse_datetime(args[0]) else 0
+        m["MINUTE"] = lambda args: self._parse_datetime(args[0]).minute if args and self._parse_datetime(args[0]) else 0
+        m["SECOND"] = lambda args: self._parse_datetime(args[0]).second if args and self._parse_datetime(args[0]) else 0
+        m["WEEKDAY"] = lambda args: ((self._parse_date(args[0]).weekday() + 1) % 7 + 1) if args and self._parse_date(args[0]) else "#VALUE!"
         m["DAYS"] = lambda args: (self._parse_date(args[0]) - self._parse_date(args[1])).days if len(args) >= 2 and self._parse_date(args[0]) and self._parse_date(args[1]) else "#VALUE!"
+        m["DATEDIF"] = self._fn_datedif
+        m["EDATE"] = self._fn_edate
+        m["EOMONTH"] = self._fn_eomonth
+
+        # Financial
+        m["PMT"] = self._fn_pmt
+        m["PV"] = self._fn_pv
+        m["FV"] = self._fn_fv
+        m["NPER"] = self._fn_nper
+        m["RATE"] = self._fn_rate
+
+        # Statistical
+        m["RANK"] = self._custom_rank
 
         # Information
         m["ISBLANK"] = lambda args: args[0] is None or args[0] == "" if args else True
@@ -740,6 +809,10 @@ class FormulaEngine:
         m["XLOOKUP"] = self._custom_xlookup
         m["INDEX"] = self._custom_index
         m["MATCH"] = self._custom_match
+        m["LOOKUP"] = self._custom_lookup
+        m["ROW"] = self._custom_row
+        m["COLUMN"] = self._custom_column
+        m["SUMPRODUCT"] = self._custom_sumproduct
         m["COUNTIF"] = self._custom_countif
         m["COUNTIFS"] = self._custom_countifs
         m["SUMIF"] = self._custom_sumif
@@ -857,6 +930,198 @@ class FormulaEngine:
             except ValueError:
                 pass
         return None
+
+    def _parse_datetime(self, val: Any) -> datetime | None:
+        if isinstance(val, datetime):
+            return val
+        if isinstance(val, date):
+            return datetime.combine(val, datetime.min.time())
+        s = str(val).strip()
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y", "%H:%M:%S", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y"):
+            try:
+                return datetime.strptime(s, fmt)
+            except ValueError:
+                pass
+        return None
+
+    def _fn_pmt(self, args: list) -> Any:
+        if len(args) < 3:
+            return "#VALUE!"
+        rate = self._to_number(args[0])
+        nper = self._to_number(args[1])
+        pv = self._to_number(args[2])
+        fv = self._to_number(args[3]) if len(args) > 3 else 0.0
+        type_ = int(self._to_number(args[4])) if len(args) > 4 else 0
+        if nper == 0:
+            return "#DIV/0!"
+        if rate == 0:
+            return -(pv + fv) / nper
+        pvif = (1 + rate) ** nper
+        pmt = (rate / (pvif - 1)) * -(pv * pvif + fv)
+        if type_ == 1:
+            pmt = pmt / (1 + rate)
+        return pmt
+
+    def _fn_pv(self, args: list) -> Any:
+        if len(args) < 3:
+            return "#VALUE!"
+        rate = self._to_number(args[0])
+        nper = self._to_number(args[1])
+        pmt = self._to_number(args[2])
+        fv = self._to_number(args[3]) if len(args) > 3 else 0.0
+        type_ = int(self._to_number(args[4])) if len(args) > 4 else 0
+        if rate == 0:
+            return -(pmt * nper + fv)
+        pvif = (1 + rate) ** nper
+        fact = (1 + rate * type_) * (pvif - 1) / rate
+        return -(fv + pmt * fact) / pvif
+
+    def _fn_fv(self, args: list) -> Any:
+        if len(args) < 3:
+            return "#VALUE!"
+        rate = self._to_number(args[0])
+        nper = self._to_number(args[1])
+        pmt = self._to_number(args[2])
+        pv = self._to_number(args[3]) if len(args) > 3 else 0.0
+        type_ = int(self._to_number(args[4])) if len(args) > 4 else 0
+        if rate == 0:
+            return -(pv + pmt * nper)
+        pvif = (1 + rate) ** nper
+        fact = (1 + rate * type_) * (pvif - 1) / rate
+        return -(pv * pvif + pmt * fact)
+
+    def _fn_nper(self, args: list) -> Any:
+        if len(args) < 3:
+            return "#VALUE!"
+        rate = self._to_number(args[0])
+        pmt = self._to_number(args[1])
+        pv = self._to_number(args[2])
+        fv = self._to_number(args[3]) if len(args) > 3 else 0.0
+        type_ = int(self._to_number(args[4])) if len(args) > 4 else 0
+        if rate == 0:
+            if pmt == 0:
+                return "#DIV/0!"
+            return -(pv + fv) / pmt
+        z = pmt * (1 + rate * type_) / rate
+        try:
+            ratio = (z - fv) / (z + pv)
+            if ratio <= 0:
+                return "#NUM!"
+            return math.log(ratio) / math.log(1 + rate)
+        except Exception:
+            return "#NUM!"
+
+    def _fn_rate(self, args: list) -> Any:
+        if len(args) < 3:
+            return "#VALUE!"
+        nper = self._to_number(args[0])
+        pmt = self._to_number(args[1])
+        pv = self._to_number(args[2])
+        fv = self._to_number(args[3]) if len(args) > 3 else 0.0
+        type_ = int(self._to_number(args[4])) if len(args) > 4 else 0
+        guess = self._to_number(args[5]) if len(args) > 5 else 0.1
+
+        rate = guess
+        for _ in range(40):
+            if rate <= -1.0:
+                rate = -0.9999
+            pvif = (1 + rate) ** nper
+            if rate == 0:
+                y = pv + pmt * nper + fv
+                dy = nper * pmt
+            else:
+                fact = (1 + rate * type_) * (pvif - 1) / rate
+                y = pv * pvif + pmt * fact + fv
+                dy = nper * pv * (1 + rate) ** (nper - 1) + pmt * ((pvif - 1) / rate - (pvif - 1) / (rate * rate) + nper * (1 + rate) ** (nper - 1) / rate)
+            if abs(dy) < 1e-12:
+                break
+            next_rate = rate - y / dy
+            if abs(next_rate - rate) < 1e-7:
+                return next_rate
+            rate = next_rate
+        return rate
+
+    def _custom_rank(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+        if len(raw_args) < 2:
+            return "#VALUE!"
+        num = engine._to_number(engine._eval_expr(raw_args[0], current_sheet))
+        grid = self._get_2d_range(raw_args[1], current_sheet)
+        ref_nums = [engine._to_number(x) for row in grid for x in row if x is not None and x != ""]
+        order = int(engine._to_number(engine._eval_expr(raw_args[2], current_sheet))) if len(raw_args) > 2 else 0
+        if not ref_nums:
+            return "#N/A"
+        sorted_nums = sorted(ref_nums, reverse=(order == 0))
+        try:
+            return sorted_nums.index(num) + 1
+        except ValueError:
+            return "#N/A"
+
+    def _fn_datedif(self, args: list) -> Any:
+        if len(args) < 3:
+            return "#VALUE!"
+        d1 = self._parse_date(args[0])
+        d2 = self._parse_date(args[1])
+        if not d1 or not d2 or d1 > d2:
+            return "#NUM!"
+        unit = str(args[2]).upper().strip('"').strip("'")
+        if unit == "Y":
+            years = d2.year - d1.year
+            if (d2.month, d2.day) < (d1.month, d1.day):
+                years -= 1
+            return years
+        elif unit == "M":
+            months = (d2.year - d1.year) * 12 + d2.month - d1.month
+            if d2.day < d1.day:
+                months -= 1
+            return months
+        elif unit == "D":
+            return (d2 - d1).days
+        elif unit == "YM":
+            months = (d2.year - d1.year) * 12 + d2.month - d1.month
+            if d2.day < d1.day:
+                months -= 1
+            return months % 12
+        elif unit == "YD":
+            d1_adj = d1.replace(year=d2.year)
+            if d1_adj > d2:
+                d1_adj = d1.replace(year=d2.year - 1)
+            return (d2 - d1_adj).days
+        elif unit == "MD":
+            if d2.day >= d1.day:
+                return d2.day - d1.day
+            from datetime import timedelta
+            prev_month_last_day = (d2.replace(day=1) - timedelta(days=1)).day
+            return prev_month_last_day - d1.day + d2.day
+        return "#VALUE!"
+
+    def _fn_edate(self, args: list) -> Any:
+        if len(args) < 2:
+            return "#VALUE!"
+        d = self._parse_date(args[0])
+        if not d:
+            return "#VALUE!"
+        months = int(self._to_number(args[1]))
+        total_months = d.year * 12 + d.month - 1 + months
+        new_year = total_months // 12
+        new_month = total_months % 12 + 1
+        import calendar
+        max_day = calendar.monthrange(new_year, new_month)[1]
+        day = min(d.day, max_day)
+        return date(new_year, new_month, day).isoformat()
+
+    def _fn_eomonth(self, args: list) -> Any:
+        if len(args) < 2:
+            return "#VALUE!"
+        d = self._parse_date(args[0])
+        if not d:
+            return "#VALUE!"
+        months = int(self._to_number(args[1]))
+        total_months = d.year * 12 + d.month - 1 + months
+        new_year = total_months // 12
+        new_month = total_months % 12 + 1
+        import calendar
+        max_day = calendar.monthrange(new_year, new_month)[1]
+        return date(new_year, new_month, max_day).isoformat()
 
     # -------------------------------------------------------------------------
     # Custom Control & Range Functions
@@ -1163,6 +1428,64 @@ class FormulaEngine:
             return 0
         table = self._get_2d_range(raw_args[0], current_sheet)
         return len(table[0]) if table else 0
+
+    def _custom_row(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+        if not raw_args or not raw_args[0].strip():
+            return 1
+        ref_str = raw_args[0].strip()
+        match = CELL_REF_PATTERN.match(ref_str)
+        if match:
+            cell = CellRef.from_string(ref_str)
+            return cell.row + 1
+        return 1
+
+    def _custom_column(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+        if not raw_args or not raw_args[0].strip():
+            return 1
+        ref_str = raw_args[0].strip()
+        match = CELL_REF_PATTERN.match(ref_str)
+        if match:
+            cell = CellRef.from_string(ref_str)
+            return cell.col + 1
+        return 1
+
+    def _custom_lookup(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+        if len(raw_args) < 2:
+            return "#VALUE!"
+        lookup_val = engine._eval_expr(raw_args[0], current_sheet)
+        lookup_grid = self._get_2d_range(raw_args[1], current_sheet)
+        lookup_items = [x for row in lookup_grid for x in row]
+        result_items = [x for row in self._get_2d_range(raw_args[2], current_sheet) for x in row] if len(raw_args) >= 3 else lookup_items
+
+        best_idx = -1
+        for i, val in enumerate(lookup_items):
+            if engine._compare(val, lookup_val, "<="):
+                best_idx = i
+            elif engine._compare(val, lookup_val, "="):
+                best_idx = i
+                break
+        if 0 <= best_idx < len(result_items):
+            return result_items[best_idx]
+        return "#N/A"
+
+    def _custom_sumproduct(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> float:
+        if not raw_args:
+            return 0.0
+        arrays = []
+        for arg in raw_args:
+            grid = self._get_2d_range(arg, current_sheet)
+            flat = [self._to_number(x) for row in grid for x in row]
+            arrays.append(flat)
+        if not arrays:
+            return 0.0
+        n = min(len(a) for a in arrays)
+        total = 0.0
+        for i in range(n):
+            prod = 1.0
+            for a in arrays:
+                prod *= a[i]
+            total += prod
+        return total
 
 
 # =============================================================================

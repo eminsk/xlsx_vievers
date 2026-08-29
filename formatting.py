@@ -34,9 +34,23 @@ class NumberFormatter:
         if fmt == "@":
             return str(value)
 
-        # Date/Time formatting
+        # Date/Time formatting for datetime objects
         if isinstance(value, (datetime, date, time)):
             return NumberFormatter._format_datetime(value, fmt)
+
+        # Check if fmt is a date format and value is a serial number
+        is_date_fmt = any(token in fmt.upper() for token in ("YYYY", "YY", "MMMM", "MMM", "DD", "HH:MM", "SS"))
+        if is_date_fmt:
+            try:
+                serial_num = float(str(value).replace(",", ".").replace(" ", ""))
+                if 0 < serial_num < 2958465:  # Valid Excel date range (up to year 9999)
+                    # Excel 1900 epoch adjustment
+                    from datetime import timedelta
+                    excel_epoch = datetime(1899, 12, 30)
+                    dt_val = excel_epoch + timedelta(days=serial_num)
+                    return NumberFormatter._format_datetime(dt_val, fmt)
+            except (ValueError, TypeError, OverflowError):
+                pass
 
         # Try converting to numeric
         try:
@@ -48,51 +62,66 @@ class NumberFormatter:
         # Percentage formats
         if "%" in fmt:
             pct_val = num * 100 if "%" not in str(value) else num
-            if ".00" in fmt:
-                return f"{pct_val:,.2f}%"
-            elif ".0" in fmt:
-                return f"{pct_val:,.1f}%"
-            else:
-                return f"{round(pct_val):,.0f}%"
+            m = re.search(r"\.(0+)", fmt)
+            if m:
+                decimals = len(m.group(1))
+                return f"{pct_val:,.{decimals}f}%"
+            return f"{round(pct_val):,.0f}%"
+
+        # Accounting formats with parentheses: _($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)
+        if "(*" in fmt or "_(" in fmt:
+            m = re.search(r"\.(0+)", fmt)
+            decimals = len(m.group(1)) if m else 2
+            if num < 0:
+                return f"(${abs(num):,.{decimals}f})"
+            elif num == 0 and "-" in fmt:
+                return "$ -"
+            return f"${num:,.{decimals}f}"
 
         # Currency formats
         if "₽" in fmt or "RUB" in fmt.upper():
-            if ".00" in fmt:
-                return f"{num:,.2f} ₽"
-            return f"{round(num):,.0f} ₽"
+            sign = "-" if num < 0 else ""
+            m = re.search(r"\.(0+)", fmt)
+            if m:
+                decimals = len(m.group(1))
+                return f"{sign}{abs(num):,.{decimals}f} ₽".replace(",", " ")
+            return f"{sign}{abs(round(num)):,} ₽".replace(",", " ")
 
-        if "$" in fmt:
-            if ".00" in fmt:
-                return f"${num:,.2f}" if num >= 0 else f"-${abs(num):,.2f}"
-            return f"${round(num):,.0f}" if num >= 0 else f"-${abs(num):,.0f}"
+        if "$" in fmt or "USD" in fmt.upper():
+            sign = "-" if num < 0 else ""
+            m = re.search(r"\.(0+)", fmt)
+            if m:
+                decimals = len(m.group(1))
+                return f"{sign}${abs(num):,.{decimals}f}"
+            return f"{sign}${abs(round(num)):,}"
 
-        if "€" in fmt:
-            if ".00" in fmt:
-                return f"€{num:,.2f}"
-            return f"€{round(num):,.0f}"
+        if "€" in fmt or "EUR" in fmt.upper():
+            sign = "-" if num < 0 else ""
+            m = re.search(r"\.(0+)", fmt)
+            if m:
+                decimals = len(m.group(1))
+                return f"{sign}€{abs(num):,.{decimals}f}"
+            return f"{sign}€{abs(round(num)):,}"
 
         # Scientific notation
         if "E+" in fmt.upper() or "E-" in fmt.upper():
             return f"{num:.2E}"
 
         # Standard decimal formats
-        if "#,##0.00" in fmt or "0.00" in fmt:
-            if "#,##" in fmt:
-                return f"{num:,.2f}"
-            return f"{num:.2f}"
-
-        if "#,##0" in fmt or "0" in fmt:
-            if "#,##" in fmt:
-                return f"{round(num):,}"
-            return f"{round(num)}"
-
-        # Custom decimal places check: 0.000, 0.0000, etc.
-        m = re.search(r"0\.(0+)", fmt)
-        if m:
-            decimals = len(m.group(1))
-            if "#,##" in fmt:
+        if "#,##0" in fmt or "0,000" in fmt or "#,##" in fmt:
+            m = re.search(r"\.(0+)", fmt)
+            if m:
+                decimals = len(m.group(1))
                 return f"{num:,.{decimals}f}"
+            return f"{round(num):,}"
+
+        if "0.0" in fmt:
+            m = re.search(r"0\.(0+)", fmt)
+            decimals = len(m.group(1)) if m else 2
             return f"{num:.{decimals}f}"
+
+        if fmt == "0":
+            return f"{round(num)}"
 
         return str(value)
 

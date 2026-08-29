@@ -17,7 +17,7 @@ class Config:
 
     # Window
     WINDOW_SIZE = "1440x880"
-    MIN_SIZE = (1020, 640)
+    MIN_SIZE = (1040, 660)
     THEME = "litera"  # Modern light theme
     APP_TITLE = "Excel Viewer Pro"
     ICON_PATH = "app_icon.ico"
@@ -28,14 +28,15 @@ class Config:
     EXCEL_DARK_GREEN = "#0b5a2f"
     EXCEL_LIGHT_GREEN = "#e7f4ec"
     EXCEL_ACCENT = "#217346"
+    EXCEL_HEADER_TEXT = "#ffffff"
 
     # Grid & UI Colors
     HEADER_BG = "#f3f3f3"
     HEADER_FG = "#262626"
     HEADER_SELECTED_BG = "#c8e5d0"
     CELL_BG = "#ffffff"
-    CELL_FG = "#000000"
-    ROW_ALT_BG = "#fafafa"
+    CELL_FG = "#1a1a1a"
+    ROW_ALT_BG = "#f9fbfd"
     GRID_COLOR = "#d9d9d9"
     SELECTION_BG = "#d7eafd"
     SELECTION_BORDER = "#107c41"
@@ -44,6 +45,10 @@ class Config:
     RANGE_FILL = "#e8f0fe"
     BORDER_WIDTH = 2
     EDIT_BG = "#ffffff"
+
+    # Fill Handle
+    FILL_HANDLE_SIZE = 6
+    FILL_HANDLE_COLOR = "#107c41"
 
     # Dimensions
     ROW_NUM_WIDTH = 55
@@ -93,11 +98,14 @@ class Config:
         "journal", "united", "yeti", "darkly", "cyborg", "superhero"
     ]
 
-    # Standard Chart Palette
+    # Standard Chart Palettes
     CHART_PALETTES = {
         "Excel Classic": ["#4472C4", "#ED7D31", "#A5A5A5", "#FFC000", "#5B9BD5", "#70AD47"],
         "Modern Teal": ["#008080", "#20B2AA", "#48D1CC", "#00CED1", "#5F9EA0", "#4682B4"],
-        "Vibrant": ["#E6194B", "#3CBL58", "#FFE119", "#4363D8", "#F58231", "#911EB4"],
+        "Vibrant": ["#E6194B", "#3CB44B", "#FFE119", "#4363D8", "#F58231", "#911EB4"],
         "Pastel": ["#AEC7E8", "#FFBB78", "#98DF8A", "#FF9896", "#C5B0D5", "#C49C94"],
+        "Emerald Forest": ["#0F5132", "#198754", "#20C997", "#0DCAF0", "#3DD5F3", "#6EDFF6"],
+        "Warm Sunset": ["#C0392B", "#E67E22", "#F39C12", "#F1C40F", "#D35400", "#E74C3C"],
+        "Indigo Night": ["#3B4252", "#4C566A", "#5E81AC", "#81A1C1", "#88C0D0", "#8FBCBB"],
         "Monochrome": ["#252525", "#525252", "#737373", "#969696", "#BDBDBD", "#D9D9D9"]
     }

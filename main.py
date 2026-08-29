@@ -20,6 +20,13 @@ Complete desktop spreadsheet viewer and editor with:
 
 from __future__ import annotations
 
+import sys
+try:
+    if sys.getrecursionlimit() < 50000:
+        sys.setrecursionlimit(50000)
+except Exception:
+    pass
+
 import csv
 import io
 from pathlib import Path
@@ -79,11 +86,17 @@ class ExcelViewerPro(ttk.Window):
         self._sheets_data: dict[str, SheetData] = {}
         self._active_sheet_name: str = "Sheet1"
 
+        # Calculation & formula cache: (sheet_name, row, col) -> evaluated_value
+        self._calc_cache: dict[tuple[str, int, int], Any] = {}
+        self._evaluating_cells: set[tuple[str, int, int]] = set()
+
         # Selection state
         self._selected = CellPosition(0, 0)
         self._range_anchor = CellPosition(0, 0)
         self._range_extent = CellPosition(0, 0)
         self._is_mouse_dragging = False
+        self._is_fill_dragging = False
+        self._fill_source_range: tuple[int, int, int, int] | None = None
 
         # Treeview mapping
         self._row_iids: list[str] = []
@@ -104,6 +117,7 @@ class ExcelViewerPro(ttk.Window):
         self._active_cell_border = {}
         self._range_border = {}
         self._formula_bar_active = False
+        self._merged_overlays: list[tk.Label] = []
 
     def _init_window(self) -> None:
         """Configure main application window."""
@@ -215,7 +229,8 @@ class ExcelViewerPro(ttk.Window):
             on_add_sheet=self._on_add_sheet,
             on_rename_sheet=self._on_rename_sheet,
             on_delete_sheet=self._on_delete_sheet,
-            on_duplicate_sheet=self._on_duplicate_sheet
+            on_duplicate_sheet=self._on_duplicate_sheet,
+            on_tab_color_change=self._on_tab_color_changed
         )
         self._sheet_tabs.pack(fill=tk.X, side=tk.BOTTOM)
 
@@ -273,10 +288,15 @@ class ExcelViewerPro(ttk.Window):
         container = ttk.Frame(self)
         container.pack(fill=tk.BOTH, expand=True, padx=4, pady=2)
 
+        # Configure professional spreadsheet styling for Treeview
+        tree_style = ttk.Style()
+        tree_style.configure("Treeview", rowheight=24, font=("Segoe UI", 10))
+        tree_style.configure("Treeview.Heading", font=("Segoe UI", 10, "bold"))
+
         self._tree = ttk.Treeview(container, show="headings", selectmode="browse")
 
-        self._vsb = ttk.Scrollbar(container, orient=tk.VERTICAL, command=self._tree.yview)
-        self._hsb = ttk.Scrollbar(container, orient=tk.HORIZONTAL, command=self._tree.xview)
+        self._vsb = ttk.Scrollbar(container, orient=tk.VERTICAL, command=self._on_v_scroll)
+        self._hsb = ttk.Scrollbar(container, orient=tk.HORIZONTAL, command=self._on_h_scroll)
         self._tree.configure(yscrollcommand=self._on_tree_y_scroll, xscrollcommand=self._on_tree_x_scroll)
 
         self._tree.grid(row=0, column=0, sticky=NSEW)
@@ -414,6 +434,24 @@ class ExcelViewerPro(ttk.Window):
                     headers = []
                     rows = []
                     cell_styles = {}
+                    col_widths = {}
+
+                    # Extract column widths
+                    for col_letter, col_dim in ws.column_dimensions.items():
+                        if col_dim.width is not None:
+                            try:
+                                c_idx = column_index_from_string(col_letter) - 1
+                                col_widths[c_idx] = max(70, min(500, int(col_dim.width * 9.5 + 14)))
+                            except Exception:
+                                pass
+
+                    # Extract merged ranges
+                    merged_ranges = []
+                    for rng in ws.merged_cells.ranges:
+                        try:
+                            merged_ranges.append(CellRange.from_excel(str(rng)))
+                        except Exception:
+                            pass
 
                     for r_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=max_r, max_col=max_c)):
                         row_vals = []
@@ -423,14 +461,88 @@ class ExcelViewerPro(ttk.Window):
                                 self._formula_store.set(s_name, r_idx, c_idx, val)
                             row_vals.append(val)
 
+                            # Extract cell styles
+                            nf = cell.number_format if cell.number_format and cell.number_format != "General" else ""
+                            bold = cell.font.bold if cell.font and cell.font.bold else False
+                            italic = cell.font.italic if cell.font and cell.font.italic else False
+                            underline = bool(cell.font.underline) if cell.font and cell.font.underline else False
+                            strikethrough = cell.font.strike if cell.font and cell.font.strike else False
+                            font_name = cell.font.name if cell.font and cell.font.name else "Calibri"
+                            font_size = int(cell.font.size) if cell.font and cell.font.size else 11
+                            fg_color = None
+                            if cell.font and cell.font.color:
+                                try:
+                                    if hasattr(cell.font.color, "rgb") and isinstance(cell.font.color.rgb, str):
+                                        rgb = cell.font.color.rgb
+                                        if len(rgb) == 8: rgb = rgb[2:]
+                                        if len(rgb) == 6 and rgb != "000000": fg_color = f"#{rgb.upper()}"
+                                except Exception:
+                                    pass
+
+                            bg_color = None
+                            if cell.fill and cell.fill.start_color:
+                                try:
+                                    if hasattr(cell.fill.start_color, "rgb") and isinstance(cell.fill.start_color.rgb, str):
+                                        rgb = cell.fill.start_color.rgb
+                                        if len(rgb) == 8: rgb = rgb[2:]
+                                        if len(rgb) == 6 and rgb != "000000": bg_color = f"#{rgb.upper()}"
+                                except Exception:
+                                    pass
+
+                            halign = cell.alignment.horizontal if cell.alignment and cell.alignment.horizontal else "left"
+                            valign = cell.alignment.vertical if cell.alignment and cell.alignment.vertical else "center"
+                            wrap_text = bool(cell.alignment.wrap_text) if cell.alignment and cell.alignment.wrap_text else False
+
+                            if nf or bold or italic or underline or strikethrough or fg_color or bg_color or halign != "left" or valign != "center" or wrap_text or font_size != 11:
+                                cell_styles[(r_idx, c_idx)] = CellStyle(
+                                    font_name=font_name,
+                                    font_size=font_size,
+                                    bold=bold,
+                                    italic=italic,
+                                    underline=underline,
+                                    strikethrough=strikethrough,
+                                    fg_color=fg_color,
+                                    bg_color=bg_color,
+                                    halign=halign,
+                                    valign=valign,
+                                    wrap_text=wrap_text,
+                                    number_format=nf
+                                )
+
                         rows.append(row_vals)
 
                     # Create default headers if empty
                     headers = [get_column_letter(i + 1) for i in range(max_c)]
-                    s_data = SheetData(name=s_name, headers=headers, rows=rows, col_count=max_c, row_count=len(rows))
+                    # Extract tab color
+                    tab_color = None
+                    if ws.sheet_properties and ws.sheet_properties.tabColor and hasattr(ws.sheet_properties.tabColor, "rgb"):
+                        rgb = ws.sheet_properties.tabColor.rgb
+                        if isinstance(rgb, str):
+                            if len(rgb) == 8: rgb = rgb[2:]
+                            if len(rgb) == 6: tab_color = f"#{rgb.upper()}"
+
+                    s_data = SheetData(
+                        name=s_name,
+                        headers=headers,
+                        rows=rows,
+                        col_count=max_c,
+                        row_count=len(rows),
+                        cell_styles=cell_styles,
+                        column_widths=col_widths,
+                        merged_ranges=merged_ranges,
+                        tab_color=tab_color
+                    )
                     self._sheets_data[s_name] = s_data
 
+                # Fast warm-up precalculation pass for all formulas
+                for s_name, s_data in self._sheets_data.items():
+                    for (r, c) in self._formula_store.get_all(s_name).keys():
+                        self._get_cell_value_for_formula(r, c, s_name)
+
                 self._sheet_tabs.set_sheets(self._workbook.sheetnames)
+                for s_name, s_data in self._sheets_data.items():
+                    if s_data.tab_color:
+                        self._sheet_tabs.set_tab_color(s_name, s_data.tab_color)
                 self._active_sheet_name = self._workbook.sheetnames[0]
                 self._sheet = self._workbook[self._active_sheet_name]
                 self._load_active_sheet()
@@ -504,13 +616,26 @@ class ExcelViewerPro(ttk.Window):
                 else:
                     ws = self._workbook.create_sheet(title=s_name)
 
-                # Write rows and formulas
+                # Set column widths
+                for c_idx, width in s_data.column_widths.items():
+                    col_letter = get_column_letter(c_idx + 1)
+                    ws.column_dimensions[col_letter].width = max(8.0, width / 8.5)
+
+                # Write rows, formulas, and styles
                 for r_idx, row in enumerate(s_data.rows):
                     for c_idx, val in enumerate(row):
                         formula = self._formula_store.get(s_name, r_idx, c_idx)
                         cell_val = formula if formula else val
                         if cell_val is not None and cell_val != "":
-                            ws.cell(row=r_idx + 1, column=c_idx + 1, value=cell_val)
+                            cell = ws.cell(row=r_idx + 1, column=c_idx + 1, value=cell_val)
+                            style = s_data.cell_styles.get((r_idx, c_idx))
+                            if style:
+                                if style.number_format:
+                                    cell.number_format = style.number_format
+                                if style.bold or style.italic:
+                                    cell.font = Font(bold=style.bold, italic=style.italic, name=style.font_name, size=style.font_size)
+                                if style.halign or style.valign:
+                                    cell.alignment = Alignment(horizontal=style.halign, vertical=style.valign, wrap_text=style.wrap_text)
 
             # Remove deleted sheets
             for old_s in existing_sheets:
@@ -583,6 +708,15 @@ class ExcelViewerPro(ttk.Window):
                 pass
             self._workbook = None
             self._sheet = None
+        self._calc_cache.clear()
+        self._evaluating_cells.clear()
+        self._formula_engine.clear_cache()
+        for lbl in self._merged_overlays:
+            try:
+                lbl.destroy()
+            except Exception:
+                pass
+        self._merged_overlays.clear()
 
     def _on_switch_sheet(self, sheet_name: str) -> None:
         """Switch active worksheet."""
@@ -595,47 +729,59 @@ class ExcelViewerPro(ttk.Window):
     def _on_add_sheet(self) -> None:
         """Add new worksheet."""
         base_name = "Sheet"
-        i = len(self._sheets_data) + 1
-        while f"{base_name}{i}" in self._sheets_data:
-            i += 1
-        new_name = f"{base_name}{i}"
+        idx = 1
+        while f"{base_name}{idx}" in self._sheets_data:
+            idx += 1
+        new_name = f"{base_name}{idx}"
 
         s_data = SheetData(name=new_name, col_count=10, row_count=30)
-        s_data.headers = [get_column_letter(c + 1) for c in range(10)]
+        s_data.headers = [get_column_letter(i + 1) for i in range(10)]
         s_data.rows = [["" for _ in range(10)] for _ in range(30)]
-
         self._sheets_data[new_name] = s_data
+
         if self._workbook:
             self._workbook.create_sheet(title=new_name)
 
-        sheet_names = list(self._sheets_data.keys())
-        self._sheet_tabs.set_sheets(sheet_names)
+        self._sheet_tabs.add_sheet(new_name)
         self._on_switch_sheet(new_name)
         self._set_modified(True)
 
+    def _on_tab_color_changed(self, sheet_name: str, color_hex: str | None) -> None:
+        """Update worksheet tab color."""
+        s_data = self._sheets_data.get(sheet_name)
+        if s_data:
+            s_data.tab_color = color_hex
+            if self._workbook and sheet_name in self._workbook.sheetnames:
+                ws = self._workbook[sheet_name]
+                if color_hex:
+                    clean_rgb = color_hex.lstrip("#")
+                    ws.sheet_properties.tabColor = clean_rgb
+                else:
+                    ws.sheet_properties.tabColor = None
+            self._set_modified(True)
+
     def _on_rename_sheet(self, old_name: str) -> None:
         """Rename worksheet."""
-        new_name = simpledialog.askstring("Rename Sheet", "Enter new sheet name:", initialvalue=old_name, parent=self)
+        new_name = simpledialog.askstring("Rename Sheet", f"Enter new name for '{old_name}':", initialvalue=old_name, parent=self)
         if not new_name or new_name == old_name:
             return
-        new_name = new_name.strip()
+
         if new_name in self._sheets_data:
-            messagebox.showwarning("Warning", f"Sheet '{new_name}' already exists.")
+            messagebox.showerror("Error", f"A sheet named '{new_name}' already exists.")
             return
 
         s_data = self._sheets_data.pop(old_name)
         s_data.name = new_name
         self._sheets_data[new_name] = s_data
-        self._formula_store.rename_sheet(old_name, new_name)
 
         if self._workbook and old_name in self._workbook.sheetnames:
-            ws = self._workbook[old_name]
-            ws.title = new_name
+            self._workbook[old_name].title = new_name
 
+        self._formula_store.rename_sheet(old_name, new_name)
         if self._active_sheet_name == old_name:
             self._active_sheet_name = new_name
 
-        self._sheet_tabs.set_sheets(list(self._sheets_data.keys()))
+        self._sheet_tabs.rename_sheet(old_name, new_name)
         self._set_modified(True)
 
     def _on_delete_sheet(self, sheet_name: str) -> None:
@@ -644,48 +790,62 @@ class ExcelViewerPro(ttk.Window):
             messagebox.showwarning("Warning", "A workbook must contain at least one visible worksheet.")
             return
 
-        if not messagebox.askyesno("Delete Sheet", f"Are you sure you want to delete '{sheet_name}'?"):
+        confirm = messagebox.askyesno("Delete Sheet", f"Are you sure you want to delete '{sheet_name}'?\nThis action cannot be undone.")
+        if not confirm:
             return
 
         del self._sheets_data[sheet_name]
-        self._formula_store.clear_sheet(sheet_name)
         if self._workbook and sheet_name in self._workbook.sheetnames:
             del self._workbook[sheet_name]
 
-        remaining = list(self._sheets_data.keys())
-        self._active_sheet_name = remaining[0]
-        self._sheet_tabs.set_sheets(remaining)
+        self._formula_store.delete_sheet(sheet_name)
+        self._sheet_tabs.remove_sheet(sheet_name)
+
+        if self._active_sheet_name == sheet_name:
+            self._active_sheet_name = list(self._sheets_data.keys())[0]
+            self._sheet_tabs._select(self._active_sheet_name)
+
         self._load_active_sheet()
         self._set_modified(True)
 
     def _on_duplicate_sheet(self, sheet_name: str) -> None:
         """Duplicate an existing worksheet."""
-        s_data = self._sheets_data.get(sheet_name)
-        if not s_data:
+        src_data = self._sheets_data.get(sheet_name)
+        if not src_data:
             return
 
-        copy_name = f"{sheet_name} (Copy)"
+        base_name = f"{sheet_name} (Copy)"
+        dup_name = base_name
         idx = 2
-        while copy_name in self._sheets_data:
-            copy_name = f"{sheet_name} (Copy {idx})"
+        while dup_name in self._sheets_data:
+            dup_name = f"{sheet_name} (Copy {idx})"
             idx += 1
 
-        new_rows = [list(r) for r in s_data.rows]
-        new_s_data = SheetData(
-            name=copy_name,
-            headers=list(s_data.headers),
-            rows=new_rows,
-            col_count=s_data.col_count,
-            row_count=s_data.row_count
-        )
-        self._sheets_data[copy_name] = new_s_data
+        new_rows = [list(r) for r in src_data.rows]
+        new_styles = {k: v.copy() for k, v in src_data.cell_styles.items()}
+        new_widths = dict(src_data.column_widths)
 
-        self._sheet_tabs.set_sheets(list(self._sheets_data.keys()))
-        self._on_switch_sheet(copy_name)
+        dup_data = SheetData(
+            name=dup_name,
+            headers=list(src_data.headers),
+            rows=new_rows,
+            col_count=src_data.col_count,
+            row_count=src_data.row_count,
+            cell_styles=new_styles,
+            column_widths=new_widths
+        )
+        self._sheets_data[dup_name] = dup_data
+
+        # Copy formulas
+        for (r, c), f in self._formula_store.get_all(sheet_name).items():
+            self._formula_store.set(dup_name, r, c, f)
+
+        self._sheet_tabs.add_sheet(dup_name)
+        self._on_switch_sheet(dup_name)
         self._set_modified(True)
 
     # =========================================================================
-    # Grid Population & Rendering
+    # Grid Rendering & Active Sheet Loading
     # =========================================================================
 
     def _get_active_sheet_data(self) -> SheetData:
@@ -697,6 +857,7 @@ class ExcelViewerPro(ttk.Window):
         """Build and populate the treeview grid from active sheet data."""
         self._cancel_edit()
         s_data = self._get_active_sheet_data()
+        s_name = self._active_sheet_name
 
         # Clear existing
         self._tree.delete(*self._tree.get_children())
@@ -715,6 +876,25 @@ class ExcelViewerPro(ttk.Window):
         self._tree.heading("#", text="#", anchor=CENTER)
         self._tree.column("#", width=Config.ROW_NUM_WIDTH, minwidth=40, anchor=CENTER, stretch=False)
 
+        # Determine column alignments using evaluated values & openpyxl styles
+        col_anchors = {}
+        for c_idx in range(col_count):
+            align_votes = {"left": 0, "center": 0, "right": 0}
+            for r_idx in range(s_data.row_count):
+                val = self._get_cell_value_for_formula(r_idx, c_idx, s_name)
+                style = s_data.cell_styles.get((r_idx, c_idx))
+                if style and style.halign in align_votes:
+                    align_votes[style.halign] += 2
+                elif val is not None and str(val).strip() != "":
+                    s_val = str(val).strip()
+                    if isinstance(val, (int, float)) or s_val.startswith("$") or s_val.startswith("€") or s_val.endswith("%") or s_val.endswith("₽"):
+                        align_votes["right"] += 1
+                    else:
+                        align_votes["left"] += 1
+
+            best = max(align_votes, key=align_votes.get)
+            col_anchors[c_idx] = CENTER if best == "center" else (E if best == "right" else W)
+
         # Data columns
         for i in range(col_count):
             col_id = f"c{i}"
@@ -730,46 +910,94 @@ class ExcelViewerPro(ttk.Window):
             col_w = s_data.column_widths.get(i, Config.DEFAULT_COL_WIDTH)
             min_w = 0 if i in s_data.hidden_cols else Config.MIN_COL_WIDTH
             actual_w = 0 if i in s_data.hidden_cols else col_w
-            self._tree.column(col_id, width=actual_w, minwidth=min_w, anchor=W)
+            self._tree.column(col_id, width=actual_w, minwidth=min_w, anchor=col_anchors[i])
 
-        # Insert rows
+        # Insert rows with Excel-matched formatting & colors
         tree_insert = self._tree.insert
         tree_detach = self._tree.detach
-        eval_formula = self._formula_engine.evaluate
         s_name = self._active_sheet_name
 
         for r_idx, row in enumerate(s_data.rows):
             display_row = [r_idx + 1]
+            row_styles = []
             for c_idx in range(col_count):
                 formula = self._formula_store.get(s_name, r_idx, c_idx)
                 raw_val = row[c_idx] if c_idx < len(row) else ""
                 if formula:
-                    val = eval_formula(formula, s_name)
+                    val = self._get_cell_value_for_formula(r_idx, c_idx, s_name)
                 else:
                     val = raw_val
 
                 # Format with number formatter if exists
                 style = s_data.cell_styles.get((r_idx, c_idx))
+                if style:
+                    row_styles.append(style)
                 fmt = style.number_format if style else None
                 formatted_str = NumberFormatter.format_value(val, fmt)
                 display_row.append(formatted_str)
 
-            tag = "odd" if r_idx % 2 else "even"
-            iid = tree_insert("", END, values=tuple(display_row), tags=(tag,))
+            # Determine row tag styling
+            bg_color = None
+            fg_color = None
+            is_bold = False
+            is_italic = False
+            font_size = 10
+            font_name = "Segoe UI"
+
+            for st in row_styles:
+                if st.bg_color and not bg_color and st.bg_color.upper() != "#FFFFFF":
+                    bg_color = st.bg_color
+                if st.fg_color and not fg_color:
+                    fg_color = st.fg_color
+                if st.bold:
+                    is_bold = True
+                if st.italic:
+                    is_italic = True
+                if st.font_size and st.font_size > font_size:
+                    font_size = st.font_size
+                if st.font_name:
+                    font_name = st.font_name
+
+            tag_kwargs = {}
+            if bg_color:
+                tag_kwargs["background"] = bg_color
+                if not fg_color and bg_color.upper() in ("#1B365D", "#2B6CB0", "#22543D", "#44337A", "#2C7A7B", "#1A202C", "#2D3748"):
+                    fg_color = "#FFFFFF"
+            else:
+                tag_kwargs["background"] = Config.ROW_ALT_BG if (r_idx % 2) else Config.CELL_BG
+
+            if fg_color:
+                tag_kwargs["foreground"] = fg_color
+
+            font_weight = "bold" if is_bold else "normal"
+            font_slant = "italic" if is_italic else "roman"
+            tag_kwargs["font"] = (font_name, font_size, font_weight, font_slant)
+
+            tag_name = f"row_tag_{r_idx}"
+            self._tree.tag_configure(tag_name, **tag_kwargs)
+
+            iid = tree_insert("", END, values=tuple(display_row), tags=(tag_name,))
             self._row_iids.append(iid)
 
             if r_idx in s_data.hidden_rows:
                 tree_detach(iid)
                 self._detached_rows[r_idx] = iid
 
-        # Update stats
+        # Update stats and overlays
         self._status_bar.set_stats(s_data.row_count, s_data.col_count)
         self._update_selection_highlight()
         self._update_formula_bar()
+        self.after_idle(self._refresh_merged_overlays)
 
     def _get_cell_value_for_formula(self, row: int, col: int, sheet_name: str | None = None) -> Any:
-        """Callback for formula engine to fetch cell value from any sheet."""
+        """Callback for formula engine to fetch cell value from any sheet with memoization."""
         target_sheet = sheet_name or self._active_sheet_name
+        key = (target_sheet, row, col)
+        if key in self._calc_cache:
+            return self._calc_cache[key]
+        if key in self._evaluating_cells:
+            return 0  # Break circular dependency
+
         s_data = self._sheets_data.get(target_sheet)
         if not s_data:
             return 0
@@ -784,7 +1012,15 @@ class ExcelViewerPro(ttk.Window):
         # Check if it's a formula
         formula = self._formula_store.get(target_sheet, row, col)
         if formula:
-            return self._formula_engine.evaluate(formula, target_sheet)
+            self._evaluating_cells.add(key)
+            try:
+                res = self._formula_engine.evaluate(formula, target_sheet)
+            finally:
+                self._evaluating_cells.remove(key)
+            self._calc_cache[key] = res
+            return res
+
+        self._calc_cache[key] = val
         return val
 
     # =========================================================================
@@ -897,14 +1133,23 @@ class ExcelViewerPro(ttk.Window):
     # Visual Highlights & Status Bar Stats
     # =========================================================================
 
-    def _create_border_frames(self, color: str) -> dict[str, tk.Frame]:
+    def _create_border_frames(self, color: str, with_handle: bool = True) -> dict[str, tk.Frame]:
         w = Config.BORDER_WIDTH
-        return {
+        frames = {
             "top": tk.Frame(self._tree, bg=color, height=w, bd=0),
             "bottom": tk.Frame(self._tree, bg=color, height=w, bd=0),
             "left": tk.Frame(self._tree, bg=color, width=w, bd=0),
             "right": tk.Frame(self._tree, bg=color, width=w, bd=0),
         }
+        if with_handle:
+            h_sz = Config.FILL_HANDLE_SIZE
+            handle = tk.Frame(self._tree, bg=color, width=h_sz, height=h_sz, bd=0, cursor="crosshair")
+            handle.bind("<Button-1>", self._on_fill_handle_press)
+            handle.bind("<B1-Motion>", self._on_fill_handle_drag)
+            handle.bind("<ButtonRelease-1>", self._on_fill_handle_release)
+            handle.bind("<Double-1>", self._on_fill_handle_double_click)
+            frames["handle"] = handle
+        return frames
 
     def _place_border(self, border: dict[str, tk.Frame], x: int, y: int, w: int, h: int) -> None:
         bw = Config.BORDER_WIDTH
@@ -915,13 +1160,325 @@ class ExcelViewerPro(ttk.Window):
         border["bottom"].place(x=x, y=y + h - bw, width=w, height=bw)
         border["left"].place(x=x, y=y, width=bw, height=h)
         border["right"].place(x=x + w - bw, y=y, width=bw, height=h)
+        if "handle" in border:
+            h_sz = Config.FILL_HANDLE_SIZE
+            border["handle"].place(x=x + w - h_sz + 1, y=y + h - h_sz + 1, width=h_sz, height=h_sz)
 
     def _hide_border(self, border: dict[str, tk.Frame]) -> None:
         for f in border.values():
             f.place_forget()
 
+    def _on_fill_handle_press(self, event: tk.Event) -> str:
+        r1 = min(self._range_anchor.row, self._range_extent.row)
+        r2 = max(self._range_anchor.row, self._range_extent.row)
+        c1 = min(self._range_anchor.col, self._range_extent.col)
+        c2 = max(self._range_anchor.col, self._range_extent.col)
+        self._fill_source_range = (r1, r2, c1, c2)
+        self._is_fill_dragging = True
+        self._status_bar.set_mode("AutoFill Drag")
+        return "break"
+
+    def _on_fill_handle_drag(self, event: tk.Event) -> str:
+        if not self._is_fill_dragging or not self._fill_source_range:
+            return "break"
+        tree_x = event.widget.winfo_rootx() - self._tree.winfo_rootx() + event.x
+        tree_y = event.widget.winfo_rooty() - self._tree.winfo_rooty() + event.y
+        cell = self._get_cell_at_xy(tree_x, tree_y)
+        if cell:
+            src_r1, src_r2, src_c1, src_c2 = self._fill_source_range
+            row_diff = cell.row - src_r2
+            col_diff = cell.col - src_c2
+            if row_diff >= col_diff and row_diff > 0:
+                self._range_extent = CellPosition(cell.row, src_c2)
+            elif col_diff > row_diff and col_diff > 0:
+                self._range_extent = CellPosition(src_r2, cell.col)
+            self._update_selection_highlight()
+        return "break"
+
+    def _on_fill_handle_release(self, event: tk.Event) -> str:
+        if not self._is_fill_dragging or not self._fill_source_range:
+            self._is_fill_dragging = False
+            return "break"
+        self._is_fill_dragging = False
+        src_r1, src_r2, src_c1, src_c2 = self._fill_source_range
+        dest_r = self._range_extent.row
+        dest_c = self._range_extent.col
+
+        if dest_r > src_r2 or dest_c > src_c2:
+            self._apply_autofill(src_r1, src_r2, src_c1, src_c2, dest_r, dest_c)
+
+        self._fill_source_range = None
+        self._status_bar.set_mode("Ready")
+        return "break"
+
+    def _on_fill_handle_double_click(self, event: tk.Event) -> str:
+        s_data = self._get_active_sheet_data()
+        src_r1 = min(self._range_anchor.row, self._range_extent.row)
+        src_r2 = max(self._range_anchor.row, self._range_extent.row)
+        src_c1 = min(self._range_anchor.col, self._range_extent.col)
+        src_c2 = max(self._range_anchor.col, self._range_extent.col)
+
+        ref_c = src_c1 - 1 if src_c1 > 0 else src_c2 + 1
+        if 0 <= ref_c < s_data.col_count:
+            last_r = src_r2
+            while last_r + 1 < s_data.row_count and s_data.get_cell_value(last_r + 1, ref_c) not in (None, ""):
+                last_r += 1
+            if last_r > src_r2:
+                self._apply_autofill(src_r1, src_r2, src_c1, src_c2, last_r, src_c2)
+        return "break"
+
+    def _apply_autofill(self, src_r1: int, src_r2: int, src_c1: int, src_c2: int, dest_r: int, dest_c: int) -> None:
+        s_data = self._get_active_sheet_data()
+        s_name = self._active_sheet_name
+
+        # Fill Down
+        if dest_r > src_r2:
+            src_height = src_r2 - src_r1 + 1
+            for c in range(src_c1, src_c2 + 1):
+                col_formulas = [self._formula_store.get(s_name, r, c) for r in range(src_r1, src_r2 + 1)]
+                col_vals = [s_data.get_cell_value(r, c) for r in range(src_r1, src_r2 + 1)]
+
+                if any(f for f in col_formulas):
+                    for target_r in range(src_r2 + 1, dest_r + 1):
+                        src_offset = (target_r - (src_r2 + 1)) % src_height
+                        base_r = src_r1 + src_offset
+                        row_delta = target_r - base_r
+                        formula = self._formula_store.get(s_name, base_r, c)
+                        if formula:
+                            shifted = shift_formula_references(formula, row_delta, 0)
+                            self._apply_cell_value_change(target_r, c, shifted)
+                        else:
+                            val = s_data.get_cell_value(base_r, c)
+                            self._apply_cell_value_change(target_r, c, "" if val is None else str(val))
+                else:
+                    nums = []
+                    for v in col_vals:
+                        try:
+                            nums.append(float(str(v).replace(",", ".")))
+                        except (ValueError, TypeError):
+                            nums.append(None)
+
+                    if len(nums) >= 2 and all(n is not None for n in nums):
+                        step = (nums[-1] - nums[0]) / (len(nums) - 1)
+                        for target_r in range(src_r2 + 1, dest_r + 1):
+                            steps_ahead = target_r - src_r2
+                            val_num = nums[-1] + step * steps_ahead
+                            val_str = f"{int(val_num)}" if val_num == int(val_num) else f"{round(val_num, 4):g}"
+                            self._apply_cell_value_change(target_r, c, val_str)
+                    elif len(nums) == 1 and nums[0] is not None:
+                        for target_r in range(src_r2 + 1, dest_r + 1):
+                            val_num = nums[0]
+                            val_str = f"{int(val_num)}" if val_num == int(val_num) else f"{round(val_num, 4):g}"
+                            self._apply_cell_value_change(target_r, c, val_str)
+                    else:
+                        for target_r in range(src_r2 + 1, dest_r + 1):
+                            src_offset = (target_r - (src_r2 + 1)) % src_height
+                            val = col_vals[src_offset]
+                            self._apply_cell_value_change(target_r, c, "" if val is None else str(val))
+
+        # Fill Right
+        elif dest_c > src_c2:
+            src_width = src_c2 - src_c1 + 1
+            for r in range(src_r1, src_r2 + 1):
+                row_formulas = [self._formula_store.get(s_name, r, c) for c in range(src_c1, src_c2 + 1)]
+                row_vals = [s_data.get_cell_value(r, c) for c in range(src_c1, src_c2 + 1)]
+
+                if any(f for f in row_formulas):
+                    for target_c in range(src_c2 + 1, dest_c + 1):
+                        src_offset = (target_c - (src_c2 + 1)) % src_width
+                        base_c = src_c1 + src_offset
+                        col_delta = target_c - base_c
+                        formula = self._formula_store.get(s_name, r, base_c)
+                        if formula:
+                            shifted = shift_formula_references(formula, 0, col_delta)
+                            self._apply_cell_value_change(r, target_c, shifted)
+                        else:
+                            val = s_data.get_cell_value(r, base_c)
+                            self._apply_cell_value_change(r, target_c, "" if val is None else str(val))
+                else:
+                    nums = []
+                    for v in row_vals:
+                        try:
+                            nums.append(float(str(v).replace(",", ".")))
+                        except (ValueError, TypeError):
+                            nums.append(None)
+
+                    if len(nums) >= 2 and all(n is not None for n in nums):
+                        step = (nums[-1] - nums[0]) / (len(nums) - 1)
+                        for target_c in range(src_c2 + 1, dest_c + 1):
+                            steps_ahead = target_c - src_c2
+                            val_num = nums[-1] + step * steps_ahead
+                            val_str = f"{int(val_num)}" if val_num == int(val_num) else f"{round(val_num, 4):g}"
+                            self._apply_cell_value_change(r, target_c, val_str)
+                    else:
+                        for target_c in range(src_c2 + 1, dest_c + 1):
+                            src_offset = (target_c - (src_c2 + 1)) % src_width
+                            val = row_vals[src_offset]
+                            self._apply_cell_value_change(r, target_c, "" if val is None else str(val))
+
+        self._range_extent = CellPosition(max(src_r2, dest_r), max(src_c2, dest_c))
+        self._update_selection_highlight()
+        self._update_status_bar_stats()
+
+    def _on_v_scroll(self, *args) -> None:
+        self._tree.yview(*args)
+        self._refresh_highlights()
+
+    def _on_h_scroll(self, *args) -> None:
+        self._tree.xview(*args)
+        self._refresh_highlights()
+
+    def _on_tree_y_scroll(self, *args) -> None:
+        self._vsb.set(*args)
+        self._refresh_highlights()
+
+    def _on_tree_x_scroll(self, *args) -> None:
+        self._hsb.set(*args)
+        self._refresh_highlights()
+
     def _refresh_highlights(self) -> None:
         self._update_selection_highlight()
+        self._refresh_merged_overlays()
+
+    def _refresh_merged_overlays(self) -> None:
+        """Create and place clean Excel-like overlay widgets for all merged cell ranges."""
+        for lbl in self._merged_overlays:
+            try:
+                lbl.destroy()
+            except Exception:
+                pass
+        self._merged_overlays.clear()
+
+        s_data = self._get_active_sheet_data()
+        if not s_data or not s_data.merged_ranges:
+            return
+
+        for rng in s_data.merged_ranges:
+            try:
+                r1, c1, r2, c2 = rng.start.row, rng.start.col, rng.end.row, rng.end.col
+                if r1 < len(self._row_iids):
+                    iid1 = self._row_iids[r1]
+                    iid2 = self._row_iids[r2] if r2 < len(self._row_iids) else iid1
+                    if c1 + 1 >= len(self._col_ids) or c2 + 1 >= len(self._col_ids):
+                        continue
+                    bbox1 = self._tree.bbox(iid1, self._col_ids[c1 + 1])
+                    bbox2 = self._tree.bbox(iid2, self._col_ids[c2 + 1])
+                    if not bbox1 or not bbox2:
+                        continue
+
+                    x = bbox1[0]
+                    y = bbox1[1]
+                    w = (bbox2[0] + bbox2[2]) - bbox1[0]
+                    h = (bbox2[1] + bbox2[3]) - bbox1[1]
+                    if w <= 0 or h <= 0:
+                        continue
+
+                    val = s_data.get_cell_value(r1, c1)
+                    formula = self._formula_store.get(s_data.name, r1, c1)
+                    if formula:
+                        val = self._get_cell_value_for_formula(r1, c1, s_data.name)
+
+                    # Style & formatting
+                    style = s_data.cell_styles.get((r1, c1))
+                    fmt = style.number_format if style else None
+                    display_str = NumberFormatter.format_value(val, fmt)
+
+                    bg = style.bg_color if style and style.bg_color and style.bg_color.upper() != "#FFFFFF" else "#FFFFFF"
+                    fg = style.fg_color if style and style.fg_color else ("#FFFFFF" if bg.upper() in ("#1B365D", "#2B6CB0", "#22543D", "#44337A", "#2C7A7B", "#1A202C", "#2D3748") else "#2D3748")
+                    is_bold = style.bold if style else False
+                    font_size = style.font_size if style and style.font_size else 10
+                    font_name = style.font_name if style and style.font_name else "Segoe UI"
+                    font_slant = "italic" if style and style.italic else "roman"
+
+                    # Clean alignment based on style, span, and data type
+                    if style and style.halign:
+                        if style.halign == "center":
+                            anchor = tk.CENTER
+                        elif style.halign == "right":
+                            anchor = tk.E
+                        else:
+                            anchor = tk.W
+                    elif c2 > c1:
+                        anchor = tk.CENTER
+                    elif isinstance(val, (int, float)) or (isinstance(val, str) and (val.startswith("$") or val.endswith("%") or val.endswith("₽"))):
+                        anchor = tk.E
+                    else:
+                        anchor = tk.W
+
+                    lbl = tk.Label(
+                        self._tree,
+                        text=display_str,
+                        bg=bg,
+                        fg=fg,
+                        font=(font_name, font_size, "bold" if is_bold else "normal", font_slant),
+                        anchor=anchor,
+                        padx=6,
+                        relief="solid",
+                        bd=1
+                    )
+                    lbl.place(x=x, y=y, width=w, height=h)
+                    lbl.bind("<Button-1>", partial(self._on_overlay_click, r1, c1))
+                    lbl.bind("<Double-1>", partial(self._on_overlay_double_click, r1, c1))
+                    self._merged_overlays.append(lbl)
+            except Exception:
+                pass
+
+        # Handle text overflow for cells with long text when adjacent cell is empty
+        for r_idx in range(min(len(self._row_iids), s_data.row_count)):
+            iid = self._row_iids[r_idx]
+            for c_idx in range(s_data.col_count - 1):
+                try:
+                    val = s_data.get_cell_value(r_idx, c_idx)
+                    next_val = s_data.get_cell_value(r_idx, c_idx + 1)
+                    if (
+                        isinstance(val, str)
+                        and len(val) > 12
+                        and (next_val is None or str(next_val).strip() == "")
+                        and not any(rng.contains(r_idx, c_idx) for rng in s_data.merged_ranges)
+                        and not any(rng.contains(r_idx, c_idx + 1) for rng in s_data.merged_ranges)
+                    ):
+                        if c_idx + 2 < len(self._col_ids):
+                            bbox1 = self._tree.bbox(iid, self._col_ids[c_idx + 1])
+                            bbox2 = self._tree.bbox(iid, self._col_ids[c_idx + 2])
+                            if bbox1 and bbox2:
+                                x = bbox1[0]
+                                y = bbox1[1]
+                                w = (bbox2[0] + bbox2[2]) - x
+                                h = bbox1[3]
+                                if w > 0 and h > 0:
+                                    style = s_data.cell_styles.get((r_idx, c_idx))
+                                    bg = style.bg_color if style and style.bg_color and style.bg_color.upper() != "#FFFFFF" else (Config.ROW_ALT_BG if (r_idx % 2) else Config.CELL_BG)
+                                    fg = style.fg_color if style and style.fg_color else "#2D3748"
+                                    is_italic = style.italic if style else True
+                                    lbl = tk.Label(
+                                        self._tree,
+                                        text=val,
+                                        bg=bg,
+                                        fg=fg,
+                                        font=("Segoe UI", 9, "italic" if is_italic else "normal"),
+                                        anchor=tk.W,
+                                        padx=6,
+                                        relief="solid",
+                                        bd=1
+                                    )
+                                    lbl.place(x=x, y=y, width=w, height=h)
+                                    lbl.bind("<Button-1>", partial(self._on_overlay_click, r_idx, c_idx))
+                                    lbl.bind("<Double-1>", partial(self._on_overlay_double_click, r_idx, c_idx))
+                                    self._merged_overlays.append(lbl)
+                except Exception:
+                    pass
+
+    def _on_overlay_click(self, row: int, col: int, event: tk.Event) -> None:
+        self._selected = CellPosition(row, col)
+        self._range_anchor = CellPosition(row, col)
+        self._range_extent = CellPosition(row, col)
+        self._update_selection_highlight()
+        self._update_formula_bar()
+        self._tree.focus_set()
+
+    def _on_overlay_double_click(self, row: int, col: int, event: tk.Event) -> None:
+        self._selected = CellPosition(row, col)
+        self._start_inline_edit()
 
     def _update_selection_highlight(self) -> None:
         if not self._row_iids:
@@ -1057,10 +1614,15 @@ class ExcelViewerPro(ttk.Window):
         if recorded_old == new_value:
             return
 
+        # Invalidate calculation caches
+        self._calc_cache.clear()
+        self._evaluating_cells.clear()
+        self._formula_engine.clear_cache()
+
         # Check if formula
         if new_value.startswith("="):
             self._formula_store.set(s_name, row, col, new_value)
-            evaluated = self._formula_engine.evaluate(new_value, s_name)
+            evaluated = self._get_cell_value_for_formula(row, col, s_name)
             s_data.set_cell_value(row, col, evaluated)
         else:
             self._formula_store.set(s_name, row, col, "")
@@ -1074,7 +1636,7 @@ class ExcelViewerPro(ttk.Window):
             vals = list(self._tree.item(iid)["values"])
             while len(vals) <= col + 1:
                 vals.append("")
-            display_val = self._formula_engine.evaluate(new_value, s_name) if new_value.startswith("=") else new_value
+            display_val = self._get_cell_value_for_formula(row, col, s_name) if new_value.startswith("=") else new_value
             style = s_data.cell_styles.get((row, col))
             fmt = style.number_format if style else None
             vals[col + 1] = NumberFormatter.format_value(display_val, fmt)
@@ -1116,22 +1678,32 @@ class ExcelViewerPro(ttk.Window):
 
     def _recalculate_all(self) -> None:
         """Recalculate all formulas on the active sheet and update display."""
+        self._calc_cache.clear()
+        self._evaluating_cells.clear()
+        self._formula_engine.clear_cache()
+
         s_data = self._get_active_sheet_data()
         s_name = self._active_sheet_name
 
-        for (r, c), f in self._formula_store.get_all(s_name).items():
-            if r < len(self._row_iids):
-                result = self._formula_engine.evaluate(f, s_name)
-                s_data.set_cell_value(r, c, result)
-                iid = self._row_iids[r]
-                vals = list(self._tree.item(iid)["values"])
-                if c + 1 < len(vals):
-                    style = s_data.cell_styles.get((r, c))
-                    fmt = style.number_format if style else None
-                    vals[c + 1] = NumberFormatter.format_value(result, fmt)
-                    self._tree.item(iid, values=vals)
+        for r_idx in range(min(len(self._row_iids), s_data.row_count)):
+            iid = self._row_iids[r_idx]
+            vals = list(self._tree.item(iid)["values"])
+            changed = False
+            for c_idx in range(s_data.col_count):
+                formula = self._formula_store.get(s_name, r_idx, c_idx)
+                if formula:
+                    result = self._get_cell_value_for_formula(r_idx, c_idx, s_name)
+                    s_data.set_cell_value(r_idx, c_idx, result)
+                    if c_idx + 1 < len(vals):
+                        style = s_data.cell_styles.get((r_idx, c_idx))
+                        fmt = style.number_format if style else None
+                        vals[c_idx + 1] = NumberFormatter.format_value(result, fmt)
+                        changed = True
+            if changed:
+                self._tree.item(iid, values=vals)
 
         self._update_status_bar_stats()
+        self._refresh_merged_overlays()
 
     # =========================================================================
     # Clipboard (2D TSV / Excel-Compatible Copy / Paste / Cut)
@@ -1213,7 +1785,7 @@ class ExcelViewerPro(ttk.Window):
                 for c_offset, val in enumerate(row):
                     clean_val = val
                     if val.startswith("="):
-                        clean_val = str(self._formula_engine.evaluate(val, self._active_sheet_name))
+                        clean_val = str(self._get_cell_value_for_formula(start_r + r_offset, start_c + c_offset, self._active_sheet_name))
                     self._apply_cell_value_change(start_r + r_offset, start_c + c_offset, clean_val)
 
         elif mode == "formulas":
@@ -1257,13 +1829,18 @@ class ExcelViewerPro(ttk.Window):
         if not s_data:
             return
 
+        self._calc_cache.clear()
+        self._evaluating_cells.clear()
+        self._formula_engine.clear_cache()
+
         if action.action_type == "cell_change":
             r = action.data["row"]
             c = action.data["col"]
             val = action.data["old"] if is_undo else action.data["new"]
             if val.startswith("="):
                 self._formula_store.set(s_name, r, c, val)
-                s_data.set_cell_value(r, c, self._formula_engine.evaluate(val, s_name))
+                evaluated = self._get_cell_value_for_formula(r, c, s_name)
+                s_data.set_cell_value(r, c, evaluated)
             else:
                 self._formula_store.set(s_name, r, c, "")
                 s_data.set_cell_value(r, c, self._parse_typed_value(val))
@@ -1272,7 +1849,12 @@ class ExcelViewerPro(ttk.Window):
                 iid = self._row_iids[r]
                 vals = list(self._tree.item(iid)["values"])
                 if c + 1 < len(vals):
-                    vals[c + 1] = val
+                    disp = val
+                    style = s_data.cell_styles.get((r, c))
+                    fmt = style.number_format if style else None
+                    if val.startswith("="):
+                        disp = self._get_cell_value_for_formula(r, c, s_name)
+                    vals[c + 1] = NumberFormatter.format_value(disp, fmt)
                     self._tree.item(iid, values=vals)
 
         self._set_modified(True)
@@ -1977,6 +2559,10 @@ class ExcelViewerPro(ttk.Window):
 
 def main() -> None:
     app = ExcelViewerPro()
+    if len(sys.argv) > 1:
+        target_path = Path(sys.argv[1])
+        if target_path.exists() and target_path.is_file():
+            app._load_file(target_path)
     app.run()
 
 

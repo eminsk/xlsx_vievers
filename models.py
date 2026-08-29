@@ -188,6 +188,7 @@ class SheetData:
     column_widths: dict[int, int] = field(default_factory=dict)
     row_heights: dict[int, int] = field(default_factory=dict)
     merged_ranges: list[CellRange] = field(default_factory=list)
+    tab_color: str | None = None
     filter_active: bool = False
     filter_criteria: dict[int, set[str]] = field(default_factory=dict)
 
@@ -203,8 +204,23 @@ class SheetData:
         self.column_widths.clear()
         self.row_heights.clear()
         self.merged_ranges.clear()
+        self.tab_color = None
         self.filter_active = False
         self.filter_criteria.clear()
+
+    def ensure_dimensions(self, min_rows: int, min_cols: int) -> None:
+        """Ensure grid has at least min_rows and min_cols."""
+        if min_cols > self.col_count:
+            self.col_count = min_cols
+            while len(self.headers) < self.col_count:
+                self.headers.append(get_column_letter(len(self.headers) + 1))
+            for r in self.rows:
+                while len(r) < self.col_count:
+                    r.append("")
+
+        while len(self.rows) < min_rows:
+            self.rows.append(["" for _ in range(self.col_count)])
+        self.row_count = len(self.rows)
 
     def get_cell_value(self, row: int, col: int) -> Any:
         """Safely get cell value."""
@@ -214,15 +230,20 @@ class SheetData:
 
     def set_cell_value(self, row: int, col: int, value: Any) -> None:
         """Safely set cell value expanding rows/cols if necessary."""
-        while row >= len(self.rows):
-            self.rows.append(["" for _ in range(self.col_count)])
-        
-        while col >= len(self.rows[row]):
-            self.rows[row].append("")
-            
-        self.rows[row][col] = value
-        self.row_count = len(self.rows)
-        if col + 1 > self.col_count:
-            self.col_count = col + 1
+        target_cols = max(self.col_count, col + 1)
+        if target_cols > self.col_count:
+            self.col_count = target_cols
             while len(self.headers) < self.col_count:
                 self.headers.append(get_column_letter(len(self.headers) + 1))
+            for r in self.rows:
+                while len(r) < self.col_count:
+                    r.append("")
+
+        while row >= len(self.rows):
+            self.rows.append(["" for _ in range(self.col_count)])
+
+        while col >= len(self.rows[row]):
+            self.rows[row].append("")
+
+        self.rows[row][col] = value
+        self.row_count = len(self.rows)

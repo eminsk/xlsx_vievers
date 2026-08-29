@@ -17,6 +17,74 @@ from formulas import FUNCTION_METADATA
 
 
 # =============================================================================
+# Tooltip Helper
+# =============================================================================
+
+class Tooltip:
+    """Elegant floating tooltip for UI widgets."""
+
+    def __init__(self, widget: tk.Widget, text: str, delay_ms: int = 350) -> None:
+        self.widget = widget
+        self.text = text
+        self.delay_ms = delay_ms
+        self._tipwindow: tk.Toplevel | None = None
+        self._after_id: str | None = None
+        self.widget.bind("<Enter>", self._on_enter, add="+")
+        self.widget.bind("<Leave>", self._on_leave, add="+")
+        self.widget.bind("<ButtonPress>", self._on_leave, add="+")
+
+    def _on_enter(self, event: tk.Event | None = None) -> None:
+        self._cancel()
+        self._after_id = self.widget.after(self.delay_ms, self._show)
+
+    def _on_leave(self, event: tk.Event | None = None) -> None:
+        self._cancel()
+        self._hide()
+
+    def _cancel(self) -> None:
+        if self._after_id:
+            try:
+                self.widget.after_cancel(self._after_id)
+            except Exception:
+                pass
+            self._after_id = None
+
+    def _show(self) -> None:
+        if self._tipwindow or not self.text:
+            return
+        try:
+            x = self.widget.winfo_rootx() + 8
+            y = self.widget.winfo_rooty() + self.widget.winfo_height() + 4
+            self._tipwindow = tw = tk.Toplevel(self.widget)
+            tw.wm_overrideredirect(True)
+            tw.wm_geometry(f"+{x}+{y}")
+            tw.attributes("-topmost", True)
+            label = tk.Label(
+                tw,
+                text=self.text,
+                justify=tk.LEFT,
+                background="#1e293b",
+                foreground="#ffffff",
+                relief="solid",
+                borderwidth=0,
+                padx=6,
+                pady=3,
+                font=("Segoe UI", 8)
+            )
+            label.pack()
+        except Exception:
+            pass
+
+    def _hide(self) -> None:
+        if self._tipwindow:
+            try:
+                self._tipwindow.destroy()
+            except Exception:
+                pass
+            self._tipwindow = None
+
+
+# =============================================================================
 # Ribbon Bar (Excel-Style Tabbed Toolbar)
 # =============================================================================
 
@@ -435,7 +503,8 @@ class SheetTabs(ttk.Frame):
         on_add_sheet: Callable[[], None],
         on_rename_sheet: Callable[[str], None],
         on_delete_sheet: Callable[[str], None],
-        on_duplicate_sheet: Callable[[str], None]
+        on_duplicate_sheet: Callable[[str], None],
+        on_tab_color_change: Callable[[str, str | None], None] | None = None
     ) -> None:
         super().__init__(parent, padding=(4, 2))
         self._on_select = on_select_sheet
@@ -443,6 +512,7 @@ class SheetTabs(ttk.Frame):
         self._on_rename = on_rename_sheet
         self._on_delete = on_delete_sheet
         self._on_duplicate = on_duplicate_sheet
+        self._on_color = on_tab_color_change
 
         self._tabs: dict[str, ttk.Button] = {}
         self._tab_colors: dict[str, str] = {}
@@ -457,13 +527,26 @@ class SheetTabs(ttk.Frame):
         nav_frame.pack(side=tk.LEFT)
 
         w = 2
-        ttk.Button(nav_frame, text="⏮", width=w, bootstyle="secondary-outline", command=self._scroll_start).pack(side=tk.LEFT, padx=1)
-        ttk.Button(nav_frame, text="◀", width=w, bootstyle="secondary-outline", command=self._scroll_left).pack(side=tk.LEFT, padx=1)
-        ttk.Button(nav_frame, text="▶", width=w, bootstyle="secondary-outline", command=self._scroll_right).pack(side=tk.LEFT, padx=1)
-        ttk.Button(nav_frame, text="⏭", width=w, bootstyle="secondary-outline", command=self._scroll_end).pack(side=tk.LEFT, padx=1)
+        b1 = ttk.Button(nav_frame, text="⏮", width=w, bootstyle="secondary-outline", command=self._scroll_start)
+        b1.pack(side=tk.LEFT, padx=1)
+        Tooltip(b1, "Scroll to first sheet")
+
+        b2 = ttk.Button(nav_frame, text="◀", width=w, bootstyle="secondary-outline", command=self._scroll_left)
+        b2.pack(side=tk.LEFT, padx=1)
+        Tooltip(b2, "Scroll left")
+
+        b3 = ttk.Button(nav_frame, text="▶", width=w, bootstyle="secondary-outline", command=self._scroll_right)
+        b3.pack(side=tk.LEFT, padx=1)
+        Tooltip(b3, "Scroll right")
+
+        b4 = ttk.Button(nav_frame, text="⏭", width=w, bootstyle="secondary-outline", command=self._scroll_end)
+        b4.pack(side=tk.LEFT, padx=1)
+        Tooltip(b4, "Scroll to last sheet")
 
         # '+' Add sheet button
-        ttk.Button(self, text=" ➕ ", bootstyle="success-outline", command=self._on_add).pack(side=tk.LEFT, padx=(3, 6))
+        add_btn = ttk.Button(self, text=" ➕ ", bootstyle="success-outline", command=self._on_add)
+        add_btn.pack(side=tk.LEFT, padx=(3, 6))
+        Tooltip(add_btn, "New Sheet")
 
         # Canvas for scrollable sheet tabs
         self._canvas = tk.Canvas(self, height=28, highlightthickness=0, bd=0)
@@ -494,18 +577,68 @@ class SheetTabs(ttk.Frame):
         self._names = list(names)
 
         for name in names:
-            btn = ttk.Button(
-                self._inner, text=f" {name} ",
-                bootstyle="secondary-outline",
-                command=partial(self._select, name)
-            )
-            btn.pack(side=tk.LEFT, padx=2)
-            btn.bind("<Button-3>", partial(self._show_tab_context_menu, name))
-            btn.bind("<Double-1>", partial(self._on_double_click_tab, name))
-            self._tabs[name] = btn
+            self._create_tab_button(name)
 
         if names:
             self._select(names[0])
+
+    def add_sheet(self, name: str) -> None:
+        """Add a new sheet tab."""
+        if name not in self._names:
+            self._names.append(name)
+        self._create_tab_button(name)
+        self._select(name)
+
+    def rename_sheet(self, old_name: str, new_name: str) -> None:
+        """Rename an existing sheet tab."""
+        if old_name in self._names:
+            idx = self._names.index(old_name)
+            self._names[idx] = new_name
+        if old_name in self._tabs:
+            btn = self._tabs.pop(old_name)
+            btn.destroy()
+        if old_name in self._tab_colors:
+            self._tab_colors[new_name] = self._tab_colors.pop(old_name)
+
+        # Re-render tabs to maintain order
+        cur_active = self._active if self._active != old_name else new_name
+        self.set_sheets(self._names)
+        self._select(cur_active)
+
+    def remove_sheet(self, name: str) -> None:
+        """Remove a sheet tab."""
+        if name in self._names:
+            self._names.remove(name)
+        if name in self._tabs:
+            btn = self._tabs.pop(name)
+            btn.destroy()
+        if name in self._tab_colors:
+            del self._tab_colors[name]
+
+        if self._active == name and self._names:
+            self._select(self._names[0])
+
+    def set_tab_color(self, name: str, color_hex: str | None) -> None:
+        """Set custom color for a tab."""
+        if color_hex:
+            self._tab_colors[name] = color_hex
+        elif name in self._tab_colors:
+            del self._tab_colors[name]
+        if name in self._tabs:
+            if name != self._active:
+                self._tabs[name].configure(bootstyle="secondary-outline")
+
+    def _create_tab_button(self, name: str) -> ttk.Button:
+        btn = ttk.Button(
+            self._inner, text=f" {name} ",
+            bootstyle="secondary-outline",
+            command=partial(self._select, name)
+        )
+        btn.pack(side=tk.LEFT, padx=2)
+        btn.bind("<Button-3>", partial(self._show_tab_context_menu, name))
+        btn.bind("<Double-1>", partial(self._on_double_click_tab, name))
+        self._tabs[name] = btn
+        return btn
 
     def _select(self, name: str) -> None:
         if self._active and self._active in self._tabs:
@@ -543,9 +676,17 @@ class SheetTabs(ttk.Frame):
         menu = Menu(self, tearoff=0)
         menu.add_command(label=f"Rename '{sheet_name}'...", command=lambda: self._on_rename(sheet_name))
         menu.add_command(label=f"Duplicate '{sheet_name}'", command=lambda: self._on_duplicate(sheet_name))
+        menu.add_command(label="Tab Color...", command=lambda: self._pick_tab_color(sheet_name))
         menu.add_separator()
         menu.add_command(label=f"Delete '{sheet_name}'", command=lambda: self._on_delete(sheet_name))
         menu.tk_popup(event.x_root, event.y_root)
+
+    def _pick_tab_color(self, sheet_name: str) -> None:
+        color = colorchooser.askcolor(title=f"Choose Color for '{sheet_name}' Tab")
+        if color[1]:
+            self.set_tab_color(sheet_name, color[1].upper())
+            if self._on_color:
+                self._on_color(sheet_name, color[1].upper())
 
     def _on_double_click_tab(self, sheet_name: str, event: tk.Event) -> None:
         self._on_rename(sheet_name)
