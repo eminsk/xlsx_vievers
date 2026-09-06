@@ -7,12 +7,9 @@ and dynamic in-memory JIT machine code execution via Windows VirtualAlloc.
 from __future__ import annotations
 
 import ctypes
-import os
 import sys
-import math
 from pathlib import Path
-from typing import Sequence, Any, Iterable
-
+from typing import Any, Sequence
 
 # =============================================================================
 # DLL / Native Library Loader
@@ -48,25 +45,37 @@ if sys.maxsize > 2**32 and _DLL_PATH.exists():
         _dll.vec_sumproduct_f64.argtypes = [
             ctypes.POINTER(ctypes.c_double),
             ctypes.POINTER(ctypes.c_double),
-            ctypes.c_uint64
+            ctypes.c_uint64,
         ]
 
         # 6. fast_pmt_f64: (double rate, double nper, double pv, double fv, int64_t type) -> double
         _dll.fast_pmt_f64.restype = ctypes.c_double
         _dll.fast_pmt_f64.argtypes = [
-            ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_int64
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_int64,
         ]
 
         # 7. fast_pv_f64: (double rate, double nper, double pmt, double fv, int64_t type) -> double
         _dll.fast_pv_f64.restype = ctypes.c_double
         _dll.fast_pv_f64.argtypes = [
-            ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_int64
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_int64,
         ]
 
         # 8. fast_fv_f64: (double rate, double nper, double pmt, double pv, int64_t type) -> double
         _dll.fast_fv_f64.restype = ctypes.c_double
         _dll.fast_fv_f64.argtypes = [
-            ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_int64
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_int64,
         ]
 
         # 9. fast_str_hash: (const char* str, uint64_t len) -> uint64_t
@@ -78,7 +87,7 @@ if sys.maxsize > 2**32 and _DLL_PATH.exists():
         _dll.fast_count_nonblank.argtypes = [ctypes.POINTER(ctypes.c_uint64), ctypes.c_uint64]
 
         _is_available = True
-    except Exception as e:
+    except Exception:
         _is_available = False
 
 
@@ -93,9 +102,10 @@ import array
 # Helper: Array conversions to Ctypes contiguous buffers
 # =============================================================================
 
+
 def _to_double_array(values: Sequence[Any]) -> tuple[Any, int]:
     """Convert Python numeric sequence to contiguous ctypes c_double array."""
-    if isinstance(values, array.array) and values.typecode == 'd':
+    if isinstance(values, array.array) and values.typecode == "d":
         addr, n = values.buffer_info()
         if n == 0:
             return (ctypes.c_double * 0)(), 0
@@ -114,7 +124,7 @@ def _to_double_array(values: Sequence[Any]) -> tuple[Any, int]:
     if n == 0:
         return (ctypes.c_double * 0)(), 0
 
-    arr = array.array('d', clean_nums)
+    arr = array.array("d", clean_nums)
     addr, _ = arr.buffer_info()
     # Keep reference to avoid GC during call
     ptr = ctypes.cast(addr, ctypes.POINTER(ctypes.c_double))
@@ -126,6 +136,7 @@ def _to_double_array(values: Sequence[Any]) -> tuple[Any, int]:
 # High-Level Vector Math Acceleration
 # =============================================================================
 
+
 def asm_sum(values: Sequence[Any]) -> float:
     """Ultra-fast SIMD SSE2 vector addition of numbers."""
     if _dll is not None:
@@ -133,7 +144,7 @@ def asm_sum(values: Sequence[Any]) -> float:
         if n == 0:
             return 0.0
         return float(_dll.vec_sum_f64(buf, n))
-    
+
     # Pure Python fallback
     nums = [float(v) for v in values if v is not None and v != ""]
     return sum(nums) if nums else 0.0
@@ -146,7 +157,7 @@ def asm_avg(values: Sequence[Any]) -> float:
         if n == 0:
             return 0.0
         return float(_dll.vec_avg_f64(buf, n))
-    
+
     nums = [float(v) for v in values if v is not None and v != ""]
     return sum(nums) / len(nums) if nums else 0.0
 
@@ -158,7 +169,7 @@ def asm_min(values: Sequence[Any]) -> float:
         if n == 0:
             return 0.0
         return float(_dll.vec_min_f64(buf, n))
-    
+
     nums = [float(v) for v in values if v is not None and v != ""]
     return min(nums) if nums else 0.0
 
@@ -170,7 +181,7 @@ def asm_max(values: Sequence[Any]) -> float:
         if n == 0:
             return 0.0
         return float(_dll.vec_max_f64(buf, n))
-    
+
     nums = [float(v) for v in values if v is not None and v != ""]
     return max(nums) if nums else 0.0
 
@@ -184,7 +195,7 @@ def asm_sumproduct(values_a: Sequence[Any], values_b: Sequence[Any]) -> float:
         if n == 0:
             return 0.0
         return float(_dll.vec_sumproduct_f64(buf_a, buf_b, n))
-    
+
     nums_a = [float(v) for v in values_a if v is not None and v != ""]
     nums_b = [float(v) for v in values_b if v is not None and v != ""]
     n = min(len(nums_a), len(nums_b))
@@ -195,11 +206,12 @@ def asm_sumproduct(values_a: Sequence[Any], values_b: Sequence[Any]) -> float:
 # High-Level Financial Math Acceleration
 # =============================================================================
 
+
 def asm_pmt(rate: float, nper: float, pv: float, fv: float = 0.0, type_: int = 0) -> float:
     """Ultra-fast Excel PMT calculation via native FPU/SIMD."""
     if _dll is not None:
         return float(_dll.fast_pmt_f64(rate, nper, pv, fv, type_))
-    
+
     if nper == 0:
         return 0.0
     if rate == 0:
@@ -215,7 +227,7 @@ def asm_pv(rate: float, nper: float, pmt: float, fv: float = 0.0, type_: int = 0
     """Ultra-fast Excel PV calculation via native FPU/SIMD."""
     if _dll is not None:
         return float(_dll.fast_pv_f64(rate, nper, pmt, fv, type_))
-    
+
     if rate == 0:
         return -(pmt * nper + fv)
     pvif = (1 + rate) ** nper
@@ -227,7 +239,7 @@ def asm_fv(rate: float, nper: float, pmt: float, pv: float = 0.0, type_: int = 0
     """Ultra-fast Excel FV calculation via native FPU/SIMD."""
     if _dll is not None:
         return float(_dll.fast_fv_f64(rate, nper, pmt, pv, type_))
-    
+
     if rate == 0:
         return -(pv + pmt * nper)
     pvif = (1 + rate) ** nper
@@ -240,7 +252,7 @@ def asm_str_hash(text: str) -> int:
     raw = text.encode("utf-8")
     if _dll is not None:
         return int(_dll.fast_str_hash(raw, len(raw)))
-    
+
     # Pure Python FNV-1a 64-bit
     h = 14695981039346656037
     for byte in raw:

@@ -5,20 +5,20 @@ Professional UI widgets and Ribbon components for Excel Viewer Pro.
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import Menu, colorchooser, simpledialog
+from functools import partial
+from tkinter import Menu, colorchooser
+from typing import Any, Callable
+
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from typing import Callable, Any
-from functools import partial
 
 from config import Config
-from models import CellPosition, CellRange
 from formulas import FUNCTION_METADATA
-
 
 # =============================================================================
 # Tooltip Helper
 # =============================================================================
+
 
 class Tooltip:
     """Elegant floating tooltip for UI widgets."""
@@ -69,7 +69,7 @@ class Tooltip:
                 borderwidth=0,
                 padx=6,
                 pady=3,
-                font=("Segoe UI", 8)
+                font=("Segoe UI", 8),
             )
             label.pack()
         except Exception:
@@ -87,6 +87,7 @@ class Tooltip:
 # =============================================================================
 # Ribbon Bar (Excel-Style Tabbed Toolbar)
 # =============================================================================
+
 
 class ExcelRibbon(ttk.Frame):
     """Excel-like Tabbed Ribbon Toolbar."""
@@ -129,9 +130,19 @@ class ExcelRibbon(ttk.Frame):
 
         clip_sub = ttk.Frame(clip_grp)
         clip_sub.pack(side=tk.LEFT, padx=1)
-        ttk.Button(clip_sub, text="✂ Cut", width=6, bootstyle="outline", command=self._cb.get("cut")).pack(anchor=tk.W, pady=1)
-        ttk.Button(clip_sub, text="📄 Copy", width=6, bootstyle="outline", command=self._cb.get("copy")).pack(anchor=tk.W, pady=1)
-        ttk.Button(clip_sub, text="🖌 Format", width=6, bootstyle="outline", command=self._cb.get("format_painter")).pack(anchor=tk.W, pady=1)
+        ttk.Button(
+            clip_sub, text="✂ Cut", width=6, bootstyle="outline", command=self._cb.get("cut")
+        ).pack(anchor=tk.W, pady=1)
+        ttk.Button(
+            clip_sub, text="📄 Copy", width=6, bootstyle="outline", command=self._cb.get("copy")
+        ).pack(anchor=tk.W, pady=1)
+        ttk.Button(
+            clip_sub,
+            text="🖌 Format",
+            width=6,
+            bootstyle="outline",
+            command=self._cb.get("format_painter"),
+        ).pack(anchor=tk.W, pady=1)
 
         # 2. Font Group
         font_grp = ttk.LabelFrame(tab, text="Font", padding=2)
@@ -142,50 +153,123 @@ class ExcelRibbon(ttk.Frame):
 
         self._font_family = ttk.Combobox(
             font_top,
-            values=["Calibri", "Segoe UI", "Arial", "Times New Roman", "Consolas", "Verdana", "Tahoma"],
-            width=12, state="readonly"
+            values=[
+                "Calibri",
+                "Segoe UI",
+                "Arial",
+                "Times New Roman",
+                "Consolas",
+                "Verdana",
+                "Tahoma",
+            ],
+            width=12,
+            state="readonly",
         )
         self._font_family.set("Segoe UI")
         self._font_family.pack(side=tk.LEFT, padx=1)
-        self._font_family.bind("<<ComboboxSelected>>", lambda e: self._cb.get("set_font_family")(self._font_family.get()))
+        self._font_family.bind(
+            "<<ComboboxSelected>>",
+            lambda e: self._cb.get("set_font_family")(self._font_family.get()),
+        )
 
         self._font_size = ttk.Combobox(
             font_top,
             values=["8", "9", "10", "11", "12", "14", "16", "18", "20", "24", "28", "36"],
-            width=3, state="readonly"
+            width=3,
+            state="readonly",
         )
         self._font_size.set("10")
         self._font_size.pack(side=tk.LEFT, padx=1)
-        self._font_size.bind("<<ComboboxSelected>>", lambda e: self._cb.get("set_font_size")(int(self._font_size.get())))
+        self._font_size.bind(
+            "<<ComboboxSelected>>",
+            lambda e: self._cb.get("set_font_size")(int(self._font_size.get())),
+        )
 
-        ttk.Button(font_top, text="A+", width=3, bootstyle="secondary-outline", command=self._cb.get("increase_font_size")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(font_top, text="A-", width=3, bootstyle="secondary-outline", command=self._cb.get("decrease_font_size")).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            font_top,
+            text="A+",
+            width=3,
+            bootstyle="secondary-outline",
+            command=self._cb.get("increase_font_size"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            font_top,
+            text="A-",
+            width=3,
+            bootstyle="secondary-outline",
+            command=self._cb.get("decrease_font_size"),
+        ).pack(side=tk.LEFT, padx=1)
 
         font_bot = ttk.Frame(font_grp)
         font_bot.pack(fill=tk.X, pady=1)
 
-        ttk.Button(font_bot, text="𝐁", width=2, bootstyle="secondary-outline", command=self._cb.get("toggle_bold")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(font_bot, text="𝐼", width=2, bootstyle="secondary-outline", command=self._cb.get("toggle_italic")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(font_bot, text="𝐔", width=2, bootstyle="secondary-outline", command=self._cb.get("toggle_underline")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(font_bot, text="S̶", width=2, bootstyle="secondary-outline", command=self._cb.get("toggle_strikethrough")).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            font_bot,
+            text="𝐁",
+            width=2,
+            bootstyle="secondary-outline",
+            command=self._cb.get("toggle_bold"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            font_bot,
+            text="𝐼",
+            width=2,
+            bootstyle="secondary-outline",
+            command=self._cb.get("toggle_italic"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            font_bot,
+            text="𝐔",
+            width=2,
+            bootstyle="secondary-outline",
+            command=self._cb.get("toggle_underline"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            font_bot,
+            text="S̶",
+            width=2,
+            bootstyle="secondary-outline",
+            command=self._cb.get("toggle_strikethrough"),
+        ).pack(side=tk.LEFT, padx=1)
 
         # Border menu
         border_btn = ttk.Menubutton(font_bot, text="田", width=3, bootstyle="secondary-outline")
         border_menu = Menu(border_btn, tearoff=0)
-        border_menu.add_command(label="All Borders", command=lambda: self._cb.get("set_borders")("all"))
-        border_menu.add_command(label="Outside Borders", command=lambda: self._cb.get("set_borders")("outside"))
-        border_menu.add_command(label="Thick Box Border", command=lambda: self._cb.get("set_borders")("thick"))
-        border_menu.add_command(label="Bottom Border", command=lambda: self._cb.get("set_borders")("bottom"))
-        border_menu.add_command(label="Top and Bottom Border", command=lambda: self._cb.get("set_borders")("top_bottom"))
+        border_menu.add_command(
+            label="All Borders", command=lambda: self._cb.get("set_borders")("all")
+        )
+        border_menu.add_command(
+            label="Outside Borders", command=lambda: self._cb.get("set_borders")("outside")
+        )
+        border_menu.add_command(
+            label="Thick Box Border", command=lambda: self._cb.get("set_borders")("thick")
+        )
+        border_menu.add_command(
+            label="Bottom Border", command=lambda: self._cb.get("set_borders")("bottom")
+        )
+        border_menu.add_command(
+            label="Top and Bottom Border", command=lambda: self._cb.get("set_borders")("top_bottom")
+        )
         border_menu.add_separator()
-        border_menu.add_command(label="No Border", command=lambda: self._cb.get("set_borders")("none"))
+        border_menu.add_command(
+            label="No Border", command=lambda: self._cb.get("set_borders")("none")
+        )
         border_btn["menu"] = border_menu
         border_btn.pack(side=tk.LEFT, padx=1)
 
         # Colors
-        self._bg_btn = tk.Button(font_bot, text="🎨", width=2, bg="#FFFF00", command=self._cb.get("set_bg_color"))
+        self._bg_btn = tk.Button(
+            font_bot, text="🎨", width=2, bg="#FFFF00", command=self._cb.get("set_bg_color")
+        )
         self._bg_btn.pack(side=tk.LEFT, padx=1)
-        self._fg_btn = tk.Button(font_bot, text="A", width=2, fg="#FF0000", font=("Segoe UI", 9, "bold"), command=self._cb.get("set_fg_color"))
+        self._fg_btn = tk.Button(
+            font_bot,
+            text="A",
+            width=2,
+            fg="#FF0000",
+            font=("Segoe UI", 9, "bold"),
+            command=self._cb.get("set_fg_color"),
+        )
         self._fg_btn.pack(side=tk.LEFT, padx=1)
 
         # 3. Alignment Group
@@ -194,42 +278,129 @@ class ExcelRibbon(ttk.Frame):
 
         align_top = ttk.Frame(align_grp)
         align_top.pack(fill=tk.X, pady=1)
-        ttk.Button(align_top, text="⬆ Top", width=6, bootstyle="outline", command=lambda: self._cb.get("set_valign")("top")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(align_top, text="⬍ Mid", width=6, bootstyle="outline", command=lambda: self._cb.get("set_valign")("center")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(align_top, text="⬇ Bot", width=6, bootstyle="outline", command=lambda: self._cb.get("set_valign")("bottom")).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            align_top,
+            text="⬆ Top",
+            width=6,
+            bootstyle="outline",
+            command=lambda: self._cb.get("set_valign")("top"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            align_top,
+            text="⬍ Mid",
+            width=6,
+            bootstyle="outline",
+            command=lambda: self._cb.get("set_valign")("center"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            align_top,
+            text="⬇ Bot",
+            width=6,
+            bootstyle="outline",
+            command=lambda: self._cb.get("set_valign")("bottom"),
+        ).pack(side=tk.LEFT, padx=1)
 
         align_bot = ttk.Frame(align_grp)
         align_bot.pack(fill=tk.X, pady=1)
-        ttk.Button(align_bot, text="⬅ Left", width=6, bootstyle="outline", command=lambda: self._cb.get("set_halign")("left")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(align_bot, text="⬌ Center", width=6, bootstyle="outline", command=lambda: self._cb.get("set_halign")("center")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(align_bot, text="➡ Right", width=6, bootstyle="outline", command=lambda: self._cb.get("set_halign")("right")).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            align_bot,
+            text="⬅ Left",
+            width=6,
+            bootstyle="outline",
+            command=lambda: self._cb.get("set_halign")("left"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            align_bot,
+            text="⬌ Center",
+            width=6,
+            bootstyle="outline",
+            command=lambda: self._cb.get("set_halign")("center"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            align_bot,
+            text="➡ Right",
+            width=6,
+            bootstyle="outline",
+            command=lambda: self._cb.get("set_halign")("right"),
+        ).pack(side=tk.LEFT, padx=1)
 
         align_side = ttk.Frame(align_grp)
         align_side.pack(side=tk.LEFT, fill=tk.Y, padx=2)
-        ttk.Button(align_side, text="Wrap Text", width=9, bootstyle="outline", command=self._cb.get("toggle_wrap_text")).pack(pady=1)
-        ttk.Button(align_side, text="Merge & Ctr", width=9, bootstyle="outline", command=self._cb.get("merge_cells")).pack(pady=1)
+        ttk.Button(
+            align_side,
+            text="Wrap Text",
+            width=9,
+            bootstyle="outline",
+            command=self._cb.get("toggle_wrap_text"),
+        ).pack(pady=1)
+        ttk.Button(
+            align_side,
+            text="Merge & Ctr",
+            width=9,
+            bootstyle="outline",
+            command=self._cb.get("merge_cells"),
+        ).pack(pady=1)
 
         # 4. Number Group
         num_grp = ttk.LabelFrame(tab, text="Number", padding=2)
         num_grp.pack(side=tk.LEFT, fill=tk.Y, padx=2)
 
         self._num_fmt = ttk.Combobox(
-            num_grp,
-            values=list(Config.NUMBER_FORMATS.keys()),
-            width=14, state="readonly"
+            num_grp, values=list(Config.NUMBER_FORMATS.keys()), width=14, state="readonly"
         )
         self._num_fmt.set("General")
         self._num_fmt.pack(fill=tk.X, pady=1)
-        self._num_fmt.bind("<<ComboboxSelected>>", lambda e: self._cb.get("set_number_format")(Config.NUMBER_FORMATS.get(self._num_fmt.get(), "")))
+        self._num_fmt.bind(
+            "<<ComboboxSelected>>",
+            lambda e: self._cb.get("set_number_format")(
+                Config.NUMBER_FORMATS.get(self._num_fmt.get(), "")
+            ),
+        )
 
         num_btns = ttk.Frame(num_grp)
         num_btns.pack(fill=tk.X, pady=1)
-        ttk.Button(num_btns, text="₽", width=2, bootstyle="outline", command=lambda: self._cb.get("set_number_format")("#,##0.00 ₽")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(num_btns, text="$", width=2, bootstyle="outline", command=lambda: self._cb.get("set_number_format")("$#,##0.00")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(num_btns, text="%", width=2, bootstyle="outline", command=lambda: self._cb.get("set_number_format")("0.00%")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(num_btns, text=",", width=2, bootstyle="outline", command=lambda: self._cb.get("set_number_format")("#,##0.00")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(num_btns, text=".0→", width=3, bootstyle="outline", command=self._cb.get("increase_decimals")).pack(side=tk.LEFT, padx=1)
-        ttk.Button(num_btns, text="←.0", width=3, bootstyle="outline", command=self._cb.get("decrease_decimals")).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            num_btns,
+            text="₽",
+            width=2,
+            bootstyle="outline",
+            command=lambda: self._cb.get("set_number_format")("#,##0.00 ₽"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            num_btns,
+            text="$",
+            width=2,
+            bootstyle="outline",
+            command=lambda: self._cb.get("set_number_format")("$#,##0.00"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            num_btns,
+            text="%",
+            width=2,
+            bootstyle="outline",
+            command=lambda: self._cb.get("set_number_format")("0.00%"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            num_btns,
+            text=",",
+            width=2,
+            bootstyle="outline",
+            command=lambda: self._cb.get("set_number_format")("#,##0.00"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            num_btns,
+            text=".0→",
+            width=3,
+            bootstyle="outline",
+            command=self._cb.get("increase_decimals"),
+        ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            num_btns,
+            text="←.0",
+            width=3,
+            bootstyle="outline",
+            command=self._cb.get("decrease_decimals"),
+        ).pack(side=tk.LEFT, padx=1)
 
         # 5. Styles (Conditional Formatting)
         style_grp = ttk.LabelFrame(tab, text="Styles", padding=2)
@@ -237,16 +408,37 @@ class ExcelRibbon(ttk.Frame):
 
         cf_btn = ttk.Menubutton(style_grp, text="Conditional\nFormatting", bootstyle="info-outline")
         cf_menu = Menu(cf_btn, tearoff=0)
-        cf_menu.add_command(label="Highlight: Greater Than...", command=lambda: self._cb.get("add_cf_rule")("greater_than"))
-        cf_menu.add_command(label="Highlight: Less Than...", command=lambda: self._cb.get("add_cf_rule")("less_than"))
-        cf_menu.add_command(label="Highlight: Between...", command=lambda: self._cb.get("add_cf_rule")("between"))
-        cf_menu.add_command(label="Highlight: Equal To...", command=lambda: self._cb.get("add_cf_rule")("equal_to"))
-        cf_menu.add_command(label="Highlight: Text that Contains...", command=lambda: self._cb.get("add_cf_rule")("text_contains"))
+        cf_menu.add_command(
+            label="Highlight: Greater Than...",
+            command=lambda: self._cb.get("add_cf_rule")("greater_than"),
+        )
+        cf_menu.add_command(
+            label="Highlight: Less Than...",
+            command=lambda: self._cb.get("add_cf_rule")("less_than"),
+        )
+        cf_menu.add_command(
+            label="Highlight: Between...", command=lambda: self._cb.get("add_cf_rule")("between")
+        )
+        cf_menu.add_command(
+            label="Highlight: Equal To...", command=lambda: self._cb.get("add_cf_rule")("equal_to")
+        )
+        cf_menu.add_command(
+            label="Highlight: Text that Contains...",
+            command=lambda: self._cb.get("add_cf_rule")("text_contains"),
+        )
         cf_menu.add_separator()
-        cf_menu.add_command(label="Color Scale: Green - Yellow - Red", command=lambda: self._cb.get("add_cf_rule")("color_scale_gyr"))
-        cf_menu.add_command(label="Color Scale: Red - Yellow - Green", command=lambda: self._cb.get("add_cf_rule")("color_scale_ryg"))
+        cf_menu.add_command(
+            label="Color Scale: Green - Yellow - Red",
+            command=lambda: self._cb.get("add_cf_rule")("color_scale_gyr"),
+        )
+        cf_menu.add_command(
+            label="Color Scale: Red - Yellow - Green",
+            command=lambda: self._cb.get("add_cf_rule")("color_scale_ryg"),
+        )
         cf_menu.add_separator()
-        cf_menu.add_command(label="Clear Rules from Selected Cells", command=self._cb.get("clear_cf_rules"))
+        cf_menu.add_command(
+            label="Clear Rules from Selected Cells", command=self._cb.get("clear_cf_rules")
+        )
         cf_btn["menu"] = cf_menu
         cf_btn.pack(fill=tk.BOTH, expand=True)
 
@@ -274,19 +466,33 @@ class ExcelRibbon(ttk.Frame):
         edit_grp = ttk.LabelFrame(tab, text="Editing", padding=2)
         edit_grp.pack(side=tk.LEFT, fill=tk.Y, padx=2)
 
-        autosum_btn = ttk.Menubutton(edit_grp, text="Σ AutoSum", width=10, bootstyle="primary-outline")
+        autosum_btn = ttk.Menubutton(
+            edit_grp, text="Σ AutoSum", width=10, bootstyle="primary-outline"
+        )
         autosum_menu = Menu(autosum_btn, tearoff=0)
-        autosum_menu.add_command(label="Sum (=SUM)", command=lambda: self._cb.get("apply_autosum")("SUM"))
-        autosum_menu.add_command(label="Average (=AVERAGE)", command=lambda: self._cb.get("apply_autosum")("AVERAGE"))
-        autosum_menu.add_command(label="Count Numbers (=COUNT)", command=lambda: self._cb.get("apply_autosum")("COUNT"))
-        autosum_menu.add_command(label="Max (=MAX)", command=lambda: self._cb.get("apply_autosum")("MAX"))
-        autosum_menu.add_command(label="Min (=MIN)", command=lambda: self._cb.get("apply_autosum")("MIN"))
+        autosum_menu.add_command(
+            label="Sum (=SUM)", command=lambda: self._cb.get("apply_autosum")("SUM")
+        )
+        autosum_menu.add_command(
+            label="Average (=AVERAGE)", command=lambda: self._cb.get("apply_autosum")("AVERAGE")
+        )
+        autosum_menu.add_command(
+            label="Count Numbers (=COUNT)", command=lambda: self._cb.get("apply_autosum")("COUNT")
+        )
+        autosum_menu.add_command(
+            label="Max (=MAX)", command=lambda: self._cb.get("apply_autosum")("MAX")
+        )
+        autosum_menu.add_command(
+            label="Min (=MIN)", command=lambda: self._cb.get("apply_autosum")("MIN")
+        )
         autosum_btn["menu"] = autosum_menu
         autosum_btn.pack(pady=1)
 
         sort_btn = ttk.Menubutton(edit_grp, text="Sort & Filter", width=10, bootstyle="outline")
         sort_menu = Menu(sort_btn, tearoff=0)
-        sort_menu.add_command(label="Sort A to Z", command=lambda: self._cb.get("quick_sort")(False))
+        sort_menu.add_command(
+            label="Sort A to Z", command=lambda: self._cb.get("quick_sort")(False)
+        )
         sort_menu.add_command(label="Sort Z to A", command=lambda: self._cb.get("quick_sort")(True))
         sort_menu.add_command(label="Custom Sort...", command=self._cb.get("custom_sort_dialog"))
         sort_menu.add_separator()
@@ -314,20 +520,50 @@ class ExcelRibbon(ttk.Frame):
         chart_grp = ttk.LabelFrame(tab, text="Charts", padding=4)
         chart_grp.pack(side=tk.LEFT, fill=tk.Y, padx=4)
 
-        ttk.Button(chart_grp, text="📊 Chart Wizard", bootstyle="primary", command=self._cb.get("show_chart_wizard")).pack(side=tk.LEFT, padx=3)
-        ttk.Button(chart_grp, text="📈 Line Chart", bootstyle="outline", command=lambda: self._cb.get("quick_chart")("Line")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(chart_grp, text="📊 Column Chart", bootstyle="outline", command=lambda: self._cb.get("quick_chart")("Clustered Column")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(chart_grp, text="🥧 Pie Chart", bootstyle="outline", command=lambda: self._cb.get("quick_chart")("Pie")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            chart_grp,
+            text="📊 Chart Wizard",
+            bootstyle="primary",
+            command=self._cb.get("show_chart_wizard"),
+        ).pack(side=tk.LEFT, padx=3)
+        ttk.Button(
+            chart_grp,
+            text="📈 Line Chart",
+            bootstyle="outline",
+            command=lambda: self._cb.get("quick_chart")("Line"),
+        ).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            chart_grp,
+            text="📊 Column Chart",
+            bootstyle="outline",
+            command=lambda: self._cb.get("quick_chart")("Clustered Column"),
+        ).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            chart_grp,
+            text="🥧 Pie Chart",
+            bootstyle="outline",
+            command=lambda: self._cb.get("quick_chart")("Pie"),
+        ).pack(side=tk.LEFT, padx=2)
 
         # Comments & Annotations
         comm_grp = ttk.LabelFrame(tab, text="Comments & Links", padding=4)
         comm_grp.pack(side=tk.LEFT, fill=tk.Y, padx=4)
-        ttk.Button(comm_grp, text="💬 Add / Edit Comment", bootstyle="outline", command=self._cb.get("edit_comment")).pack(side=tk.LEFT, padx=3)
+        ttk.Button(
+            comm_grp,
+            text="💬 Add / Edit Comment",
+            bootstyle="outline",
+            command=self._cb.get("edit_comment"),
+        ).pack(side=tk.LEFT, padx=3)
 
         # Functions
         fn_grp = ttk.LabelFrame(tab, text="Function", padding=4)
         fn_grp.pack(side=tk.LEFT, fill=tk.Y, padx=4)
-        ttk.Button(fn_grp, text="fx Insert Function", bootstyle="success", command=self._cb.get("show_fx_wizard")).pack(side=tk.LEFT, padx=3)
+        ttk.Button(
+            fn_grp,
+            text="fx Insert Function",
+            bootstyle="success",
+            command=self._cb.get("show_fx_wizard"),
+        ).pack(side=tk.LEFT, padx=3)
 
     # -------------------------------------------------------------------------
     # Data Tab
@@ -339,18 +575,58 @@ class ExcelRibbon(ttk.Frame):
         # Sort & Filter
         sf_grp = ttk.LabelFrame(tab, text="Sort & Filter", padding=4)
         sf_grp.pack(side=tk.LEFT, fill=tk.Y, padx=4)
-        ttk.Button(sf_grp, text="⬆ Sort A-Z", bootstyle="outline", command=lambda: self._cb.get("quick_sort")(False)).pack(side=tk.LEFT, padx=2)
-        ttk.Button(sf_grp, text="⬇ Sort Z-A", bootstyle="outline", command=lambda: self._cb.get("quick_sort")(True)).pack(side=tk.LEFT, padx=2)
-        ttk.Button(sf_grp, text="⚡ Custom Sort...", bootstyle="outline", command=self._cb.get("custom_sort_dialog")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(sf_grp, text="🔍 AutoFilter", bootstyle="primary-outline", command=self._cb.get("toggle_filter")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(sf_grp, text="❌ Clear Filters", bootstyle="secondary-outline", command=self._cb.get("clear_filters")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            sf_grp,
+            text="⬆ Sort A-Z",
+            bootstyle="outline",
+            command=lambda: self._cb.get("quick_sort")(False),
+        ).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            sf_grp,
+            text="⬇ Sort Z-A",
+            bootstyle="outline",
+            command=lambda: self._cb.get("quick_sort")(True),
+        ).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            sf_grp,
+            text="⚡ Custom Sort...",
+            bootstyle="outline",
+            command=self._cb.get("custom_sort_dialog"),
+        ).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            sf_grp,
+            text="🔍 AutoFilter",
+            bootstyle="primary-outline",
+            command=self._cb.get("toggle_filter"),
+        ).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            sf_grp,
+            text="❌ Clear Filters",
+            bootstyle="secondary-outline",
+            command=self._cb.get("clear_filters"),
+        ).pack(side=tk.LEFT, padx=2)
 
         # Data Tools
         dt_grp = ttk.LabelFrame(tab, text="Data Tools", padding=4)
         dt_grp.pack(side=tk.LEFT, fill=tk.Y, padx=4)
-        ttk.Button(dt_grp, text="✂ Text to Columns...", bootstyle="outline", command=self._cb.get("text_to_columns_dialog")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(dt_grp, text="🗑 Remove Duplicates...", bootstyle="outline", command=self._cb.get("remove_duplicates_dialog")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(dt_grp, text="🎯 Goal Seek...", bootstyle="outline", command=self._cb.get("goal_seek_dialog")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            dt_grp,
+            text="✂ Text to Columns...",
+            bootstyle="outline",
+            command=self._cb.get("text_to_columns_dialog"),
+        ).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            dt_grp,
+            text="🗑 Remove Duplicates...",
+            bootstyle="outline",
+            command=self._cb.get("remove_duplicates_dialog"),
+        ).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            dt_grp,
+            text="🎯 Goal Seek...",
+            bootstyle="outline",
+            command=self._cb.get("goal_seek_dialog"),
+        ).pack(side=tk.LEFT, padx=2)
 
     # -------------------------------------------------------------------------
     # Formulas Tab
@@ -362,22 +638,48 @@ class ExcelRibbon(ttk.Frame):
         # Function Library
         lib_grp = ttk.LabelFrame(tab, text="Function Library", padding=4)
         lib_grp.pack(side=tk.LEFT, fill=tk.Y, padx=4)
-        ttk.Button(lib_grp, text="fx Insert Function", bootstyle="success", command=self._cb.get("show_fx_wizard")).pack(side=tk.LEFT, padx=3)
-        ttk.Button(lib_grp, text="Σ AutoSum", bootstyle="outline", command=lambda: self._cb.get("apply_autosum")("SUM")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            lib_grp,
+            text="fx Insert Function",
+            bootstyle="success",
+            command=self._cb.get("show_fx_wizard"),
+        ).pack(side=tk.LEFT, padx=3)
+        ttk.Button(
+            lib_grp,
+            text="Σ AutoSum",
+            bootstyle="outline",
+            command=lambda: self._cb.get("apply_autosum")("SUM"),
+        ).pack(side=tk.LEFT, padx=2)
 
-        for cat in ["Financial", "Logical", "Text", "Date & Time", "Lookup & Reference", "Math & Trig", "Statistical"]:
+        for cat in [
+            "Financial",
+            "Logical",
+            "Text",
+            "Date & Time",
+            "Lookup & Reference",
+            "Math & Trig",
+            "Statistical",
+        ]:
             btn = ttk.Menubutton(lib_grp, text=cat, bootstyle="outline")
             m = Menu(btn, tearoff=0)
             for name, meta in sorted(FUNCTION_METADATA.items()):
                 if meta.get("cat") == cat:
-                    m.add_command(label=f"{name} — {meta.get('desc')[:35]}...", command=partial(self._cb.get("insert_formula_text"), f"={name}("))
+                    m.add_command(
+                        label=f"{name} — {meta.get('desc')[:35]}...",
+                        command=partial(self._cb.get("insert_formula_text"), f"={name}("),
+                    )
             btn["menu"] = m
             btn.pack(side=tk.LEFT, padx=1)
 
         # Calculation
         calc_grp = ttk.LabelFrame(tab, text="Calculation", padding=4)
         calc_grp.pack(side=tk.LEFT, fill=tk.Y, padx=4)
-        ttk.Button(calc_grp, text="🔄 Calculate Sheet (F9)", bootstyle="primary", command=self._cb.get("recalculate_sheet")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            calc_grp,
+            text="🔄 Calculate Sheet (F9)",
+            bootstyle="primary",
+            command=self._cb.get("recalculate_sheet"),
+        ).pack(side=tk.LEFT, padx=2)
 
     # -------------------------------------------------------------------------
     # View Tab
@@ -389,8 +691,18 @@ class ExcelRibbon(ttk.Frame):
         # Show / Hide
         show_grp = ttk.LabelFrame(tab, text="Show / Hide", padding=4)
         show_grp.pack(side=tk.LEFT, fill=tk.Y, padx=4)
-        ttk.Button(show_grp, text="Toggle Formula Bar", bootstyle="outline", command=self._cb.get("toggle_formula_bar")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(show_grp, text="Toggle Status Bar", bootstyle="outline", command=self._cb.get("toggle_status_bar")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            show_grp,
+            text="Toggle Formula Bar",
+            bootstyle="outline",
+            command=self._cb.get("toggle_formula_bar"),
+        ).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            show_grp,
+            text="Toggle Status Bar",
+            bootstyle="outline",
+            command=self._cb.get("toggle_status_bar"),
+        ).pack(side=tk.LEFT, padx=2)
 
         # Window & Freeze
         win_grp = ttk.LabelFrame(tab, text="Window", padding=4)
@@ -403,15 +715,24 @@ class ExcelRibbon(ttk.Frame):
         freeze_btn["menu"] = frz_menu
         freeze_btn.pack(side=tk.LEFT, padx=2)
 
-        ttk.Button(win_grp, text="Auto-fit Columns", bootstyle="outline", command=self._cb.get("autofit_all_cols")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            win_grp,
+            text="Auto-fit Columns",
+            bootstyle="outline",
+            command=self._cb.get("autofit_all_cols"),
+        ).pack(side=tk.LEFT, padx=2)
 
         # Theme Selector
         theme_grp = ttk.LabelFrame(tab, text="Theme", padding=4)
         theme_grp.pack(side=tk.LEFT, fill=tk.Y, padx=4)
-        theme_cb = ttk.Combobox(theme_grp, values=Config.AVAILABLE_THEMES, width=12, state="readonly")
+        theme_cb = ttk.Combobox(
+            theme_grp, values=Config.AVAILABLE_THEMES, width=12, state="readonly"
+        )
         theme_cb.set(Config.THEME)
         theme_cb.pack(side=tk.LEFT, padx=4)
-        theme_cb.bind("<<ComboboxSelected>>", lambda e: self._cb.get("change_theme")(theme_cb.get()))
+        theme_cb.bind(
+            "<<ComboboxSelected>>", lambda e: self._cb.get("change_theme")(theme_cb.get())
+        )
 
     def update_color_buttons(self, bg_hex: str | None, fg_hex: str | None) -> None:
         if hasattr(self, "_bg_btn"):
@@ -424,6 +745,7 @@ class ExcelRibbon(ttk.Frame):
 # Formula Bar with Name Box & Autocomplete
 # =============================================================================
 
+
 class FormulaBar(ttk.Frame):
     """Excel Formula Bar with Name Box, fx Wizard button, and Autocomplete."""
 
@@ -432,7 +754,7 @@ class FormulaBar(ttk.Frame):
         parent: tk.Widget,
         on_commit: Callable[[str], None],
         on_fx_clicked: Callable[[], None],
-        on_goto_cell: Callable[[str], None]
+        on_goto_cell: Callable[[str], None],
     ) -> None:
         super().__init__(parent, padding=(4, 2))
         self._on_commit = on_commit
@@ -451,7 +773,9 @@ class FormulaBar(ttk.Frame):
         ttk.Separator(self, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=2)
 
         # fx Wizard Button
-        ttk.Button(self, text="fx", width=3, bootstyle="secondary-outline", command=self._on_fx).pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Button(
+            self, text="fx", width=3, bootstyle="secondary-outline", command=self._on_fx
+        ).pack(side=tk.LEFT, padx=(0, 4))
 
         # Main Formula / Value Entry
         self._entry = ttk.Entry(self, font=Config.FONT)
@@ -493,6 +817,7 @@ class FormulaBar(ttk.Frame):
 # Sheet Tabs with Add Tab (+) & Context Menu
 # =============================================================================
 
+
 class SheetTabs(ttk.Frame):
     """Excel-style scrollable sheet tab bar with '+' button and context menu."""
 
@@ -504,7 +829,7 @@ class SheetTabs(ttk.Frame):
         on_rename_sheet: Callable[[str], None],
         on_delete_sheet: Callable[[str], None],
         on_duplicate_sheet: Callable[[str], None],
-        on_tab_color_change: Callable[[str, str | None], None] | None = None
+        on_tab_color_change: Callable[[str, str | None], None] | None = None,
     ) -> None:
         super().__init__(parent, padding=(4, 2))
         self._on_select = on_select_sheet
@@ -527,19 +852,27 @@ class SheetTabs(ttk.Frame):
         nav_frame.pack(side=tk.LEFT)
 
         w = 2
-        b1 = ttk.Button(nav_frame, text="⏮", width=w, bootstyle="secondary-outline", command=self._scroll_start)
+        b1 = ttk.Button(
+            nav_frame, text="⏮", width=w, bootstyle="secondary-outline", command=self._scroll_start
+        )
         b1.pack(side=tk.LEFT, padx=1)
         Tooltip(b1, "Scroll to first sheet")
 
-        b2 = ttk.Button(nav_frame, text="◀", width=w, bootstyle="secondary-outline", command=self._scroll_left)
+        b2 = ttk.Button(
+            nav_frame, text="◀", width=w, bootstyle="secondary-outline", command=self._scroll_left
+        )
         b2.pack(side=tk.LEFT, padx=1)
         Tooltip(b2, "Scroll left")
 
-        b3 = ttk.Button(nav_frame, text="▶", width=w, bootstyle="secondary-outline", command=self._scroll_right)
+        b3 = ttk.Button(
+            nav_frame, text="▶", width=w, bootstyle="secondary-outline", command=self._scroll_right
+        )
         b3.pack(side=tk.LEFT, padx=1)
         Tooltip(b3, "Scroll right")
 
-        b4 = ttk.Button(nav_frame, text="⏭", width=w, bootstyle="secondary-outline", command=self._scroll_end)
+        b4 = ttk.Button(
+            nav_frame, text="⏭", width=w, bootstyle="secondary-outline", command=self._scroll_end
+        )
         b4.pack(side=tk.LEFT, padx=1)
         Tooltip(b4, "Scroll to last sheet")
 
@@ -555,8 +888,12 @@ class SheetTabs(ttk.Frame):
         self._inner = ttk.Frame(self._canvas)
         self._canvas.create_window((0, 0), window=self._inner, anchor=tk.NW)
 
-        self._inner.bind("<Configure>", lambda e: self._canvas.configure(scrollregion=self._canvas.bbox("all")))
-        self._canvas.bind("<MouseWheel>", lambda e: self._canvas.xview_scroll(-1 if e.delta > 0 else 1, "units"))
+        self._inner.bind(
+            "<Configure>", lambda e: self._canvas.configure(scrollregion=self._canvas.bbox("all"))
+        )
+        self._canvas.bind(
+            "<MouseWheel>", lambda e: self._canvas.xview_scroll(-1 if e.delta > 0 else 1, "units")
+        )
 
     def _scroll_start(self) -> None:
         self._canvas.xview_moveto(0)
@@ -630,9 +967,10 @@ class SheetTabs(ttk.Frame):
 
     def _create_tab_button(self, name: str) -> ttk.Button:
         btn = ttk.Button(
-            self._inner, text=f" {name} ",
+            self._inner,
+            text=f" {name} ",
             bootstyle="secondary-outline",
-            command=partial(self._select, name)
+            command=partial(self._select, name),
         )
         btn.pack(side=tk.LEFT, padx=2)
         btn.bind("<Button-3>", partial(self._show_tab_context_menu, name))
@@ -674,11 +1012,17 @@ class SheetTabs(ttk.Frame):
 
     def _show_tab_context_menu(self, sheet_name: str, event: tk.Event) -> None:
         menu = Menu(self, tearoff=0)
-        menu.add_command(label=f"Rename '{sheet_name}'...", command=lambda: self._on_rename(sheet_name))
-        menu.add_command(label=f"Duplicate '{sheet_name}'", command=lambda: self._on_duplicate(sheet_name))
+        menu.add_command(
+            label=f"Rename '{sheet_name}'...", command=lambda: self._on_rename(sheet_name)
+        )
+        menu.add_command(
+            label=f"Duplicate '{sheet_name}'", command=lambda: self._on_duplicate(sheet_name)
+        )
         menu.add_command(label="Tab Color...", command=lambda: self._pick_tab_color(sheet_name))
         menu.add_separator()
-        menu.add_command(label=f"Delete '{sheet_name}'", command=lambda: self._on_delete(sheet_name))
+        menu.add_command(
+            label=f"Delete '{sheet_name}'", command=lambda: self._on_delete(sheet_name)
+        )
         menu.tk_popup(event.x_root, event.y_root)
 
     def _pick_tab_color(self, sheet_name: str) -> None:
@@ -700,10 +1044,13 @@ class SheetTabs(ttk.Frame):
 # Range-Aware Status Bar with Dynamic Math Stats
 # =============================================================================
 
+
 class StatusBar(ttk.Frame):
     """Excel Status Bar with Live Dynamic Range Calculations."""
 
-    def __init__(self, parent: tk.Widget, on_zoom_change: Callable[[int], None] | None = None) -> None:
+    def __init__(
+        self, parent: tk.Widget, on_zoom_change: Callable[[int], None] | None = None
+    ) -> None:
         super().__init__(parent, padding=(6, 2))
         self._on_zoom = on_zoom_change
         self._current_zoom = 100
@@ -734,10 +1081,14 @@ class StatusBar(ttk.Frame):
         # Zoom Controls
         zoom_frame = ttk.Frame(self)
         zoom_frame.pack(side=tk.RIGHT, padx=6)
-        ttk.Button(zoom_frame, text="−", width=2, bootstyle="secondary-outline", command=self._zoom_out).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            zoom_frame, text="−", width=2, bootstyle="secondary-outline", command=self._zoom_out
+        ).pack(side=tk.LEFT, padx=1)
         self._zoom_label = ttk.Label(zoom_frame, text="100%", width=5, anchor=tk.CENTER)
         self._zoom_label.pack(side=tk.LEFT, padx=2)
-        ttk.Button(zoom_frame, text="+", width=2, bootstyle="secondary-outline", command=self._zoom_in).pack(side=tk.LEFT, padx=1)
+        ttk.Button(
+            zoom_frame, text="+", width=2, bootstyle="secondary-outline", command=self._zoom_in
+        ).pack(side=tk.LEFT, padx=1)
 
     def set_mode(self, mode: str) -> None:
         self._mode_label.config(text=mode)
@@ -763,7 +1114,14 @@ class StatusBar(ttk.Frame):
             if v is not None and v != "":
                 non_empty += 1
                 try:
-                    num = float(str(v).replace(",", ".").replace(" ", "").replace("₽", "").replace("$", "").replace("%", ""))
+                    num = float(
+                        str(v)
+                        .replace(",", ".")
+                        .replace(" ", "")
+                        .replace("₽", "")
+                        .replace("$", "")
+                        .replace("%", "")
+                    )
                     nums.append(num)
                 except (ValueError, TypeError):
                     pass
@@ -771,7 +1129,11 @@ class StatusBar(ttk.Frame):
         parts = []
         if nums:
             avg_val = sum(nums) / len(nums)
-            parts.append(f"AVERAGE: {avg_val:,.2f}" if avg_val != int(avg_val) else f"AVERAGE: {int(avg_val)}")
+            parts.append(
+                f"AVERAGE: {avg_val:,.2f}"
+                if avg_val != int(avg_val)
+                else f"AVERAGE: {int(avg_val)}"
+            )
             parts.append(f"COUNT: {non_empty}")
             parts.append(f"NUMS: {len(nums)}")
             min_val = min(nums)
@@ -779,7 +1141,9 @@ class StatusBar(ttk.Frame):
             sum_val = sum(nums)
             parts.append(f"MIN: {min_val:g}")
             parts.append(f"MAX: {max_val:g}")
-            parts.append(f"SUM: {sum_val:,.2f}" if sum_val != int(sum_val) else f"SUM: {int(sum_val)}")
+            parts.append(
+                f"SUM: {sum_val:,.2f}" if sum_val != int(sum_val) else f"SUM: {int(sum_val)}"
+            )
         elif non_empty > 0:
             parts.append(f"COUNT: {non_empty}")
 
@@ -804,16 +1168,14 @@ class StatusBar(ttk.Frame):
 # Inline Cell Editor
 # =============================================================================
 
+
 class CellEditor:
     """Inline cell editor overlay inside Treeview."""
 
     __slots__ = ("_tree", "_entry", "_on_commit", "_on_cancel", "_commit_on_focus_out")
 
     def __init__(
-        self,
-        tree: ttk.Treeview,
-        on_commit: Callable[[str], None],
-        on_cancel: Callable[[], None]
+        self, tree: ttk.Treeview, on_commit: Callable[[str], None], on_cancel: Callable[[], None]
     ) -> None:
         self._tree = tree
         self._entry: tk.Entry | None = None
@@ -843,7 +1205,7 @@ class CellEditor:
             insertbackground=Config.CELL_FG,
             selectbackground=Config.SELECTION_BG,
             relief="solid",
-            bd=2
+            bd=2,
         )
         self._entry.place(x=x, y=y, width=w, height=h)
 

@@ -98,10 +98,10 @@ from asm.asm_bridge import (
 
 if asm_is_available():
     data = [10.5, 20.0, 30.5, 40.0, 50.0]
-    print("SIMD Sum:", asm_sum(data))          # 151.0
-    print("SIMD Avg:", asm_avg(data))          # 30.2
-    print("SIMD Min:", asm_min(data))          # 10.5
-    print("SIMD Max:", asm_max(data))          # 50.0
+    print("SIMD Sum:", asm_sum(data))  # 151.0
+    print("SIMD Avg:", asm_avg(data))  # 30.2
+    print("SIMD Min:", asm_min(data))  # 10.5
+    print("SIMD Max:", asm_max(data))  # 50.0
 
     # Ежемесячный платёж по кредиту $200,000 под 5% на 30 лет (360 месяцев)
     monthly_payment = asm_pmt(0.05 / 12, 360, 200000.0)

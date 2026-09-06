@@ -4,11 +4,11 @@ Data models and state classes for Excel Viewer Pro.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Iterator
-import re
-from openpyxl.utils import get_column_letter, column_index_from_string
 
+from openpyxl.utils import column_index_from_string, get_column_letter
 
 # =============================================================================
 # Cell Coordinates and Ranges
@@ -21,6 +21,7 @@ RANGE_REF_REGEX = re.compile(r"^(\$?[A-Za-z]+\$?\d+):(\$?[A-Za-z]+\$?\d+)$")
 @dataclass(slots=True)
 class CellPosition:
     """Represents a 0-based cell coordinate (row, col)."""
+
     row: int = 0
     col: int = 0
 
@@ -36,10 +37,7 @@ class CellPosition:
         if not match:
             raise ValueError(f"Invalid cell reference: {ref}")
         col_str, row_str = match.groups()
-        return cls(
-            row=int(row_str) - 1,
-            col=column_index_from_string(col_str.upper()) - 1
-        )
+        return cls(row=int(row_str) - 1, col=column_index_from_string(col_str.upper()) - 1)
 
     def copy(self) -> "CellPosition":
         return CellPosition(self.row, self.col)
@@ -52,6 +50,7 @@ class CellPosition:
 @dataclass(slots=True)
 class CellRange:
     """Represents a rectangular range of cells (anchor and active/extent)."""
+
     start: CellPosition = field(default_factory=lambda: CellPosition(0, 0))
     end: CellPosition = field(default_factory=lambda: CellPosition(0, 0))
 
@@ -114,9 +113,11 @@ class CellRange:
 # Cell Styling & Formatting Model
 # =============================================================================
 
+
 @dataclass
 class CellStyle:
     """Styling properties for a cell."""
+
     font_name: str = "Calibri"
     font_size: int = 11
     bold: bool = False
@@ -145,13 +146,14 @@ class CellStyle:
             valign=self.valign,
             wrap_text=self.wrap_text,
             number_format=self.number_format,
-            borders=dict(self.borders)
+            borders=dict(self.borders),
         )
 
 
 @dataclass
 class CellComment:
     """Comment / Note attached to a cell."""
+
     text: str = ""
     author: str = ""
     timestamp: str = ""
@@ -161,9 +163,11 @@ class CellComment:
 # Undo / Redo Actions
 # =============================================================================
 
+
 @dataclass
 class UndoAction:
     """Action recorded for undo/redo."""
+
     action_type: str  # 'cell_change', 'range_change', 'insert_row', 'delete_row', 'insert_col', 'delete_col', 'format_change'
     sheet_name: str
     data: dict[str, Any] = field(default_factory=dict)
@@ -173,9 +177,11 @@ class UndoAction:
 # Sheet Data Model
 # =============================================================================
 
+
 @dataclass
 class SheetData:
     """Complete in-memory model for a worksheet."""
+
     name: str = "Sheet1"
     headers: list[str] = field(default_factory=list)
     rows: list[list[Any]] = field(default_factory=list)

@@ -4,9 +4,9 @@ Unit and benchmark test suite for Excel Viewer Pro ASM Acceleration Engine.
 
 from __future__ import annotations
 
-import unittest
-import time
 import sys
+import time
+import unittest
 from pathlib import Path
 
 # Add current directory to path
@@ -15,7 +15,6 @@ import asm_bridge
 
 
 class TestAsmEngine(unittest.TestCase):
-
     def test_asm_availability(self):
         self.assertTrue(asm_bridge.asm_is_available(), "Native 64-bit Assembly DLL must be loaded")
 
@@ -63,7 +62,7 @@ def run_benchmark():
     print("=" * 70)
     print("  EXCEL VIEWER PRO — SIMD SSE2 x64 ASSEMBLY PERFORMANCE BENCHMARK")
     print("=" * 70)
-    
+
     n = 1_000_000
     print(f"Generating array of {n:,} floating-point numbers...")
     data = [(i % 100) * 0.25 for i in range(n)]
@@ -80,7 +79,7 @@ def run_benchmark():
 
     print(f"\n[1] Pure Python sum():        {t_py:8.2f} ms | Result: {py_sum:.2f}")
     print(f"[2] Native x64 SIMD SSE2 Sum: {t_asm:8.2f} ms | Result: {asm_sum_val:.2f}")
-    
+
     diff = abs(py_sum - asm_sum_val)
     print(f"\nPrecision Delta: {diff:g} (Exact match: {diff < 1e-5})")
     print(f"Throughput:      {(n / (t_asm / 1000.0)) / 1_000_000:.2f} Million Doubles / sec")

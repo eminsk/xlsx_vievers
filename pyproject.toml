@@ -10,5 +10,23 @@ dependencies = [
     "ttkbootstrap>=1.10.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.3.0",
+]
+
 [project.scripts]
 xlsx-viewer = "main:main"
+
+[tool.pytest.ini_options]
+testpaths = [".", "asm"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501", "E402", "E741", "F403", "F405", "F841"]
+

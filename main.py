@@ -21,6 +21,7 @@ Complete desktop spreadsheet viewer and editor with:
 from __future__ import annotations
 
 import sys
+
 try:
     if sys.getrecursionlimit() < 50000:
         sys.setrecursionlimit(50000)
@@ -28,37 +29,45 @@ except Exception:
     pass
 
 import csv
-import io
-from pathlib import Path
+import tkinter as tk
 from collections import deque
 from functools import partial
+from pathlib import Path
+from tkinter import Menu, colorchooser, filedialog, messagebox, simpledialog
 from typing import Any
 
-import tkinter as tk
-from tkinter import filedialog, messagebox, Menu, colorchooser, simpledialog
 import ttkbootstrap as ttk
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Alignment, Font
+from openpyxl.utils import column_index_from_string, get_column_letter
+from openpyxl.worksheet.worksheet import Worksheet
 from ttkbootstrap.constants import *
 
-from openpyxl import load_workbook, Workbook
-from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter, column_index_from_string
-
 from config import Config
-from models import CellPosition, CellRange, CellStyle, CellComment, SheetData, UndoAction
-from formulas import FormulaEngine, FormulaStore, shift_formula_references, CELL_REF_PATTERN, RANGE_PATTERN
-from formatting import NumberFormatter, ConditionalFormattingEngine
-from widgets import ExcelRibbon, FormulaBar, SheetTabs, StatusBar, CellEditor
 from dialogs import (
-    FindReplaceDialog, InsertFunctionDialog, CustomSortDialog,
-    AutoFilterPopup, ChartWizardDialog, RemoveDuplicatesDialog,
-    TextToColumnsDialog, GoalSeekDialog, CellCommentDialog
+    AutoFilterPopup,
+    CellCommentDialog,
+    ChartWizardDialog,
+    CustomSortDialog,
+    FindReplaceDialog,
+    GoalSeekDialog,
+    InsertFunctionDialog,
+    RemoveDuplicatesDialog,
+    TextToColumnsDialog,
 )
-
+from formatting import NumberFormatter
+from formulas import (
+    FormulaEngine,
+    FormulaStore,
+    shift_formula_references,
+)
+from models import CellComment, CellPosition, CellRange, CellStyle, SheetData, UndoAction
+from widgets import CellEditor, ExcelRibbon, FormulaBar, SheetTabs, StatusBar
 
 # =============================================================================
 # Main Application Class
 # =============================================================================
+
 
 class ExcelViewerPro(ttk.Window):
     """Professional Excel-like Spreadsheet Application."""
@@ -204,7 +213,7 @@ class ExcelViewerPro(ttk.Window):
             "freeze_first_col": self._freeze_first_col,
             "unfreeze_all": self._unfreeze_all,
             "autofit_all_cols": self._autofit_all_columns,
-            "change_theme": self._change_theme
+            "change_theme": self._change_theme,
         }
 
         self._ribbon = ExcelRibbon(self, callbacks)
@@ -215,7 +224,7 @@ class ExcelViewerPro(ttk.Window):
             self,
             on_commit=self._on_formula_commit,
             on_fx_clicked=self._show_fx_wizard,
-            on_goto_cell=self._goto_cell
+            on_goto_cell=self._goto_cell,
         )
         self._formula_bar.pack(fill=tk.X)
 
@@ -230,7 +239,7 @@ class ExcelViewerPro(ttk.Window):
             on_rename_sheet=self._on_rename_sheet,
             on_delete_sheet=self._on_delete_sheet,
             on_duplicate_sheet=self._on_duplicate_sheet,
-            on_tab_color_change=self._on_tab_color_changed
+            on_tab_color_change=self._on_tab_color_changed,
         )
         self._sheet_tabs.pack(fill=tk.X, side=tk.BOTTOM)
 
@@ -246,7 +255,9 @@ class ExcelViewerPro(ttk.Window):
         # File Menu
         file_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="New Workbook", command=self._create_new_workbook, accelerator="Ctrl+N")
+        file_menu.add_command(
+            label="New Workbook", command=self._create_new_workbook, accelerator="Ctrl+N"
+        )
         file_menu.add_command(label="Open...", command=self._open_file, accelerator="Ctrl+O")
         file_menu.add_command(label="Save", command=self._quick_save, accelerator="Ctrl+S")
         file_menu.add_command(label="Save As...", command=self._save_as, accelerator="Ctrl+Shift+S")
@@ -254,9 +265,15 @@ class ExcelViewerPro(ttk.Window):
 
         export_menu = Menu(file_menu, tearoff=0)
         file_menu.add_cascade(label="Export", menu=export_menu)
-        export_menu.add_command(label="Export as CSV (.csv)", command=lambda: self._export_file("csv"))
-        export_menu.add_command(label="Export as TSV (.tsv)", command=lambda: self._export_file("tsv"))
-        export_menu.add_command(label="Export as HTML Table (.html)", command=lambda: self._export_file("html"))
+        export_menu.add_command(
+            label="Export as CSV (.csv)", command=lambda: self._export_file("csv")
+        )
+        export_menu.add_command(
+            label="Export as TSV (.tsv)", command=lambda: self._export_file("tsv")
+        )
+        export_menu.add_command(
+            label="Export as HTML Table (.html)", command=lambda: self._export_file("html")
+        )
 
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self._on_close)
@@ -275,7 +292,9 @@ class ExcelViewerPro(ttk.Window):
         edit_menu.add_command(label="Delete", command=self._delete_cell, accelerator="Del")
         edit_menu.add_separator()
         edit_menu.add_command(label="Find...", command=self._show_find_dialog, accelerator="Ctrl+F")
-        edit_menu.add_command(label="Replace...", command=self._show_replace_dialog, accelerator="Ctrl+H")
+        edit_menu.add_command(
+            label="Replace...", command=self._show_replace_dialog, accelerator="Ctrl+H"
+        )
 
         # View Menu
         view_menu = Menu(menubar, tearoff=0)
@@ -297,7 +316,9 @@ class ExcelViewerPro(ttk.Window):
 
         self._vsb = ttk.Scrollbar(container, orient=tk.VERTICAL, command=self._on_v_scroll)
         self._hsb = ttk.Scrollbar(container, orient=tk.HORIZONTAL, command=self._on_h_scroll)
-        self._tree.configure(yscrollcommand=self._on_tree_y_scroll, xscrollcommand=self._on_tree_x_scroll)
+        self._tree.configure(
+            yscrollcommand=self._on_tree_y_scroll, xscrollcommand=self._on_tree_x_scroll
+        )
 
         self._tree.grid(row=0, column=0, sticky=NSEW)
         self._vsb.grid(row=0, column=1, sticky=NS)
@@ -342,7 +363,7 @@ class ExcelViewerPro(ttk.Window):
             "<F2>": lambda e: self._start_inline_edit(),
             "<F9>": lambda e: self._recalculate_all(),
             "<Delete>": lambda e: self._delete_cell(),
-            "<Escape>": lambda e: self._cancel_edit()
+            "<Escape>": lambda e: self._cancel_edit(),
         }
         for key, handler in shortcuts.items():
             self.bind(key, handler)
@@ -406,8 +427,8 @@ class ExcelViewerPro(ttk.Window):
                 ("Excel Files", "*.xlsx *.xlsm *.xltx *.xltm"),
                 ("CSV Files", "*.csv"),
                 ("TSV Files", "*.tsv"),
-                ("All Files", "*.*")
-            ]
+                ("All Files", "*.*"),
+            ],
         )
         if path:
             self._load_file(Path(path))
@@ -453,7 +474,9 @@ class ExcelViewerPro(ttk.Window):
                         except Exception:
                             pass
 
-                    for r_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=max_r, max_col=max_c)):
+                    for r_idx, row in enumerate(
+                        ws.iter_rows(min_row=1, max_row=max_r, max_col=max_c)
+                    ):
                         row_vals = []
                         for c_idx, cell in enumerate(row):
                             val = cell.value
@@ -462,38 +485,82 @@ class ExcelViewerPro(ttk.Window):
                             row_vals.append(val)
 
                             # Extract cell styles
-                            nf = cell.number_format if cell.number_format and cell.number_format != "General" else ""
+                            nf = (
+                                cell.number_format
+                                if cell.number_format and cell.number_format != "General"
+                                else ""
+                            )
                             bold = cell.font.bold if cell.font and cell.font.bold else False
                             italic = cell.font.italic if cell.font and cell.font.italic else False
-                            underline = bool(cell.font.underline) if cell.font and cell.font.underline else False
-                            strikethrough = cell.font.strike if cell.font and cell.font.strike else False
-                            font_name = cell.font.name if cell.font and cell.font.name else "Calibri"
+                            underline = (
+                                bool(cell.font.underline)
+                                if cell.font and cell.font.underline
+                                else False
+                            )
+                            strikethrough = (
+                                cell.font.strike if cell.font and cell.font.strike else False
+                            )
+                            font_name = (
+                                cell.font.name if cell.font and cell.font.name else "Calibri"
+                            )
                             font_size = int(cell.font.size) if cell.font and cell.font.size else 11
                             fg_color = None
                             if cell.font and cell.font.color:
                                 try:
-                                    if hasattr(cell.font.color, "rgb") and isinstance(cell.font.color.rgb, str):
+                                    if hasattr(cell.font.color, "rgb") and isinstance(
+                                        cell.font.color.rgb, str
+                                    ):
                                         rgb = cell.font.color.rgb
-                                        if len(rgb) == 8: rgb = rgb[2:]
-                                        if len(rgb) == 6 and rgb != "000000": fg_color = f"#{rgb.upper()}"
+                                        if len(rgb) == 8:
+                                            rgb = rgb[2:]
+                                        if len(rgb) == 6 and rgb != "000000":
+                                            fg_color = f"#{rgb.upper()}"
                                 except Exception:
                                     pass
 
                             bg_color = None
                             if cell.fill and cell.fill.start_color:
                                 try:
-                                    if hasattr(cell.fill.start_color, "rgb") and isinstance(cell.fill.start_color.rgb, str):
+                                    if hasattr(cell.fill.start_color, "rgb") and isinstance(
+                                        cell.fill.start_color.rgb, str
+                                    ):
                                         rgb = cell.fill.start_color.rgb
-                                        if len(rgb) == 8: rgb = rgb[2:]
-                                        if len(rgb) == 6 and rgb != "000000": bg_color = f"#{rgb.upper()}"
+                                        if len(rgb) == 8:
+                                            rgb = rgb[2:]
+                                        if len(rgb) == 6 and rgb != "000000":
+                                            bg_color = f"#{rgb.upper()}"
                                 except Exception:
                                     pass
 
-                            halign = cell.alignment.horizontal if cell.alignment and cell.alignment.horizontal else "left"
-                            valign = cell.alignment.vertical if cell.alignment and cell.alignment.vertical else "center"
-                            wrap_text = bool(cell.alignment.wrap_text) if cell.alignment and cell.alignment.wrap_text else False
+                            halign = (
+                                cell.alignment.horizontal
+                                if cell.alignment and cell.alignment.horizontal
+                                else "left"
+                            )
+                            valign = (
+                                cell.alignment.vertical
+                                if cell.alignment and cell.alignment.vertical
+                                else "center"
+                            )
+                            wrap_text = (
+                                bool(cell.alignment.wrap_text)
+                                if cell.alignment and cell.alignment.wrap_text
+                                else False
+                            )
 
-                            if nf or bold or italic or underline or strikethrough or fg_color or bg_color or halign != "left" or valign != "center" or wrap_text or font_size != 11:
+                            if (
+                                nf
+                                or bold
+                                or italic
+                                or underline
+                                or strikethrough
+                                or fg_color
+                                or bg_color
+                                or halign != "left"
+                                or valign != "center"
+                                or wrap_text
+                                or font_size != 11
+                            ):
                                 cell_styles[(r_idx, c_idx)] = CellStyle(
                                     font_name=font_name,
                                     font_size=font_size,
@@ -506,7 +573,7 @@ class ExcelViewerPro(ttk.Window):
                                     halign=halign,
                                     valign=valign,
                                     wrap_text=wrap_text,
-                                    number_format=nf
+                                    number_format=nf,
                                 )
 
                         rows.append(row_vals)
@@ -515,11 +582,17 @@ class ExcelViewerPro(ttk.Window):
                     headers = [get_column_letter(i + 1) for i in range(max_c)]
                     # Extract tab color
                     tab_color = None
-                    if ws.sheet_properties and ws.sheet_properties.tabColor and hasattr(ws.sheet_properties.tabColor, "rgb"):
+                    if (
+                        ws.sheet_properties
+                        and ws.sheet_properties.tabColor
+                        and hasattr(ws.sheet_properties.tabColor, "rgb")
+                    ):
                         rgb = ws.sheet_properties.tabColor.rgb
                         if isinstance(rgb, str):
-                            if len(rgb) == 8: rgb = rgb[2:]
-                            if len(rgb) == 6: tab_color = f"#{rgb.upper()}"
+                            if len(rgb) == 8:
+                                rgb = rgb[2:]
+                            if len(rgb) == 6:
+                                tab_color = f"#{rgb.upper()}"
 
                     s_data = SheetData(
                         name=s_name,
@@ -530,13 +603,13 @@ class ExcelViewerPro(ttk.Window):
                         cell_styles=cell_styles,
                         column_widths=col_widths,
                         merged_ranges=merged_ranges,
-                        tab_color=tab_color
+                        tab_color=tab_color,
                     )
                     self._sheets_data[s_name] = s_data
 
                 # Fast warm-up precalculation pass for all formulas
                 for s_name, s_data in self._sheets_data.items():
-                    for (r, c) in self._formula_store.get_all(s_name).keys():
+                    for r, c in self._formula_store.get_all(s_name).keys():
                         self._get_cell_value_for_formula(r, c, s_name)
 
                 self._sheet_tabs.set_sheets(self._workbook.sheetnames)
@@ -572,7 +645,7 @@ class ExcelViewerPro(ttk.Window):
             headers=[get_column_letter(i + 1) for i in range(max_c)],
             rows=rows,
             col_count=max_c,
-            row_count=len(rows)
+            row_count=len(rows),
         )
         self._sheets_data = {"Sheet1": s_data}
         self._active_sheet_name = "Sheet1"
@@ -592,7 +665,11 @@ class ExcelViewerPro(ttk.Window):
         path = filedialog.asksaveasfilename(
             title="Save Spreadsheet As",
             defaultextension=".xlsx",
-            filetypes=[("Excel Files (*.xlsx)", "*.xlsx"), ("CSV Files (*.csv)", "*.csv"), ("TSV Files (*.tsv)", "*.tsv")]
+            filetypes=[
+                ("Excel Files (*.xlsx)", "*.xlsx"),
+                ("CSV Files (*.csv)", "*.csv"),
+                ("TSV Files (*.tsv)", "*.tsv"),
+            ],
         )
         if path:
             self._save_to_path(Path(path))
@@ -633,9 +710,18 @@ class ExcelViewerPro(ttk.Window):
                                 if style.number_format:
                                     cell.number_format = style.number_format
                                 if style.bold or style.italic:
-                                    cell.font = Font(bold=style.bold, italic=style.italic, name=style.font_name, size=style.font_size)
+                                    cell.font = Font(
+                                        bold=style.bold,
+                                        italic=style.italic,
+                                        name=style.font_name,
+                                        size=style.font_size,
+                                    )
                                 if style.halign or style.valign:
-                                    cell.alignment = Alignment(horizontal=style.halign, vertical=style.valign, wrap_text=style.wrap_text)
+                                    cell.alignment = Alignment(
+                                        horizontal=style.halign,
+                                        vertical=style.valign,
+                                        wrap_text=style.wrap_text,
+                                    )
 
             # Remove deleted sheets
             for old_s in existing_sheets:
@@ -665,7 +751,7 @@ class ExcelViewerPro(ttk.Window):
         path = filedialog.asksaveasfilename(
             title=f"Export as {fmt.upper()}",
             defaultextension=ext,
-            filetypes=[(f"{fmt.upper()} File", f"*{ext}")]
+            filetypes=[(f"{fmt.upper()} File", f"*{ext}")],
         )
         if not path:
             return
@@ -682,11 +768,17 @@ class ExcelViewerPro(ttk.Window):
         elif fmt == "html":
             with open(p, "w", encoding="utf-8") as f:
                 f.write("<!DOCTYPE html><html><head><meta charset='utf-8'>")
-                f.write("<style>table{border-collapse:collapse;font-family:sans-serif;}td,th{border:1px solid #ccc;padding:6px 10px;}</style>")
+                f.write(
+                    "<style>table{border-collapse:collapse;font-family:sans-serif;}td,th{border:1px solid #ccc;padding:6px 10px;}</style>"
+                )
                 f.write(f"</head><body><h2>{s_data.name}</h2><table>\n")
                 f.write("<tr>" + "".join(f"<th>{h}</th>" for h in s_data.headers) + "</tr>\n")
                 for row in s_data.rows:
-                    f.write("<tr>" + "".join(f"<td>{v if v is not None else ''}</td>" for v in row) + "</tr>\n")
+                    f.write(
+                        "<tr>"
+                        + "".join(f"<td>{v if v is not None else ''}</td>" for v in row)
+                        + "</tr>\n"
+                    )
                 f.write("</table></body></html>")
 
         messagebox.showinfo("Export", f"Exported successfully to {p.name}")
@@ -762,7 +854,9 @@ class ExcelViewerPro(ttk.Window):
 
     def _on_rename_sheet(self, old_name: str) -> None:
         """Rename worksheet."""
-        new_name = simpledialog.askstring("Rename Sheet", f"Enter new name for '{old_name}':", initialvalue=old_name, parent=self)
+        new_name = simpledialog.askstring(
+            "Rename Sheet", f"Enter new name for '{old_name}':", initialvalue=old_name, parent=self
+        )
         if not new_name or new_name == old_name:
             return
 
@@ -787,10 +881,15 @@ class ExcelViewerPro(ttk.Window):
     def _on_delete_sheet(self, sheet_name: str) -> None:
         """Delete worksheet."""
         if len(self._sheets_data) <= 1:
-            messagebox.showwarning("Warning", "A workbook must contain at least one visible worksheet.")
+            messagebox.showwarning(
+                "Warning", "A workbook must contain at least one visible worksheet."
+            )
             return
 
-        confirm = messagebox.askyesno("Delete Sheet", f"Are you sure you want to delete '{sheet_name}'?\nThis action cannot be undone.")
+        confirm = messagebox.askyesno(
+            "Delete Sheet",
+            f"Are you sure you want to delete '{sheet_name}'?\nThis action cannot be undone.",
+        )
         if not confirm:
             return
 
@@ -832,7 +931,7 @@ class ExcelViewerPro(ttk.Window):
             col_count=src_data.col_count,
             row_count=src_data.row_count,
             cell_styles=new_styles,
-            column_widths=new_widths
+            column_widths=new_widths,
         )
         self._sheets_data[dup_name] = dup_data
 
@@ -850,7 +949,9 @@ class ExcelViewerPro(ttk.Window):
 
     def _get_active_sheet_data(self) -> SheetData:
         if self._active_sheet_name not in self._sheets_data:
-            self._sheets_data[self._active_sheet_name] = SheetData(name=self._active_sheet_name, col_count=10, row_count=30)
+            self._sheets_data[self._active_sheet_name] = SheetData(
+                name=self._active_sheet_name, col_count=10, row_count=30
+            )
         return self._sheets_data[self._active_sheet_name]
 
     def _load_active_sheet(self) -> None:
@@ -874,7 +975,9 @@ class ExcelViewerPro(ttk.Window):
 
         # Row number column
         self._tree.heading("#", text="#", anchor=CENTER)
-        self._tree.column("#", width=Config.ROW_NUM_WIDTH, minwidth=40, anchor=CENTER, stretch=False)
+        self._tree.column(
+            "#", width=Config.ROW_NUM_WIDTH, minwidth=40, anchor=CENTER, stretch=False
+        )
 
         # Determine column alignments using evaluated values & openpyxl styles
         col_anchors = {}
@@ -887,7 +990,13 @@ class ExcelViewerPro(ttk.Window):
                     align_votes[style.halign] += 2
                 elif val is not None and str(val).strip() != "":
                     s_val = str(val).strip()
-                    if isinstance(val, (int, float)) or s_val.startswith("$") or s_val.startswith("€") or s_val.endswith("%") or s_val.endswith("₽"):
+                    if (
+                        isinstance(val, (int, float))
+                        or s_val.startswith("$")
+                        or s_val.startswith("€")
+                        or s_val.endswith("%")
+                        or s_val.endswith("₽")
+                    ):
                         align_votes["right"] += 1
                     else:
                         align_votes["left"] += 1
@@ -905,7 +1014,7 @@ class ExcelViewerPro(ttk.Window):
                 col_id,
                 text=f"{header_text}{filter_sym}",
                 anchor=CENTER,
-                command=partial(self._on_header_clicked, i)
+                command=partial(self._on_header_clicked, i),
             )
             col_w = s_data.column_widths.get(i, Config.DEFAULT_COL_WIDTH)
             min_w = 0 if i in s_data.hidden_cols else Config.MIN_COL_WIDTH
@@ -961,7 +1070,15 @@ class ExcelViewerPro(ttk.Window):
             tag_kwargs = {}
             if bg_color:
                 tag_kwargs["background"] = bg_color
-                if not fg_color and bg_color.upper() in ("#1B365D", "#2B6CB0", "#22543D", "#44337A", "#2C7A7B", "#1A202C", "#2D3748"):
+                if not fg_color and bg_color.upper() in (
+                    "#1B365D",
+                    "#2B6CB0",
+                    "#22543D",
+                    "#44337A",
+                    "#2C7A7B",
+                    "#1A202C",
+                    "#2D3748",
+                ):
                     fg_color = "#FFFFFF"
             else:
                 tag_kwargs["background"] = Config.ROW_ALT_BG if (r_idx % 2) else Config.CELL_BG
@@ -1125,7 +1242,9 @@ class ExcelViewerPro(ttk.Window):
     def _select_all(self) -> None:
         s_data = self._get_active_sheet_data()
         self._range_anchor = CellPosition(0, 0)
-        self._range_extent = CellPosition(max(0, s_data.row_count - 1), max(0, s_data.col_count - 1))
+        self._range_extent = CellPosition(
+            max(0, s_data.row_count - 1), max(0, s_data.col_count - 1)
+        )
         self._update_selection_highlight()
         self._update_status_bar_stats()
 
@@ -1143,7 +1262,9 @@ class ExcelViewerPro(ttk.Window):
         }
         if with_handle:
             h_sz = Config.FILL_HANDLE_SIZE
-            handle = tk.Frame(self._tree, bg=color, width=h_sz, height=h_sz, bd=0, cursor="crosshair")
+            handle = tk.Frame(
+                self._tree, bg=color, width=h_sz, height=h_sz, bd=0, cursor="crosshair"
+            )
             handle.bind("<Button-1>", self._on_fill_handle_press)
             handle.bind("<B1-Motion>", self._on_fill_handle_drag)
             handle.bind("<ButtonRelease-1>", self._on_fill_handle_release)
@@ -1221,13 +1342,17 @@ class ExcelViewerPro(ttk.Window):
         ref_c = src_c1 - 1 if src_c1 > 0 else src_c2 + 1
         if 0 <= ref_c < s_data.col_count:
             last_r = src_r2
-            while last_r + 1 < s_data.row_count and s_data.get_cell_value(last_r + 1, ref_c) not in (None, ""):
+            while last_r + 1 < s_data.row_count and s_data.get_cell_value(
+                last_r + 1, ref_c
+            ) not in (None, ""):
                 last_r += 1
             if last_r > src_r2:
                 self._apply_autofill(src_r1, src_r2, src_c1, src_c2, last_r, src_c2)
         return "break"
 
-    def _apply_autofill(self, src_r1: int, src_r2: int, src_c1: int, src_c2: int, dest_r: int, dest_c: int) -> None:
+    def _apply_autofill(
+        self, src_r1: int, src_r2: int, src_c1: int, src_c2: int, dest_r: int, dest_c: int
+    ) -> None:
         s_data = self._get_active_sheet_data()
         s_name = self._active_sheet_name
 
@@ -1235,7 +1360,9 @@ class ExcelViewerPro(ttk.Window):
         if dest_r > src_r2:
             src_height = src_r2 - src_r1 + 1
             for c in range(src_c1, src_c2 + 1):
-                col_formulas = [self._formula_store.get(s_name, r, c) for r in range(src_r1, src_r2 + 1)]
+                col_formulas = [
+                    self._formula_store.get(s_name, r, c) for r in range(src_r1, src_r2 + 1)
+                ]
                 col_vals = [s_data.get_cell_value(r, c) for r in range(src_r1, src_r2 + 1)]
 
                 if any(f for f in col_formulas):
@@ -1249,7 +1376,9 @@ class ExcelViewerPro(ttk.Window):
                             self._apply_cell_value_change(target_r, c, shifted)
                         else:
                             val = s_data.get_cell_value(base_r, c)
-                            self._apply_cell_value_change(target_r, c, "" if val is None else str(val))
+                            self._apply_cell_value_change(
+                                target_r, c, "" if val is None else str(val)
+                            )
                 else:
                     nums = []
                     for v in col_vals:
@@ -1263,24 +1392,36 @@ class ExcelViewerPro(ttk.Window):
                         for target_r in range(src_r2 + 1, dest_r + 1):
                             steps_ahead = target_r - src_r2
                             val_num = nums[-1] + step * steps_ahead
-                            val_str = f"{int(val_num)}" if val_num == int(val_num) else f"{round(val_num, 4):g}"
+                            val_str = (
+                                f"{int(val_num)}"
+                                if val_num == int(val_num)
+                                else f"{round(val_num, 4):g}"
+                            )
                             self._apply_cell_value_change(target_r, c, val_str)
                     elif len(nums) == 1 and nums[0] is not None:
                         for target_r in range(src_r2 + 1, dest_r + 1):
                             val_num = nums[0]
-                            val_str = f"{int(val_num)}" if val_num == int(val_num) else f"{round(val_num, 4):g}"
+                            val_str = (
+                                f"{int(val_num)}"
+                                if val_num == int(val_num)
+                                else f"{round(val_num, 4):g}"
+                            )
                             self._apply_cell_value_change(target_r, c, val_str)
                     else:
                         for target_r in range(src_r2 + 1, dest_r + 1):
                             src_offset = (target_r - (src_r2 + 1)) % src_height
                             val = col_vals[src_offset]
-                            self._apply_cell_value_change(target_r, c, "" if val is None else str(val))
+                            self._apply_cell_value_change(
+                                target_r, c, "" if val is None else str(val)
+                            )
 
         # Fill Right
         elif dest_c > src_c2:
             src_width = src_c2 - src_c1 + 1
             for r in range(src_r1, src_r2 + 1):
-                row_formulas = [self._formula_store.get(s_name, r, c) for c in range(src_c1, src_c2 + 1)]
+                row_formulas = [
+                    self._formula_store.get(s_name, r, c) for c in range(src_c1, src_c2 + 1)
+                ]
                 row_vals = [s_data.get_cell_value(r, c) for c in range(src_c1, src_c2 + 1)]
 
                 if any(f for f in row_formulas):
@@ -1294,7 +1435,9 @@ class ExcelViewerPro(ttk.Window):
                             self._apply_cell_value_change(r, target_c, shifted)
                         else:
                             val = s_data.get_cell_value(r, base_c)
-                            self._apply_cell_value_change(r, target_c, "" if val is None else str(val))
+                            self._apply_cell_value_change(
+                                r, target_c, "" if val is None else str(val)
+                            )
                 else:
                     nums = []
                     for v in row_vals:
@@ -1308,13 +1451,19 @@ class ExcelViewerPro(ttk.Window):
                         for target_c in range(src_c2 + 1, dest_c + 1):
                             steps_ahead = target_c - src_c2
                             val_num = nums[-1] + step * steps_ahead
-                            val_str = f"{int(val_num)}" if val_num == int(val_num) else f"{round(val_num, 4):g}"
+                            val_str = (
+                                f"{int(val_num)}"
+                                if val_num == int(val_num)
+                                else f"{round(val_num, 4):g}"
+                            )
                             self._apply_cell_value_change(r, target_c, val_str)
                     else:
                         for target_c in range(src_c2 + 1, dest_c + 1):
                             src_offset = (target_c - (src_c2 + 1)) % src_width
                             val = row_vals[src_offset]
-                            self._apply_cell_value_change(r, target_c, "" if val is None else str(val))
+                            self._apply_cell_value_change(
+                                r, target_c, "" if val is None else str(val)
+                            )
 
         self._range_extent = CellPosition(max(src_r2, dest_r), max(src_c2, dest_c))
         self._update_selection_highlight()
@@ -1383,8 +1532,29 @@ class ExcelViewerPro(ttk.Window):
                     fmt = style.number_format if style else None
                     display_str = NumberFormatter.format_value(val, fmt)
 
-                    bg = style.bg_color if style and style.bg_color and style.bg_color.upper() != "#FFFFFF" else "#FFFFFF"
-                    fg = style.fg_color if style and style.fg_color else ("#FFFFFF" if bg.upper() in ("#1B365D", "#2B6CB0", "#22543D", "#44337A", "#2C7A7B", "#1A202C", "#2D3748") else "#2D3748")
+                    bg = (
+                        style.bg_color
+                        if style and style.bg_color and style.bg_color.upper() != "#FFFFFF"
+                        else "#FFFFFF"
+                    )
+                    fg = (
+                        style.fg_color
+                        if style and style.fg_color
+                        else (
+                            "#FFFFFF"
+                            if bg.upper()
+                            in (
+                                "#1B365D",
+                                "#2B6CB0",
+                                "#22543D",
+                                "#44337A",
+                                "#2C7A7B",
+                                "#1A202C",
+                                "#2D3748",
+                            )
+                            else "#2D3748"
+                        )
+                    )
                     is_bold = style.bold if style else False
                     font_size = style.font_size if style and style.font_size else 10
                     font_name = style.font_name if style and style.font_name else "Segoe UI"
@@ -1400,7 +1570,10 @@ class ExcelViewerPro(ttk.Window):
                             anchor = tk.W
                     elif c2 > c1:
                         anchor = tk.CENTER
-                    elif isinstance(val, (int, float)) or (isinstance(val, str) and (val.startswith("$") or val.endswith("%") or val.endswith("₽"))):
+                    elif isinstance(val, (int, float)) or (
+                        isinstance(val, str)
+                        and (val.startswith("$") or val.endswith("%") or val.endswith("₽"))
+                    ):
                         anchor = tk.E
                     else:
                         anchor = tk.W
@@ -1414,7 +1587,7 @@ class ExcelViewerPro(ttk.Window):
                         anchor=anchor,
                         padx=6,
                         relief="solid",
-                        bd=1
+                        bd=1,
                     )
                     lbl.place(x=x, y=y, width=w, height=h)
                     lbl.bind("<Button-1>", partial(self._on_overlay_click, r1, c1))
@@ -1447,7 +1620,13 @@ class ExcelViewerPro(ttk.Window):
                                 h = bbox1[3]
                                 if w > 0 and h > 0:
                                     style = s_data.cell_styles.get((r_idx, c_idx))
-                                    bg = style.bg_color if style and style.bg_color and style.bg_color.upper() != "#FFFFFF" else (Config.ROW_ALT_BG if (r_idx % 2) else Config.CELL_BG)
+                                    bg = (
+                                        style.bg_color
+                                        if style
+                                        and style.bg_color
+                                        and style.bg_color.upper() != "#FFFFFF"
+                                        else (Config.ROW_ALT_BG if (r_idx % 2) else Config.CELL_BG)
+                                    )
                                     fg = style.fg_color if style and style.fg_color else "#2D3748"
                                     is_italic = style.italic if style else True
                                     lbl = tk.Label(
@@ -1459,11 +1638,16 @@ class ExcelViewerPro(ttk.Window):
                                         anchor=tk.W,
                                         padx=6,
                                         relief="solid",
-                                        bd=1
+                                        bd=1,
                                     )
                                     lbl.place(x=x, y=y, width=w, height=h)
-                                    lbl.bind("<Button-1>", partial(self._on_overlay_click, r_idx, c_idx))
-                                    lbl.bind("<Double-1>", partial(self._on_overlay_double_click, r_idx, c_idx))
+                                    lbl.bind(
+                                        "<Button-1>", partial(self._on_overlay_click, r_idx, c_idx)
+                                    )
+                                    lbl.bind(
+                                        "<Double-1>",
+                                        partial(self._on_overlay_double_click, r_idx, c_idx),
+                                    )
                                     self._merged_overlays.append(lbl)
                 except Exception:
                     pass
@@ -1636,18 +1820,24 @@ class ExcelViewerPro(ttk.Window):
             vals = list(self._tree.item(iid)["values"])
             while len(vals) <= col + 1:
                 vals.append("")
-            display_val = self._get_cell_value_for_formula(row, col, s_name) if new_value.startswith("=") else new_value
+            display_val = (
+                self._get_cell_value_for_formula(row, col, s_name)
+                if new_value.startswith("=")
+                else new_value
+            )
             style = s_data.cell_styles.get((row, col))
             fmt = style.number_format if style else None
             vals[col + 1] = NumberFormatter.format_value(display_val, fmt)
             self._tree.item(iid, values=vals)
 
         # Track Undo
-        self._undo_stack.append(UndoAction(
-            action_type="cell_change",
-            sheet_name=s_name,
-            data={"row": row, "col": col, "old": recorded_old, "new": new_value}
-        ))
+        self._undo_stack.append(
+            UndoAction(
+                action_type="cell_change",
+                sheet_name=s_name,
+                data={"row": row, "col": col, "old": recorded_old, "new": new_value},
+            )
+        )
         self._redo_stack.clear()
 
         self._set_modified(True)
@@ -1785,7 +1975,11 @@ class ExcelViewerPro(ttk.Window):
                 for c_offset, val in enumerate(row):
                     clean_val = val
                     if val.startswith("="):
-                        clean_val = str(self._get_cell_value_for_formula(start_r + r_offset, start_c + c_offset, self._active_sheet_name))
+                        clean_val = str(
+                            self._get_cell_value_for_formula(
+                                start_r + r_offset, start_c + c_offset, self._active_sheet_name
+                            )
+                        )
                     self._apply_cell_value_change(start_r + r_offset, start_c + c_offset, clean_val)
 
         elif mode == "formulas":
@@ -1793,7 +1987,9 @@ class ExcelViewerPro(ttk.Window):
                 for c_offset, val in enumerate(row):
                     if val.startswith("="):
                         shifted = shift_formula_references(val, r_offset, c_offset)
-                        self._apply_cell_value_change(start_r + r_offset, start_c + c_offset, shifted)
+                        self._apply_cell_value_change(
+                            start_r + r_offset, start_c + c_offset, shifted
+                        )
                     else:
                         self._apply_cell_value_change(start_r + r_offset, start_c + c_offset, val)
 
@@ -1893,10 +2089,14 @@ class ExcelViewerPro(ttk.Window):
         self._apply_style_to_selected_range(lambda s: setattr(s, "font_size", size))
 
     def _increase_font_size(self) -> None:
-        self._apply_style_to_selected_range(lambda s: setattr(s, "font_size", min(72, s.font_size + 2)))
+        self._apply_style_to_selected_range(
+            lambda s: setattr(s, "font_size", min(72, s.font_size + 2))
+        )
 
     def _decrease_font_size(self) -> None:
-        self._apply_style_to_selected_range(lambda s: setattr(s, "font_size", max(6, s.font_size - 2)))
+        self._apply_style_to_selected_range(
+            lambda s: setattr(s, "font_size", max(6, s.font_size - 2))
+        )
 
     def _toggle_bold(self) -> None:
         self._apply_style_to_selected_range(lambda s: setattr(s, "bold", not s.bold))
@@ -1908,7 +2108,9 @@ class ExcelViewerPro(ttk.Window):
         self._apply_style_to_selected_range(lambda s: setattr(s, "underline", not s.underline))
 
     def _toggle_strikethrough(self) -> None:
-        self._apply_style_to_selected_range(lambda s: setattr(s, "strikethrough", not s.strikethrough))
+        self._apply_style_to_selected_range(
+            lambda s: setattr(s, "strikethrough", not s.strikethrough)
+        )
 
     def _pick_bg_color(self) -> None:
         color = colorchooser.askcolor(title="Select Cell Background Color")
@@ -1958,9 +2160,16 @@ class ExcelViewerPro(ttk.Window):
             scale = "green_yellow_red" if "gyr" in rule_type else "red_yellow_green"
             s_data.filter_criteria[-1] = {"type": "color_scale", "scale": scale}
         else:
-            val = simpledialog.askstring("Conditional Formatting", f"Enter threshold value for {rule_type}:", parent=self)
+            val = simpledialog.askstring(
+                "Conditional Formatting", f"Enter threshold value for {rule_type}:", parent=self
+            )
             if val is not None:
-                s_data.filter_criteria[-1] = {"type": rule_type, "value": val, "bg_color": "#ffc7ce", "fg_color": "#9c0006"}
+                s_data.filter_criteria[-1] = {
+                    "type": rule_type,
+                    "value": val,
+                    "bg_color": "#ffc7ce",
+                    "fg_color": "#9c0006",
+                }
 
         self._set_modified(True)
         self._load_active_sheet()
@@ -2069,7 +2278,9 @@ class ExcelViewerPro(ttk.Window):
             s_data.filter_criteria.clear()
             s_data.hidden_rows.clear()
         self._load_active_sheet()
-        self._status_bar.set_mode("AutoFilter Enabled" if s_data.filter_active else "AutoFilter Disabled")
+        self._status_bar.set_mode(
+            "AutoFilter Enabled" if s_data.filter_active else "AutoFilter Disabled"
+        )
 
     def _clear_filters(self) -> None:
         s_data = self._get_active_sheet_data()
@@ -2082,9 +2293,18 @@ class ExcelViewerPro(ttk.Window):
         s_data = self._get_active_sheet_data()
         if s_data.filter_active:
             # Show Filter popup
-            unique_vals = list({str(row[col_idx]) if col_idx < len(row) and row[col_idx] is not None else "" for row in s_data.rows})
+            unique_vals = list(
+                {
+                    str(row[col_idx]) if col_idx < len(row) and row[col_idx] is not None else ""
+                    for row in s_data.rows
+                }
+            )
             selected_vals = s_data.filter_criteria.get(col_idx)
-            header_name = s_data.headers[col_idx] if col_idx < len(s_data.headers) else get_column_letter(col_idx + 1)
+            header_name = (
+                s_data.headers[col_idx]
+                if col_idx < len(s_data.headers)
+                else get_column_letter(col_idx + 1)
+            )
 
             popup = AutoFilterPopup(
                 self,
@@ -2093,7 +2313,7 @@ class ExcelViewerPro(ttk.Window):
                 unique_values=unique_vals,
                 selected_values=selected_vals,
                 on_apply=self._apply_column_filter,
-                on_sort_col=self._quick_sort_column
+                on_sort_col=self._quick_sort_column,
             )
             popup.grab_set()
         else:
@@ -2216,7 +2436,7 @@ class ExcelViewerPro(ttk.Window):
             on_find_next=self._find_next,
             on_replace=self._replace_one,
             on_replace_all=self._replace_all,
-            initial_tab="find"
+            initial_tab="find",
         )
 
     def _show_replace_dialog(self) -> None:
@@ -2225,10 +2445,12 @@ class ExcelViewerPro(ttk.Window):
             on_find_next=self._find_next,
             on_replace=self._replace_one,
             on_replace_all=self._replace_all,
-            initial_tab="replace"
+            initial_tab="replace",
         )
 
-    def _find_next(self, query: str, match_case: bool, match_entire: bool, all_sheets: bool) -> bool:
+    def _find_next(
+        self, query: str, match_case: bool, match_entire: bool, all_sheets: bool
+    ) -> bool:
         s_data = self._get_active_sheet_data()
         start_r = self._selected.row
         start_c = self._selected.col + 1
@@ -2258,7 +2480,9 @@ class ExcelViewerPro(ttk.Window):
                     return True
         return False
 
-    def _replace_one(self, query: str, replacement: str, match_case: bool, match_entire: bool) -> bool:
+    def _replace_one(
+        self, query: str, replacement: str, match_case: bool, match_entire: bool
+    ) -> bool:
         s_data = self._get_active_sheet_data()
         r = self._selected.row
         c = self._selected.col
@@ -2274,7 +2498,9 @@ class ExcelViewerPro(ttk.Window):
             return True
         return self._find_next(query, match_case, match_entire, False)
 
-    def _replace_all(self, query: str, replacement: str, match_case: bool, match_entire: bool) -> int:
+    def _replace_all(
+        self, query: str, replacement: str, match_case: bool, match_entire: bool
+    ) -> int:
         s_data = self._get_active_sheet_data()
         count = 0
         for r in range(s_data.row_count):
@@ -2290,7 +2516,9 @@ class ExcelViewerPro(ttk.Window):
         return count
 
     def _show_goto_dialog(self) -> None:
-        target = simpledialog.askstring("Go to Cell", "Enter cell reference (e.g. A1, Z100):", parent=self)
+        target = simpledialog.askstring(
+            "Go to Cell", "Enter cell reference (e.g. A1, Z100):", parent=self
+        )
         if target:
             self._goto_cell(target.strip().upper())
 
@@ -2324,12 +2552,14 @@ class ExcelViewerPro(ttk.Window):
     def _create_quick_chart(self, chart_type: str) -> None:
         self._show_chart_wizard()
 
-    def _get_chart_series_data(self, r1: int, r2: int, c1: int, c2: int) -> tuple[list[str], list[list[float]], list[str]]:
+    def _get_chart_series_data(
+        self, r1: int, r2: int, c1: int, c2: int
+    ) -> tuple[list[str], list[list[float]], list[str]]:
         s_data = self._get_active_sheet_data()
         labels = []
         for r in range(r1, r2 + 1):
             val = s_data.get_cell_value(r, c1)
-            labels.append(str(val if val is not None else f"Row {r+1}"))
+            labels.append(str(val if val is not None else f"Row {r + 1}"))
 
         series = []
         series_names = []
@@ -2392,7 +2622,10 @@ class ExcelViewerPro(ttk.Window):
         s_data.row_count = len(unique_rows)
         self._set_modified(True)
         self._load_active_sheet()
-        messagebox.showinfo("Remove Duplicates", f"{dup_count} duplicate values found and removed; {len(unique_rows)} unique values remain.")
+        messagebox.showinfo(
+            "Remove Duplicates",
+            f"{dup_count} duplicate values found and removed; {len(unique_rows)} unique values remain.",
+        )
 
     def _show_goal_seek_dialog(self) -> None:
         GoalSeekDialog(self, current_cell=self._selected.to_excel(), on_solve=self._apply_goal_seek)
@@ -2413,7 +2646,9 @@ class ExcelViewerPro(ttk.Window):
             y1 = float(self._formula_engine.evaluate(formula, s_name)) - target_val
 
             if abs(y1) < 1e-6:
-                messagebox.showinfo("Goal Seek", f"Goal Seek found a solution!\nCell {by_cell} = {cur_x:g}")
+                messagebox.showinfo(
+                    "Goal Seek", f"Goal Seek found a solution!\nCell {by_cell} = {cur_x:g}"
+                )
                 return
 
             x2 = cur_x + 1.0
@@ -2429,7 +2664,10 @@ class ExcelViewerPro(ttk.Window):
                 self._apply_cell_value_change(by_pos.row, by_pos.col, str(x2))
                 y2 = float(self._formula_engine.evaluate(formula, s_name)) - target_val
                 if abs(y2) < 1e-5:
-                    messagebox.showinfo("Goal Seek", f"Goal Seek with Cell {set_cell} found a solution.\n\nTarget Value: {target_val}\nChanging Cell: {by_cell} = {x2:g}")
+                    messagebox.showinfo(
+                        "Goal Seek",
+                        f"Goal Seek with Cell {set_cell} found a solution.\n\nTarget Value: {target_val}\nChanging Cell: {by_cell} = {x2:g}",
+                    )
                     return
 
             messagebox.showinfo("Goal Seek", f"Goal Seek converged near: {x2:g}")
@@ -2458,7 +2696,9 @@ class ExcelViewerPro(ttk.Window):
                 del s_data.comments[key]
                 self._set_modified(True)
 
-        CellCommentDialog(self, self._selected.to_excel(), init_text, on_save=on_save, on_delete=on_del)
+        CellCommentDialog(
+            self, self._selected.to_excel(), init_text, on_save=on_save, on_delete=on_del
+        )
 
     def _toggle_formula_bar(self) -> None:
         if self._formula_bar.winfo_ismapped():
@@ -2537,7 +2777,11 @@ class ExcelViewerPro(ttk.Window):
     def _set_modified(self, modified: bool) -> None:
         self._modified = modified
         self._status_bar.set_modified(modified)
-        base = f"{Config.APP_TITLE} — {self._file_path.name}" if self._file_path else f"{Config.APP_TITLE} — Untitled"
+        base = (
+            f"{Config.APP_TITLE} — {self._file_path.name}"
+            if self._file_path
+            else f"{Config.APP_TITLE} — Untitled"
+        )
         self.title(f"{base} *" if modified else base)
 
     def _confirm_discard(self) -> bool:
@@ -2556,6 +2800,7 @@ class ExcelViewerPro(ttk.Window):
 # =============================================================================
 # Entry Point
 # =============================================================================
+
 
 def main() -> None:
     app = ExcelViewerPro()

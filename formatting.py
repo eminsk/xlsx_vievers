@@ -5,14 +5,13 @@ Number formatting and conditional formatting engine for Excel Viewer Pro.
 from __future__ import annotations
 
 import re
-from datetime import datetime, date, time
+from datetime import date, datetime, time
 from typing import Any
-from models import CellStyle
-
 
 # =============================================================================
 # Number Formatter
 # =============================================================================
+
 
 class NumberFormatter:
     """Formats numeric and date values according to Excel number formats."""
@@ -39,13 +38,16 @@ class NumberFormatter:
             return NumberFormatter._format_datetime(value, fmt)
 
         # Check if fmt is a date format and value is a serial number
-        is_date_fmt = any(token in fmt.upper() for token in ("YYYY", "YY", "MMMM", "MMM", "DD", "HH:MM", "SS"))
+        is_date_fmt = any(
+            token in fmt.upper() for token in ("YYYY", "YY", "MMMM", "MMM", "DD", "HH:MM", "SS")
+        )
         if is_date_fmt:
             try:
                 serial_num = float(str(value).replace(",", ".").replace(" ", ""))
                 if 0 < serial_num < 2958465:  # Valid Excel date range (up to year 9999)
                     # Excel 1900 epoch adjustment
                     from datetime import timedelta
+
                     excel_epoch = datetime(1899, 12, 30)
                     dt_val = excel_epoch + timedelta(days=serial_num)
                     return NumberFormatter._format_datetime(dt_val, fmt)
@@ -54,7 +56,15 @@ class NumberFormatter:
 
         # Try converting to numeric
         try:
-            num = float(str(value).replace(",", ".").replace(" ", "").replace("₽", "").replace("$", "").replace("€", "").replace("%", ""))
+            num = float(
+                str(value)
+                .replace(",", ".")
+                .replace(" ", "")
+                .replace("₽", "")
+                .replace("$", "")
+                .replace("€", "")
+                .replace("%", "")
+            )
         except (ValueError, TypeError):
             # Not a number - return original string
             return str(value)
@@ -146,11 +156,14 @@ class NumberFormatter:
 # Conditional Formatting Engine
 # =============================================================================
 
+
 class ConditionalFormattingEngine:
     """Evaluates conditional formatting rules and generates style overrides."""
 
     @staticmethod
-    def evaluate_rule(val: Any, rule: dict[str, Any], all_values: list[float] | None = None) -> tuple[str | None, str | None]:
+    def evaluate_rule(
+        val: Any, rule: dict[str, Any], all_values: list[float] | None = None
+    ) -> tuple[str | None, str | None]:
         """
         Evaluate a single rule against a cell value.
         Returns (bg_color, fg_color) if matched, else (None, None).
@@ -201,10 +214,14 @@ class ConditionalFormattingEngine:
                     scale_type = rule.get("scale", "green_yellow_red")
                     if scale_type == "green_yellow_red":
                         # high = green, mid = yellow, low = red
-                        hex_bg = ConditionalFormattingEngine._interpolate_color(ratio, "#f8696b", "#ffeb84", "#63be7b")
+                        hex_bg = ConditionalFormattingEngine._interpolate_color(
+                            ratio, "#f8696b", "#ffeb84", "#63be7b"
+                        )
                         return hex_bg, "#000000"
                     elif scale_type == "red_yellow_green":
-                        hex_bg = ConditionalFormattingEngine._interpolate_color(ratio, "#63be7b", "#ffeb84", "#f8696b")
+                        hex_bg = ConditionalFormattingEngine._interpolate_color(
+                            ratio, "#63be7b", "#ffeb84", "#f8696b"
+                        )
                         return hex_bg, "#000000"
 
         return None, None
@@ -212,6 +229,7 @@ class ConditionalFormattingEngine:
     @staticmethod
     def _interpolate_color(ratio: float, c_low: str, c_mid: str, c_high: str) -> str:
         """Interpolate hex colors at ratio (0.0 to 1.0)."""
+
         def hex_to_rgb(h: str) -> tuple[int, int, int]:
             h = h.lstrip("#")
             return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)

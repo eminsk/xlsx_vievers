@@ -7,20 +7,21 @@ relative/absolute reference shifting, and IntelliSense metadata.
 from __future__ import annotations
 
 import sys
+
 try:
     if sys.getrecursionlimit() < 50000:
         sys.setrecursionlimit(50000)
 except Exception:
     pass
 
-import re
-import math
 import fnmatch
-from datetime import datetime, date, timedelta
-from typing import Any, Callable
+import math
+import re
 from dataclasses import dataclass
-from openpyxl.utils import column_index_from_string, get_column_letter
+from datetime import date, datetime
+from typing import Any, Callable
 
+from openpyxl.utils import column_index_from_string, get_column_letter
 
 # =============================================================================
 # Cell and Range Reference Regexes
@@ -28,20 +29,20 @@ from openpyxl.utils import column_index_from_string, get_column_letter
 
 # Matches A1, $A$1, A$1, $A1, Sheet1!A1, 'My Sheet'!$A$1, 'Дашборд и Сводка'!$C$5, Лист1!A1
 CELL_REF_PATTERN = re.compile(
-    r"(?:(?:'([^']+)'|([A-Za-z0-9_\u0400-\u04FF\s\-]+))!)?(\$?)([A-Za-z]+)(\$?)(\d+)",
-    re.IGNORECASE
+    r"(?:(?:'([^']+)'|([A-Za-z0-9_\u0400-\u04FF\s\-]+))!)?(\$?)([A-Za-z]+)(\$?)(\d+)", re.IGNORECASE
 )
 
 # Matches A1:B10, Sheet1!A1:B10, 'My Sheet'!$A$1:$B$10, 'Форекс (5 дней)'!G133:G153
 RANGE_PATTERN = re.compile(
     r"(?:(?:'([^']+)'|([A-Za-z0-9_\u0400-\u04FF\s\-]+))!)?(\$?[A-Za-z]+\$?\d+):(\$?[A-Za-z]+\$?\d+)",
-    re.IGNORECASE
+    re.IGNORECASE,
 )
 
 
 @dataclass(slots=True)
 class CellRef:
     """Parsed cell reference with optional sheet name."""
+
     col: int  # 0-based
     row: int  # 0-based
     sheet: str | None = None
@@ -62,7 +63,7 @@ class CellRef:
             row=int(row_str) - 1,
             sheet=sheet,
             col_absolute=bool(col_abs),
-            row_absolute=bool(row_abs)
+            row_absolute=bool(row_abs),
         )
 
     def to_string(self) -> str:
@@ -142,155 +143,641 @@ def shift_formula_references(formula: str, row_delta: int, col_delta: int) -> st
 
 FUNCTION_METADATA: dict[str, dict[str, Any]] = {
     # Math & Trig
-    "SUM": {"cat": "Math & Trig", "syntax": "SUM(number1, [number2], ...)", "desc": "Adds all numbers in a range of cells."},
-    "SUMIF": {"cat": "Math & Trig", "syntax": "SUMIF(range, criteria, [sum_range])", "desc": "Adds cells specified by a given condition."},
-    "SUMIFS": {"cat": "Math & Trig", "syntax": "SUMIFS(sum_range, criteria_range1, criteria1, ...)", "desc": "Adds cells specified by multiple conditions."},
-    "PRODUCT": {"cat": "Math & Trig", "syntax": "PRODUCT(number1, [number2], ...)", "desc": "Multiplies all numbers given as arguments."},
-    "SUMPRODUCT": {"cat": "Math & Trig", "syntax": "SUMPRODUCT(array1, [array2], ...)", "desc": "Returns the sum of the products of corresponding array components."},
-    "ABS": {"cat": "Math & Trig", "syntax": "ABS(number)", "desc": "Returns the absolute value of a number."},
-    "ROUND": {"cat": "Math & Trig", "syntax": "ROUND(number, num_digits)", "desc": "Rounds a number to a specified number of digits."},
-    "ROUNDUP": {"cat": "Math & Trig", "syntax": "ROUNDUP(number, num_digits)", "desc": "Rounds a number up, away from zero."},
-    "ROUNDDOWN": {"cat": "Math & Trig", "syntax": "ROUNDDOWN(number, num_digits)", "desc": "Rounds a number down, toward zero."},
-    "INT": {"cat": "Math & Trig", "syntax": "INT(number)", "desc": "Rounds a number down to the nearest integer."},
-    "TRUNC": {"cat": "Math & Trig", "syntax": "TRUNC(number, [num_digits])", "desc": "Truncates a number to an integer or specified digits."},
-    "MOD": {"cat": "Math & Trig", "syntax": "MOD(number, divisor)", "desc": "Returns the remainder after number is divided by divisor."},
-    "POWER": {"cat": "Math & Trig", "syntax": "POWER(number, power)", "desc": "Returns the result of a number raised to a power."},
-    "SQRT": {"cat": "Math & Trig", "syntax": "SQRT(number)", "desc": "Returns the positive square root of a number."},
-    "PI": {"cat": "Math & Trig", "syntax": "PI()", "desc": "Returns the value of Pi (3.14159265...)."},
-    "RAND": {"cat": "Math & Trig", "syntax": "RAND()", "desc": "Returns a random number between 0 and 1."},
-    "RANDBETWEEN": {"cat": "Math & Trig", "syntax": "RANDBETWEEN(bottom, top)", "desc": "Returns a random integer between the numbers you specify."},
-    "CEILING": {"cat": "Math & Trig", "syntax": "CEILING(number, [significance])", "desc": "Rounds a number up to the nearest multiple of significance."},
-    "FLOOR": {"cat": "Math & Trig", "syntax": "FLOOR(number, [significance])", "desc": "Rounds a number down to the nearest multiple of significance."},
-    "SIGN": {"cat": "Math & Trig", "syntax": "SIGN(number)", "desc": "Returns 1 if positive, -1 if negative, 0 if zero."},
-    "SIN": {"cat": "Math & Trig", "syntax": "SIN(number)", "desc": "Returns the sine of the given angle in radians."},
-    "COS": {"cat": "Math & Trig", "syntax": "COS(number)", "desc": "Returns the cosine of the given angle in radians."},
-    "TAN": {"cat": "Math & Trig", "syntax": "TAN(number)", "desc": "Returns the tangent of the given angle in radians."},
-    "ASIN": {"cat": "Math & Trig", "syntax": "ASIN(number)", "desc": "Returns the arcsine of a number in radians."},
-    "ACOS": {"cat": "Math & Trig", "syntax": "ACOS(number)", "desc": "Returns the arccosine of a number in radians."},
-    "ATAN": {"cat": "Math & Trig", "syntax": "ATAN(number)", "desc": "Returns the arctangent of a number in radians."},
-    "DEGREES": {"cat": "Math & Trig", "syntax": "DEGREES(angle)", "desc": "Converts radians into degrees."},
-    "RADIANS": {"cat": "Math & Trig", "syntax": "RADIANS(angle)", "desc": "Converts degrees into radians."},
-    "EXP": {"cat": "Math & Trig", "syntax": "EXP(number)", "desc": "Returns e raised to the power of number."},
-    "LN": {"cat": "Math & Trig", "syntax": "LN(number)", "desc": "Returns the natural logarithm of a number."},
-    "LOG": {"cat": "Math & Trig", "syntax": "LOG(number, [base])", "desc": "Returns the logarithm of a number to a specified base."},
-    "LOG10": {"cat": "Math & Trig", "syntax": "LOG10(number)", "desc": "Returns the base-10 logarithm of a number."},
-    "FACT": {"cat": "Math & Trig", "syntax": "FACT(number)", "desc": "Returns the factorial of a number."},
-
+    "SUM": {
+        "cat": "Math & Trig",
+        "syntax": "SUM(number1, [number2], ...)",
+        "desc": "Adds all numbers in a range of cells.",
+    },
+    "SUMIF": {
+        "cat": "Math & Trig",
+        "syntax": "SUMIF(range, criteria, [sum_range])",
+        "desc": "Adds cells specified by a given condition.",
+    },
+    "SUMIFS": {
+        "cat": "Math & Trig",
+        "syntax": "SUMIFS(sum_range, criteria_range1, criteria1, ...)",
+        "desc": "Adds cells specified by multiple conditions.",
+    },
+    "PRODUCT": {
+        "cat": "Math & Trig",
+        "syntax": "PRODUCT(number1, [number2], ...)",
+        "desc": "Multiplies all numbers given as arguments.",
+    },
+    "SUMPRODUCT": {
+        "cat": "Math & Trig",
+        "syntax": "SUMPRODUCT(array1, [array2], ...)",
+        "desc": "Returns the sum of the products of corresponding array components.",
+    },
+    "ABS": {
+        "cat": "Math & Trig",
+        "syntax": "ABS(number)",
+        "desc": "Returns the absolute value of a number.",
+    },
+    "ROUND": {
+        "cat": "Math & Trig",
+        "syntax": "ROUND(number, num_digits)",
+        "desc": "Rounds a number to a specified number of digits.",
+    },
+    "ROUNDUP": {
+        "cat": "Math & Trig",
+        "syntax": "ROUNDUP(number, num_digits)",
+        "desc": "Rounds a number up, away from zero.",
+    },
+    "ROUNDDOWN": {
+        "cat": "Math & Trig",
+        "syntax": "ROUNDDOWN(number, num_digits)",
+        "desc": "Rounds a number down, toward zero.",
+    },
+    "INT": {
+        "cat": "Math & Trig",
+        "syntax": "INT(number)",
+        "desc": "Rounds a number down to the nearest integer.",
+    },
+    "TRUNC": {
+        "cat": "Math & Trig",
+        "syntax": "TRUNC(number, [num_digits])",
+        "desc": "Truncates a number to an integer or specified digits.",
+    },
+    "MOD": {
+        "cat": "Math & Trig",
+        "syntax": "MOD(number, divisor)",
+        "desc": "Returns the remainder after number is divided by divisor.",
+    },
+    "POWER": {
+        "cat": "Math & Trig",
+        "syntax": "POWER(number, power)",
+        "desc": "Returns the result of a number raised to a power.",
+    },
+    "SQRT": {
+        "cat": "Math & Trig",
+        "syntax": "SQRT(number)",
+        "desc": "Returns the positive square root of a number.",
+    },
+    "PI": {
+        "cat": "Math & Trig",
+        "syntax": "PI()",
+        "desc": "Returns the value of Pi (3.14159265...).",
+    },
+    "RAND": {
+        "cat": "Math & Trig",
+        "syntax": "RAND()",
+        "desc": "Returns a random number between 0 and 1.",
+    },
+    "RANDBETWEEN": {
+        "cat": "Math & Trig",
+        "syntax": "RANDBETWEEN(bottom, top)",
+        "desc": "Returns a random integer between the numbers you specify.",
+    },
+    "CEILING": {
+        "cat": "Math & Trig",
+        "syntax": "CEILING(number, [significance])",
+        "desc": "Rounds a number up to the nearest multiple of significance.",
+    },
+    "FLOOR": {
+        "cat": "Math & Trig",
+        "syntax": "FLOOR(number, [significance])",
+        "desc": "Rounds a number down to the nearest multiple of significance.",
+    },
+    "SIGN": {
+        "cat": "Math & Trig",
+        "syntax": "SIGN(number)",
+        "desc": "Returns 1 if positive, -1 if negative, 0 if zero.",
+    },
+    "SIN": {
+        "cat": "Math & Trig",
+        "syntax": "SIN(number)",
+        "desc": "Returns the sine of the given angle in radians.",
+    },
+    "COS": {
+        "cat": "Math & Trig",
+        "syntax": "COS(number)",
+        "desc": "Returns the cosine of the given angle in radians.",
+    },
+    "TAN": {
+        "cat": "Math & Trig",
+        "syntax": "TAN(number)",
+        "desc": "Returns the tangent of the given angle in radians.",
+    },
+    "ASIN": {
+        "cat": "Math & Trig",
+        "syntax": "ASIN(number)",
+        "desc": "Returns the arcsine of a number in radians.",
+    },
+    "ACOS": {
+        "cat": "Math & Trig",
+        "syntax": "ACOS(number)",
+        "desc": "Returns the arccosine of a number in radians.",
+    },
+    "ATAN": {
+        "cat": "Math & Trig",
+        "syntax": "ATAN(number)",
+        "desc": "Returns the arctangent of a number in radians.",
+    },
+    "DEGREES": {
+        "cat": "Math & Trig",
+        "syntax": "DEGREES(angle)",
+        "desc": "Converts radians into degrees.",
+    },
+    "RADIANS": {
+        "cat": "Math & Trig",
+        "syntax": "RADIANS(angle)",
+        "desc": "Converts degrees into radians.",
+    },
+    "EXP": {
+        "cat": "Math & Trig",
+        "syntax": "EXP(number)",
+        "desc": "Returns e raised to the power of number.",
+    },
+    "LN": {
+        "cat": "Math & Trig",
+        "syntax": "LN(number)",
+        "desc": "Returns the natural logarithm of a number.",
+    },
+    "LOG": {
+        "cat": "Math & Trig",
+        "syntax": "LOG(number, [base])",
+        "desc": "Returns the logarithm of a number to a specified base.",
+    },
+    "LOG10": {
+        "cat": "Math & Trig",
+        "syntax": "LOG10(number)",
+        "desc": "Returns the base-10 logarithm of a number.",
+    },
+    "FACT": {
+        "cat": "Math & Trig",
+        "syntax": "FACT(number)",
+        "desc": "Returns the factorial of a number.",
+    },
     # Statistical
-    "AVERAGE": {"cat": "Statistical", "syntax": "AVERAGE(number1, [number2], ...)", "desc": "Returns the average (arithmetic mean) of its arguments."},
-    "AVERAGEA": {"cat": "Statistical", "syntax": "AVERAGEA(value1, [value2], ...)", "desc": "Returns the average of its arguments, evaluating text and FALSE as 0."},
-    "AVERAGEIF": {"cat": "Statistical", "syntax": "AVERAGEIF(range, criteria, [average_range])", "desc": "Returns the average of cells that meet a given condition."},
-    "AVERAGEIFS": {"cat": "Statistical", "syntax": "AVERAGEIFS(avg_range, criteria_range1, criteria1, ...)", "desc": "Returns the average of cells that meet multiple criteria."},
-    "COUNT": {"cat": "Statistical", "syntax": "COUNT(value1, [value2], ...)", "desc": "Counts how many numbers are in the list of arguments."},
-    "COUNTA": {"cat": "Statistical", "syntax": "COUNTA(value1, [value2], ...)", "desc": "Counts how many values in the list of arguments are not empty."},
-    "COUNTBLANK": {"cat": "Statistical", "syntax": "COUNTBLANK(range)", "desc": "Counts empty cells in a specified range."},
-    "COUNTIF": {"cat": "Statistical", "syntax": "COUNTIF(range, criteria)", "desc": "Counts the number of cells within a range that meet the given criteria."},
-    "COUNTIFS": {"cat": "Statistical", "syntax": "COUNTIFS(criteria_range1, criteria1, ...)", "desc": "Counts the number of cells within ranges that meet multiple criteria."},
-    "MIN": {"cat": "Statistical", "syntax": "MIN(number1, [number2], ...)", "desc": "Returns the minimum value in a list of arguments."},
-    "MAX": {"cat": "Statistical", "syntax": "MAX(number1, [number2], ...)", "desc": "Returns the maximum value in a list of arguments."},
-    "MINIFS": {"cat": "Statistical", "syntax": "MINIFS(min_range, criteria_range1, criteria1, ...)", "desc": "Returns the minimum value among cells specified by a set of criteria."},
-    "MAXIFS": {"cat": "Statistical", "syntax": "MAXIFS(max_range, criteria_range1, criteria1, ...)", "desc": "Returns the maximum value among cells specified by a set of criteria."},
-    "MEDIAN": {"cat": "Statistical", "syntax": "MEDIAN(number1, [number2], ...)", "desc": "Returns the median of the given numbers."},
-    "MODE": {"cat": "Statistical", "syntax": "MODE(number1, [number2], ...)", "desc": "Returns the most frequently occurring value in a range."},
-    "STDEV": {"cat": "Statistical", "syntax": "STDEV(number1, [number2], ...)", "desc": "Estimates standard deviation based on a sample."},
-    "STDEVP": {"cat": "Statistical", "syntax": "STDEVP(number1, [number2], ...)", "desc": "Calculates standard deviation based on the entire population."},
-    "VAR": {"cat": "Statistical", "syntax": "VAR(number1, [number2], ...)", "desc": "Estimates variance based on a sample."},
-    "VARP": {"cat": "Statistical", "syntax": "VARP(number1, [number2], ...)", "desc": "Calculates variance based on the entire population."},
-    "LARGE": {"cat": "Statistical", "syntax": "LARGE(array, k)", "desc": "Returns the k-th largest value in a data set."},
-    "SMALL": {"cat": "Statistical", "syntax": "SMALL(array, k)", "desc": "Returns the k-th smallest value in a data set."},
-    "RANK": {"cat": "Statistical", "syntax": "RANK(number, ref, [order])", "desc": "Returns the rank of a number in a list of numbers."},
-
+    "AVERAGE": {
+        "cat": "Statistical",
+        "syntax": "AVERAGE(number1, [number2], ...)",
+        "desc": "Returns the average (arithmetic mean) of its arguments.",
+    },
+    "AVERAGEA": {
+        "cat": "Statistical",
+        "syntax": "AVERAGEA(value1, [value2], ...)",
+        "desc": "Returns the average of its arguments, evaluating text and FALSE as 0.",
+    },
+    "AVERAGEIF": {
+        "cat": "Statistical",
+        "syntax": "AVERAGEIF(range, criteria, [average_range])",
+        "desc": "Returns the average of cells that meet a given condition.",
+    },
+    "AVERAGEIFS": {
+        "cat": "Statistical",
+        "syntax": "AVERAGEIFS(avg_range, criteria_range1, criteria1, ...)",
+        "desc": "Returns the average of cells that meet multiple criteria.",
+    },
+    "COUNT": {
+        "cat": "Statistical",
+        "syntax": "COUNT(value1, [value2], ...)",
+        "desc": "Counts how many numbers are in the list of arguments.",
+    },
+    "COUNTA": {
+        "cat": "Statistical",
+        "syntax": "COUNTA(value1, [value2], ...)",
+        "desc": "Counts how many values in the list of arguments are not empty.",
+    },
+    "COUNTBLANK": {
+        "cat": "Statistical",
+        "syntax": "COUNTBLANK(range)",
+        "desc": "Counts empty cells in a specified range.",
+    },
+    "COUNTIF": {
+        "cat": "Statistical",
+        "syntax": "COUNTIF(range, criteria)",
+        "desc": "Counts the number of cells within a range that meet the given criteria.",
+    },
+    "COUNTIFS": {
+        "cat": "Statistical",
+        "syntax": "COUNTIFS(criteria_range1, criteria1, ...)",
+        "desc": "Counts the number of cells within ranges that meet multiple criteria.",
+    },
+    "MIN": {
+        "cat": "Statistical",
+        "syntax": "MIN(number1, [number2], ...)",
+        "desc": "Returns the minimum value in a list of arguments.",
+    },
+    "MAX": {
+        "cat": "Statistical",
+        "syntax": "MAX(number1, [number2], ...)",
+        "desc": "Returns the maximum value in a list of arguments.",
+    },
+    "MINIFS": {
+        "cat": "Statistical",
+        "syntax": "MINIFS(min_range, criteria_range1, criteria1, ...)",
+        "desc": "Returns the minimum value among cells specified by a set of criteria.",
+    },
+    "MAXIFS": {
+        "cat": "Statistical",
+        "syntax": "MAXIFS(max_range, criteria_range1, criteria1, ...)",
+        "desc": "Returns the maximum value among cells specified by a set of criteria.",
+    },
+    "MEDIAN": {
+        "cat": "Statistical",
+        "syntax": "MEDIAN(number1, [number2], ...)",
+        "desc": "Returns the median of the given numbers.",
+    },
+    "MODE": {
+        "cat": "Statistical",
+        "syntax": "MODE(number1, [number2], ...)",
+        "desc": "Returns the most frequently occurring value in a range.",
+    },
+    "STDEV": {
+        "cat": "Statistical",
+        "syntax": "STDEV(number1, [number2], ...)",
+        "desc": "Estimates standard deviation based on a sample.",
+    },
+    "STDEVP": {
+        "cat": "Statistical",
+        "syntax": "STDEVP(number1, [number2], ...)",
+        "desc": "Calculates standard deviation based on the entire population.",
+    },
+    "VAR": {
+        "cat": "Statistical",
+        "syntax": "VAR(number1, [number2], ...)",
+        "desc": "Estimates variance based on a sample.",
+    },
+    "VARP": {
+        "cat": "Statistical",
+        "syntax": "VARP(number1, [number2], ...)",
+        "desc": "Calculates variance based on the entire population.",
+    },
+    "LARGE": {
+        "cat": "Statistical",
+        "syntax": "LARGE(array, k)",
+        "desc": "Returns the k-th largest value in a data set.",
+    },
+    "SMALL": {
+        "cat": "Statistical",
+        "syntax": "SMALL(array, k)",
+        "desc": "Returns the k-th smallest value in a data set.",
+    },
+    "RANK": {
+        "cat": "Statistical",
+        "syntax": "RANK(number, ref, [order])",
+        "desc": "Returns the rank of a number in a list of numbers.",
+    },
     # Lookup & Reference
-    "VLOOKUP": {"cat": "Lookup & Reference", "syntax": "VLOOKUP(lookup_value, table_array, col_index_num, [range_lookup])", "desc": "Looks for a value in the leftmost column of a table and returns a value in the same row from a specified column."},
-    "HLOOKUP": {"cat": "Lookup & Reference", "syntax": "HLOOKUP(lookup_value, table_array, row_index_num, [range_lookup])", "desc": "Looks for a value in the top row of a table and returns a value in the same column from a specified row."},
-    "XLOOKUP": {"cat": "Lookup & Reference", "syntax": "XLOOKUP(lookup_value, lookup_array, return_array, [if_not_found], [match_mode])", "desc": "Modern replacement for VLOOKUP, searching in any array and returning corresponding item from another."},
-    "INDEX": {"cat": "Lookup & Reference", "syntax": "INDEX(array, row_num, [col_num])", "desc": "Returns the value of a specified cell or array of cells within a table or range."},
-    "MATCH": {"cat": "Lookup & Reference", "syntax": "MATCH(lookup_value, lookup_array, [match_type])", "desc": "Returns the relative position of an item in an array that matches a specified value."},
-    "LOOKUP": {"cat": "Lookup & Reference", "syntax": "LOOKUP(lookup_value, lookup_vector, [result_vector])", "desc": "Looks up a value either from a one-row or one-column range."},
-    "CHOOSE": {"cat": "Lookup & Reference", "syntax": "CHOOSE(index_num, value1, [value2], ...)", "desc": "Uses index_num to return a value from the list of value arguments."},
-    "ROW": {"cat": "Lookup & Reference", "syntax": "ROW([reference])", "desc": "Returns the row number of a reference."},
-    "COLUMN": {"cat": "Lookup & Reference", "syntax": "COLUMN([reference])", "desc": "Returns the column number of a reference."},
-    "ROWS": {"cat": "Lookup & Reference", "syntax": "ROWS(array)", "desc": "Returns the number of rows in a reference or array."},
-    "COLUMNS": {"cat": "Lookup & Reference", "syntax": "COLUMNS(array)", "desc": "Returns the number of columns in a reference or array."},
-
+    "VLOOKUP": {
+        "cat": "Lookup & Reference",
+        "syntax": "VLOOKUP(lookup_value, table_array, col_index_num, [range_lookup])",
+        "desc": "Looks for a value in the leftmost column of a table and returns a value in the same row from a specified column.",
+    },
+    "HLOOKUP": {
+        "cat": "Lookup & Reference",
+        "syntax": "HLOOKUP(lookup_value, table_array, row_index_num, [range_lookup])",
+        "desc": "Looks for a value in the top row of a table and returns a value in the same column from a specified row.",
+    },
+    "XLOOKUP": {
+        "cat": "Lookup & Reference",
+        "syntax": "XLOOKUP(lookup_value, lookup_array, return_array, [if_not_found], [match_mode])",
+        "desc": "Modern replacement for VLOOKUP, searching in any array and returning corresponding item from another.",
+    },
+    "INDEX": {
+        "cat": "Lookup & Reference",
+        "syntax": "INDEX(array, row_num, [col_num])",
+        "desc": "Returns the value of a specified cell or array of cells within a table or range.",
+    },
+    "MATCH": {
+        "cat": "Lookup & Reference",
+        "syntax": "MATCH(lookup_value, lookup_array, [match_type])",
+        "desc": "Returns the relative position of an item in an array that matches a specified value.",
+    },
+    "LOOKUP": {
+        "cat": "Lookup & Reference",
+        "syntax": "LOOKUP(lookup_value, lookup_vector, [result_vector])",
+        "desc": "Looks up a value either from a one-row or one-column range.",
+    },
+    "CHOOSE": {
+        "cat": "Lookup & Reference",
+        "syntax": "CHOOSE(index_num, value1, [value2], ...)",
+        "desc": "Uses index_num to return a value from the list of value arguments.",
+    },
+    "ROW": {
+        "cat": "Lookup & Reference",
+        "syntax": "ROW([reference])",
+        "desc": "Returns the row number of a reference.",
+    },
+    "COLUMN": {
+        "cat": "Lookup & Reference",
+        "syntax": "COLUMN([reference])",
+        "desc": "Returns the column number of a reference.",
+    },
+    "ROWS": {
+        "cat": "Lookup & Reference",
+        "syntax": "ROWS(array)",
+        "desc": "Returns the number of rows in a reference or array.",
+    },
+    "COLUMNS": {
+        "cat": "Lookup & Reference",
+        "syntax": "COLUMNS(array)",
+        "desc": "Returns the number of columns in a reference or array.",
+    },
     # Logical
-    "IF": {"cat": "Logical", "syntax": "IF(logical_test, value_if_true, [value_if_false])", "desc": "Checks whether a condition is met, and returns one value if TRUE, and another if FALSE."},
-    "IFS": {"cat": "Logical", "syntax": "IFS(logical_test1, value1, [logical_test2, value2], ...)", "desc": "Checks whether one or more conditions are met and returns a value that corresponds to the first TRUE condition."},
-    "AND": {"cat": "Logical", "syntax": "AND(logical1, [logical2], ...)", "desc": "Returns TRUE if all its arguments are TRUE."},
-    "OR": {"cat": "Logical", "syntax": "OR(logical1, [logical2], ...)", "desc": "Returns TRUE if any argument is TRUE."},
-    "NOT": {"cat": "Logical", "syntax": "NOT(logical)", "desc": "Reverses the logic of its argument."},
-    "XOR": {"cat": "Logical", "syntax": "XOR(logical1, [logical2], ...)", "desc": "Returns a logical exclusive OR of all arguments."},
-    "IFERROR": {"cat": "Logical", "syntax": "IFERROR(value, value_if_error)", "desc": "Returns value_if_error if expression is an error and the value of the expression itself otherwise."},
-    "IFNA": {"cat": "Logical", "syntax": "IFNA(value, value_if_na)", "desc": "Returns value_if_na if expression resolves to #N/A."},
+    "IF": {
+        "cat": "Logical",
+        "syntax": "IF(logical_test, value_if_true, [value_if_false])",
+        "desc": "Checks whether a condition is met, and returns one value if TRUE, and another if FALSE.",
+    },
+    "IFS": {
+        "cat": "Logical",
+        "syntax": "IFS(logical_test1, value1, [logical_test2, value2], ...)",
+        "desc": "Checks whether one or more conditions are met and returns a value that corresponds to the first TRUE condition.",
+    },
+    "AND": {
+        "cat": "Logical",
+        "syntax": "AND(logical1, [logical2], ...)",
+        "desc": "Returns TRUE if all its arguments are TRUE.",
+    },
+    "OR": {
+        "cat": "Logical",
+        "syntax": "OR(logical1, [logical2], ...)",
+        "desc": "Returns TRUE if any argument is TRUE.",
+    },
+    "NOT": {
+        "cat": "Logical",
+        "syntax": "NOT(logical)",
+        "desc": "Reverses the logic of its argument.",
+    },
+    "XOR": {
+        "cat": "Logical",
+        "syntax": "XOR(logical1, [logical2], ...)",
+        "desc": "Returns a logical exclusive OR of all arguments.",
+    },
+    "IFERROR": {
+        "cat": "Logical",
+        "syntax": "IFERROR(value, value_if_error)",
+        "desc": "Returns value_if_error if expression is an error and the value of the expression itself otherwise.",
+    },
+    "IFNA": {
+        "cat": "Logical",
+        "syntax": "IFNA(value, value_if_na)",
+        "desc": "Returns value_if_na if expression resolves to #N/A.",
+    },
     "TRUE": {"cat": "Logical", "syntax": "TRUE()", "desc": "Returns the logical value TRUE."},
     "FALSE": {"cat": "Logical", "syntax": "FALSE()", "desc": "Returns the logical value FALSE."},
-    "SWITCH": {"cat": "Logical", "syntax": "SWITCH(expression, val1, result1, [val2, result2], ..., [default])", "desc": "Evaluates an expression against a list of values and returns the result corresponding to the first matching value."},
-
+    "SWITCH": {
+        "cat": "Logical",
+        "syntax": "SWITCH(expression, val1, result1, [val2, result2], ..., [default])",
+        "desc": "Evaluates an expression against a list of values and returns the result corresponding to the first matching value.",
+    },
     # Text
-    "CONCAT": {"cat": "Text", "syntax": "CONCAT(text1, [text2], ...)", "desc": "Combines text from multiple ranges and/or strings."},
-    "CONCATENATE": {"cat": "Text", "syntax": "CONCATENATE(text1, [text2], ...)", "desc": "Joins several text strings into one text string."},
-    "TEXTJOIN": {"cat": "Text", "syntax": "TEXTJOIN(delimiter, ignore_empty, text1, [text2], ...)", "desc": "Combines text from multiple ranges with a specified delimiter."},
-    "LEFT": {"cat": "Text", "syntax": "LEFT(text, [num_chars])", "desc": "Returns the specified number of characters from the start of a text string."},
-    "RIGHT": {"cat": "Text", "syntax": "RIGHT(text, [num_chars])", "desc": "Returns the specified number of characters from the end of a text string."},
-    "MID": {"cat": "Text", "syntax": "MID(text, start_num, num_chars)", "desc": "Returns a specific number of characters from a text string, starting at the position you specify."},
-    "LEN": {"cat": "Text", "syntax": "LEN(text)", "desc": "Returns the number of characters in a text string."},
-    "TRIM": {"cat": "Text", "syntax": "TRIM(text)", "desc": "Removes all spaces from text except for single spaces between words."},
+    "CONCAT": {
+        "cat": "Text",
+        "syntax": "CONCAT(text1, [text2], ...)",
+        "desc": "Combines text from multiple ranges and/or strings.",
+    },
+    "CONCATENATE": {
+        "cat": "Text",
+        "syntax": "CONCATENATE(text1, [text2], ...)",
+        "desc": "Joins several text strings into one text string.",
+    },
+    "TEXTJOIN": {
+        "cat": "Text",
+        "syntax": "TEXTJOIN(delimiter, ignore_empty, text1, [text2], ...)",
+        "desc": "Combines text from multiple ranges with a specified delimiter.",
+    },
+    "LEFT": {
+        "cat": "Text",
+        "syntax": "LEFT(text, [num_chars])",
+        "desc": "Returns the specified number of characters from the start of a text string.",
+    },
+    "RIGHT": {
+        "cat": "Text",
+        "syntax": "RIGHT(text, [num_chars])",
+        "desc": "Returns the specified number of characters from the end of a text string.",
+    },
+    "MID": {
+        "cat": "Text",
+        "syntax": "MID(text, start_num, num_chars)",
+        "desc": "Returns a specific number of characters from a text string, starting at the position you specify.",
+    },
+    "LEN": {
+        "cat": "Text",
+        "syntax": "LEN(text)",
+        "desc": "Returns the number of characters in a text string.",
+    },
+    "TRIM": {
+        "cat": "Text",
+        "syntax": "TRIM(text)",
+        "desc": "Removes all spaces from text except for single spaces between words.",
+    },
     "UPPER": {"cat": "Text", "syntax": "UPPER(text)", "desc": "Converts text to uppercase."},
     "LOWER": {"cat": "Text", "syntax": "LOWER(text)", "desc": "Converts text to lowercase."},
-    "PROPER": {"cat": "Text", "syntax": "PROPER(text)", "desc": "Capitalizes the first letter in each word of a text value."},
-    "EXACT": {"cat": "Text", "syntax": "EXACT(text1, text2)", "desc": "Checks whether two text strings are exactly the same (case-sensitive)."},
-    "FIND": {"cat": "Text", "syntax": "FIND(find_text, within_text, [start_num])", "desc": "Finds one text value within another (case-sensitive)."},
-    "SEARCH": {"cat": "Text", "syntax": "SEARCH(find_text, within_text, [start_num])", "desc": "Finds one text value within another (not case-sensitive)."},
-    "REPLACE": {"cat": "Text", "syntax": "REPLACE(old_text, start_num, num_chars, new_text)", "desc": "Replaces characters within text."},
-    "SUBSTITUTE": {"cat": "Text", "syntax": "SUBSTITUTE(text, old_text, new_text, [instance_num])", "desc": "Substitutes new text for old text in a text string."},
-    "REPT": {"cat": "Text", "syntax": "REPT(text, number_times)", "desc": "Repeats text a given number of times."},
-    "TEXT": {"cat": "Text", "syntax": "TEXT(value, format_text)", "desc": "Formats a number and converts it to text."},
-    "VALUE": {"cat": "Text", "syntax": "VALUE(text)", "desc": "Converts a text string that represents a number to a number."},
-    "CHAR": {"cat": "Text", "syntax": "CHAR(number)", "desc": "Returns the character specified by the code number."},
-    "CODE": {"cat": "Text", "syntax": "CODE(text)", "desc": "Returns a numeric code for the first character in a text string."},
-    "CLEAN": {"cat": "Text", "syntax": "CLEAN(text)", "desc": "Removes all nonprintable characters from text."},
-
+    "PROPER": {
+        "cat": "Text",
+        "syntax": "PROPER(text)",
+        "desc": "Capitalizes the first letter in each word of a text value.",
+    },
+    "EXACT": {
+        "cat": "Text",
+        "syntax": "EXACT(text1, text2)",
+        "desc": "Checks whether two text strings are exactly the same (case-sensitive).",
+    },
+    "FIND": {
+        "cat": "Text",
+        "syntax": "FIND(find_text, within_text, [start_num])",
+        "desc": "Finds one text value within another (case-sensitive).",
+    },
+    "SEARCH": {
+        "cat": "Text",
+        "syntax": "SEARCH(find_text, within_text, [start_num])",
+        "desc": "Finds one text value within another (not case-sensitive).",
+    },
+    "REPLACE": {
+        "cat": "Text",
+        "syntax": "REPLACE(old_text, start_num, num_chars, new_text)",
+        "desc": "Replaces characters within text.",
+    },
+    "SUBSTITUTE": {
+        "cat": "Text",
+        "syntax": "SUBSTITUTE(text, old_text, new_text, [instance_num])",
+        "desc": "Substitutes new text for old text in a text string.",
+    },
+    "REPT": {
+        "cat": "Text",
+        "syntax": "REPT(text, number_times)",
+        "desc": "Repeats text a given number of times.",
+    },
+    "TEXT": {
+        "cat": "Text",
+        "syntax": "TEXT(value, format_text)",
+        "desc": "Formats a number and converts it to text.",
+    },
+    "VALUE": {
+        "cat": "Text",
+        "syntax": "VALUE(text)",
+        "desc": "Converts a text string that represents a number to a number.",
+    },
+    "CHAR": {
+        "cat": "Text",
+        "syntax": "CHAR(number)",
+        "desc": "Returns the character specified by the code number.",
+    },
+    "CODE": {
+        "cat": "Text",
+        "syntax": "CODE(text)",
+        "desc": "Returns a numeric code for the first character in a text string.",
+    },
+    "CLEAN": {
+        "cat": "Text",
+        "syntax": "CLEAN(text)",
+        "desc": "Removes all nonprintable characters from text.",
+    },
     # Date & Time
     "TODAY": {"cat": "Date & Time", "syntax": "TODAY()", "desc": "Returns the current date."},
     "NOW": {"cat": "Date & Time", "syntax": "NOW()", "desc": "Returns the current date and time."},
-    "DATE": {"cat": "Date & Time", "syntax": "DATE(year, month, day)", "desc": "Returns the serial number that represents a particular date."},
-    "TIME": {"cat": "Date & Time", "syntax": "TIME(hour, minute, second)", "desc": "Returns the decimal number for a particular time."},
-    "YEAR": {"cat": "Date & Time", "syntax": "YEAR(serial_number)", "desc": "Returns the year corresponding to a date."},
-    "MONTH": {"cat": "Date & Time", "syntax": "MONTH(serial_number)", "desc": "Returns the month corresponding to a date."},
-    "DAY": {"cat": "Date & Time", "syntax": "DAY(serial_number)", "desc": "Returns the day of the month corresponding to a date."},
-    "HOUR": {"cat": "Date & Time", "syntax": "HOUR(serial_number)", "desc": "Returns the hour corresponding to a time."},
-    "MINUTE": {"cat": "Date & Time", "syntax": "MINUTE(serial_number)", "desc": "Returns the minute corresponding to a time."},
-    "SECOND": {"cat": "Date & Time", "syntax": "SECOND(serial_number)", "desc": "Returns the second corresponding to a time."},
-    "WEEKDAY": {"cat": "Date & Time", "syntax": "WEEKDAY(serial_number, [return_type])", "desc": "Returns the day of the week corresponding to a date."},
-    "DAYS": {"cat": "Date & Time", "syntax": "DAYS(end_date, start_date)", "desc": "Returns the number of days between two dates."},
-    "DATEDIF": {"cat": "Date & Time", "syntax": "DATEDIF(start_date, end_date, unit)", "desc": "Calculates the number of days, months, or years between two dates."},
-    "EDATE": {"cat": "Date & Time", "syntax": "EDATE(start_date, months)", "desc": "Returns the serial number of the date that is the indicated number of months before or after the start_date."},
-    "EOMONTH": {"cat": "Date & Time", "syntax": "EOMONTH(start_date, months)", "desc": "Returns the serial number of the last day of the month before or after a specified number of months."},
-
+    "DATE": {
+        "cat": "Date & Time",
+        "syntax": "DATE(year, month, day)",
+        "desc": "Returns the serial number that represents a particular date.",
+    },
+    "TIME": {
+        "cat": "Date & Time",
+        "syntax": "TIME(hour, minute, second)",
+        "desc": "Returns the decimal number for a particular time.",
+    },
+    "YEAR": {
+        "cat": "Date & Time",
+        "syntax": "YEAR(serial_number)",
+        "desc": "Returns the year corresponding to a date.",
+    },
+    "MONTH": {
+        "cat": "Date & Time",
+        "syntax": "MONTH(serial_number)",
+        "desc": "Returns the month corresponding to a date.",
+    },
+    "DAY": {
+        "cat": "Date & Time",
+        "syntax": "DAY(serial_number)",
+        "desc": "Returns the day of the month corresponding to a date.",
+    },
+    "HOUR": {
+        "cat": "Date & Time",
+        "syntax": "HOUR(serial_number)",
+        "desc": "Returns the hour corresponding to a time.",
+    },
+    "MINUTE": {
+        "cat": "Date & Time",
+        "syntax": "MINUTE(serial_number)",
+        "desc": "Returns the minute corresponding to a time.",
+    },
+    "SECOND": {
+        "cat": "Date & Time",
+        "syntax": "SECOND(serial_number)",
+        "desc": "Returns the second corresponding to a time.",
+    },
+    "WEEKDAY": {
+        "cat": "Date & Time",
+        "syntax": "WEEKDAY(serial_number, [return_type])",
+        "desc": "Returns the day of the week corresponding to a date.",
+    },
+    "DAYS": {
+        "cat": "Date & Time",
+        "syntax": "DAYS(end_date, start_date)",
+        "desc": "Returns the number of days between two dates.",
+    },
+    "DATEDIF": {
+        "cat": "Date & Time",
+        "syntax": "DATEDIF(start_date, end_date, unit)",
+        "desc": "Calculates the number of days, months, or years between two dates.",
+    },
+    "EDATE": {
+        "cat": "Date & Time",
+        "syntax": "EDATE(start_date, months)",
+        "desc": "Returns the serial number of the date that is the indicated number of months before or after the start_date.",
+    },
+    "EOMONTH": {
+        "cat": "Date & Time",
+        "syntax": "EOMONTH(start_date, months)",
+        "desc": "Returns the serial number of the last day of the month before or after a specified number of months.",
+    },
     # Financial
-    "PMT": {"cat": "Financial", "syntax": "PMT(rate, nper, pv, [fv], [type])", "desc": "Calculates the payment for a loan based on constant payments and a constant interest rate."},
-    "PV": {"cat": "Financial", "syntax": "PV(rate, nper, pmt, [fv], [type])", "desc": "Returns the present value of an investment."},
-    "FV": {"cat": "Financial", "syntax": "FV(rate, nper, pmt, [pv], [type])", "desc": "Returns the future value of an investment based on constant payments and a constant interest rate."},
-    "NPER": {"cat": "Financial", "syntax": "NPER(rate, pmt, pv, [fv], [type])", "desc": "Returns the number of periods for an investment based on periodic, constant payments and a constant interest rate."},
-    "RATE": {"cat": "Financial", "syntax": "RATE(nper, pmt, pv, [fv], [type], [guess])", "desc": "Returns the interest rate per period of an annuity."},
-
+    "PMT": {
+        "cat": "Financial",
+        "syntax": "PMT(rate, nper, pv, [fv], [type])",
+        "desc": "Calculates the payment for a loan based on constant payments and a constant interest rate.",
+    },
+    "PV": {
+        "cat": "Financial",
+        "syntax": "PV(rate, nper, pmt, [fv], [type])",
+        "desc": "Returns the present value of an investment.",
+    },
+    "FV": {
+        "cat": "Financial",
+        "syntax": "FV(rate, nper, pmt, [pv], [type])",
+        "desc": "Returns the future value of an investment based on constant payments and a constant interest rate.",
+    },
+    "NPER": {
+        "cat": "Financial",
+        "syntax": "NPER(rate, pmt, pv, [fv], [type])",
+        "desc": "Returns the number of periods for an investment based on periodic, constant payments and a constant interest rate.",
+    },
+    "RATE": {
+        "cat": "Financial",
+        "syntax": "RATE(nper, pmt, pv, [fv], [type], [guess])",
+        "desc": "Returns the interest rate per period of an annuity.",
+    },
     # Information
-    "ISBLANK": {"cat": "Information", "syntax": "ISBLANK(value)", "desc": "Returns TRUE if the value is blank."},
-    "ISNUMBER": {"cat": "Information", "syntax": "ISNUMBER(value)", "desc": "Returns TRUE if the value is a number."},
-    "ISTEXT": {"cat": "Information", "syntax": "ISTEXT(value)", "desc": "Returns TRUE if the value is text."},
-    "ISNONTEXT": {"cat": "Information", "syntax": "ISNONTEXT(value)", "desc": "Returns TRUE if the value is not text."},
-    "ISLOGICAL": {"cat": "Information", "syntax": "ISLOGICAL(value)", "desc": "Returns TRUE if the value is a logical value (TRUE or FALSE)."},
-    "ISERROR": {"cat": "Information", "syntax": "ISERROR(value)", "desc": "Returns TRUE if the value is any error value (#N/A, #VALUE!, #REF!, #DIV/0!, #NUM!, #NAME?, or #NULL!)."},
-    "ISERR": {"cat": "Information", "syntax": "ISERR(value)", "desc": "Returns TRUE if the value is any error value except #N/A."},
-    "ISNA": {"cat": "Information", "syntax": "ISNA(value)", "desc": "Returns TRUE if the value is the #N/A error value."},
-    "TYPE": {"cat": "Information", "syntax": "TYPE(value)", "desc": "Returns a number indicating the data type of a value (1=number, 2=text, 4=logical, 16=error, 64=array)."},
-    "N": {"cat": "Information", "syntax": "N(value)", "desc": "Returns a value converted to a number."}
+    "ISBLANK": {
+        "cat": "Information",
+        "syntax": "ISBLANK(value)",
+        "desc": "Returns TRUE if the value is blank.",
+    },
+    "ISNUMBER": {
+        "cat": "Information",
+        "syntax": "ISNUMBER(value)",
+        "desc": "Returns TRUE if the value is a number.",
+    },
+    "ISTEXT": {
+        "cat": "Information",
+        "syntax": "ISTEXT(value)",
+        "desc": "Returns TRUE if the value is text.",
+    },
+    "ISNONTEXT": {
+        "cat": "Information",
+        "syntax": "ISNONTEXT(value)",
+        "desc": "Returns TRUE if the value is not text.",
+    },
+    "ISLOGICAL": {
+        "cat": "Information",
+        "syntax": "ISLOGICAL(value)",
+        "desc": "Returns TRUE if the value is a logical value (TRUE or FALSE).",
+    },
+    "ISERROR": {
+        "cat": "Information",
+        "syntax": "ISERROR(value)",
+        "desc": "Returns TRUE if the value is any error value (#N/A, #VALUE!, #REF!, #DIV/0!, #NUM!, #NAME?, or #NULL!).",
+    },
+    "ISERR": {
+        "cat": "Information",
+        "syntax": "ISERR(value)",
+        "desc": "Returns TRUE if the value is any error value except #N/A.",
+    },
+    "ISNA": {
+        "cat": "Information",
+        "syntax": "ISNA(value)",
+        "desc": "Returns TRUE if the value is the #N/A error value.",
+    },
+    "TYPE": {
+        "cat": "Information",
+        "syntax": "TYPE(value)",
+        "desc": "Returns a number indicating the data type of a value (1=number, 2=text, 4=logical, 16=error, 64=array).",
+    },
+    "N": {
+        "cat": "Information",
+        "syntax": "N(value)",
+        "desc": "Returns a value converted to a number.",
+    },
 }
 
 
 # =============================================================================
 # Formula Engine
 # =============================================================================
+
 
 class FormulaEngine:
     """Excel-like formula parser and evaluator with 80+ functions, memoization, and multi-sheet support."""
@@ -477,13 +964,13 @@ class FormulaEngine:
                 elif c == "(":
                     depth -= 1
                 elif depth == 0:
-                    if expr[i:i + op_len] == op:
+                    if expr[i : i + op_len] == op:
                         # Make sure not inside comparison tokens like <= or <>
                         if op in "<>=" and i > 0 and expr[i - 1] in "<>=":
                             continue
                         if op in "<>" and i + 1 < len(expr) and expr[i + 1] in "<>=":
                             continue
-                        return [expr[:i], expr[i + op_len:]]
+                        return [expr[:i], expr[i + op_len :]]
         return [expr]
 
     def _is_balanced(self, text: str) -> bool:
@@ -565,7 +1052,29 @@ class FormulaEngine:
         if name in ("IF", "IFS", "IFERROR", "IFNA", "SWITCH", "CHOOSE"):
             return fn(raw_args, current_sheet, self)
 
-        if name in ("VLOOKUP", "HLOOKUP", "XLOOKUP", "INDEX", "MATCH", "COUNTIF", "COUNTIFS", "SUMIF", "SUMIFS", "AVERAGEIF", "AVERAGEIFS", "MINIFS", "MAXIFS", "LOOKUP", "COUNTBLANK", "ROWS", "COLUMNS", "SUMPRODUCT", "ROW", "COLUMN", "RANK"):
+        if name in (
+            "VLOOKUP",
+            "HLOOKUP",
+            "XLOOKUP",
+            "INDEX",
+            "MATCH",
+            "COUNTIF",
+            "COUNTIFS",
+            "SUMIF",
+            "SUMIFS",
+            "AVERAGEIF",
+            "AVERAGEIFS",
+            "MINIFS",
+            "MAXIFS",
+            "LOOKUP",
+            "COUNTBLANK",
+            "ROWS",
+            "COLUMNS",
+            "SUMPRODUCT",
+            "ROW",
+            "COLUMN",
+            "RANK",
+        ):
             return fn(raw_args, current_sheet, self)
 
         # General functions: expand ranges and evaluate
@@ -588,7 +1097,15 @@ class FormulaEngine:
         if isinstance(val, bool):
             return 1.0 if val else 0.0
         try:
-            s = str(val).replace(",", ".").replace(" ", "").replace("₽", "").replace("$", "").replace("€", "").replace("%", "")
+            s = (
+                str(val)
+                .replace(",", ".")
+                .replace(" ", "")
+                .replace("₽", "")
+                .replace("$", "")
+                .replace("€", "")
+                .replace("%", "")
+            )
             if "%" in str(val):
                 return float(s) / 100.0
             return float(s)
@@ -613,27 +1130,44 @@ class FormulaEngine:
         try:
             l_num = self._to_number(left)
             r_num = self._to_number(right)
-            if isinstance(left, (int, float, bool)) or isinstance(right, (int, float, bool)) or (
-                str(left).replace(".", "").replace("-", "").isdigit() and str(right).replace(".", "").replace("-", "").isdigit()
+            if (
+                isinstance(left, (int, float, bool))
+                or isinstance(right, (int, float, bool))
+                or (
+                    str(left).replace(".", "").replace("-", "").isdigit()
+                    and str(right).replace(".", "").replace("-", "").isdigit()
+                )
             ):
-                if op == "=": return l_num == r_num
-                if op == "<>": return l_num != r_num
-                if op == "<": return l_num < r_num
-                if op == ">": return l_num > r_num
-                if op == "<=": return l_num <= r_num
-                if op == ">=": return l_num >= r_num
+                if op == "=":
+                    return l_num == r_num
+                if op == "<>":
+                    return l_num != r_num
+                if op == "<":
+                    return l_num < r_num
+                if op == ">":
+                    return l_num > r_num
+                if op == "<=":
+                    return l_num <= r_num
+                if op == ">=":
+                    return l_num >= r_num
         except Exception:
             pass
 
         # String comparison
         l_str = str(left if left is not None else "")
         r_str = str(right if right is not None else "")
-        if op == "=": return l_str.lower() == r_str.lower()
-        if op == "<>": return l_str.lower() != r_str.lower()
-        if op == "<": return l_str < r_str
-        if op == ">": return l_str > r_str
-        if op == "<=": return l_str <= r_str
-        if op == ">=": return l_str >= r_str
+        if op == "=":
+            return l_str.lower() == r_str.lower()
+        if op == "<>":
+            return l_str.lower() != r_str.lower()
+        if op == "<":
+            return l_str < r_str
+        if op == ">":
+            return l_str > r_str
+        if op == "<=":
+            return l_str <= r_str
+        if op == ">=":
+            return l_str >= r_str
         return False
 
     def _match_criteria(self, val: Any, criteria: Any) -> bool:
@@ -644,16 +1178,22 @@ class FormulaEngine:
 
         for op in [">=", "<=", "<>", ">", "<", "="]:
             if c_str.startswith(op):
-                target = c_str[len(op):].strip()
+                target = c_str[len(op) :].strip()
                 try:
                     t_num = float(target)
                     v_num = self._to_number(val)
-                    if op == ">=": return v_num >= t_num
-                    if op == "<=": return v_num <= t_num
-                    if op == ">": return v_num > t_num
-                    if op == "<": return v_num < t_num
-                    if op == "=": return v_num == t_num
-                    if op == "<>": return v_num != t_num
+                    if op == ">=":
+                        return v_num >= t_num
+                    if op == "<=":
+                        return v_num <= t_num
+                    if op == ">":
+                        return v_num > t_num
+                    if op == "<":
+                        return v_num < t_num
+                    if op == "=":
+                        return v_num == t_num
+                    if op == "<>":
+                        return v_num != t_num
                 except ValueError:
                     return self._compare(val, target, op)
 
@@ -673,44 +1213,123 @@ class FormulaEngine:
 
         # Math
         m["SUM"] = lambda args: sum(self._to_number(a) for a in args if a is not None and a != "")
-        m["PRODUCT"] = lambda args: math.prod(self._to_number(a) for a in args if a is not None and a != "") if args else 0
+        m["PRODUCT"] = lambda args: (
+            math.prod(self._to_number(a) for a in args if a is not None and a != "") if args else 0
+        )
         m["ABS"] = lambda args: abs(self._to_number(args[0])) if args else 0
-        m["ROUND"] = lambda args: round(self._to_number(args[0]), int(self._to_number(args[1]))) if len(args) > 1 else round(self._to_number(args[0]))
-        m["ROUNDUP"] = lambda args: math.ceil(self._to_number(args[0]) * (10 ** int(self._to_number(args[1])))) / (10 ** int(self._to_number(args[1]))) if len(args) > 1 else math.ceil(self._to_number(args[0]))
-        m["ROUNDDOWN"] = lambda args: math.floor(self._to_number(args[0]) * (10 ** int(self._to_number(args[1])))) / (10 ** int(self._to_number(args[1]))) if len(args) > 1 else math.floor(self._to_number(args[0]))
+        m["ROUND"] = lambda args: (
+            round(self._to_number(args[0]), int(self._to_number(args[1])))
+            if len(args) > 1
+            else round(self._to_number(args[0]))
+        )
+        m["ROUNDUP"] = lambda args: (
+            math.ceil(self._to_number(args[0]) * (10 ** int(self._to_number(args[1]))))
+            / (10 ** int(self._to_number(args[1])))
+            if len(args) > 1
+            else math.ceil(self._to_number(args[0]))
+        )
+        m["ROUNDDOWN"] = lambda args: (
+            math.floor(self._to_number(args[0]) * (10 ** int(self._to_number(args[1]))))
+            / (10 ** int(self._to_number(args[1])))
+            if len(args) > 1
+            else math.floor(self._to_number(args[0]))
+        )
         m["INT"] = lambda args: int(math.floor(self._to_number(args[0]))) if args else 0
         m["TRUNC"] = lambda args: int(self._to_number(args[0])) if args else 0
-        m["MOD"] = lambda args: self._to_number(args[0]) % self._to_number(args[1]) if len(args) > 1 and self._to_number(args[1]) != 0 else 0
-        m["POWER"] = lambda args: math.pow(self._to_number(args[0]), self._to_number(args[1])) if len(args) > 1 else 0
-        m["SQRT"] = lambda args: math.sqrt(self._to_number(args[0])) if args and self._to_number(args[0]) >= 0 else "#NUM!"
+        m["MOD"] = lambda args: (
+            self._to_number(args[0]) % self._to_number(args[1])
+            if len(args) > 1 and self._to_number(args[1]) != 0
+            else 0
+        )
+        m["POWER"] = lambda args: (
+            math.pow(self._to_number(args[0]), self._to_number(args[1])) if len(args) > 1 else 0
+        )
+        m["SQRT"] = lambda args: (
+            math.sqrt(self._to_number(args[0]))
+            if args and self._to_number(args[0]) >= 0
+            else "#NUM!"
+        )
         m["PI"] = lambda args: math.pi
         m["RAND"] = lambda args: __import__("random").random()
-        m["RANDBETWEEN"] = lambda args: __import__("random").randint(int(self._to_number(args[0])), int(self._to_number(args[1]))) if len(args) > 1 else 0
+        m["RANDBETWEEN"] = lambda args: (
+            __import__("random").randint(
+                int(self._to_number(args[0])), int(self._to_number(args[1]))
+            )
+            if len(args) > 1
+            else 0
+        )
         m["CEILING"] = lambda args: math.ceil(self._to_number(args[0])) if args else 0
         m["FLOOR"] = lambda args: math.floor(self._to_number(args[0])) if args else 0
-        m["SIGN"] = lambda args: 1 if self._to_number(args[0]) > 0 else (-1 if self._to_number(args[0]) < 0 else 0) if args else 0
+        m["SIGN"] = lambda args: (
+            1
+            if self._to_number(args[0]) > 0
+            else (-1 if self._to_number(args[0]) < 0 else 0)
+            if args
+            else 0
+        )
         m["EXP"] = lambda args: math.exp(self._to_number(args[0])) if args else 1
-        m["LN"] = lambda args: math.log(self._to_number(args[0])) if args and self._to_number(args[0]) > 0 else "#NUM!"
-        m["LOG"] = lambda args: math.log(self._to_number(args[0]), self._to_number(args[1])) if len(args) > 1 and self._to_number(args[0]) > 0 else (math.log10(self._to_number(args[0])) if args and self._to_number(args[0]) > 0 else "#NUM!")
-        m["LOG10"] = lambda args: math.log10(self._to_number(args[0])) if args and self._to_number(args[0]) > 0 else "#NUM!"
+        m["LN"] = lambda args: (
+            math.log(self._to_number(args[0])) if args and self._to_number(args[0]) > 0 else "#NUM!"
+        )
+        m["LOG"] = lambda args: (
+            math.log(self._to_number(args[0]), self._to_number(args[1]))
+            if len(args) > 1 and self._to_number(args[0]) > 0
+            else (
+                math.log10(self._to_number(args[0]))
+                if args and self._to_number(args[0]) > 0
+                else "#NUM!"
+            )
+        )
+        m["LOG10"] = lambda args: (
+            math.log10(self._to_number(args[0]))
+            if args and self._to_number(args[0]) > 0
+            else "#NUM!"
+        )
         m["SIN"] = lambda args: math.sin(self._to_number(args[0])) if args else 0
         m["COS"] = lambda args: math.cos(self._to_number(args[0])) if args else 0
         m["TAN"] = lambda args: math.tan(self._to_number(args[0])) if args else 0
-        m["ASIN"] = lambda args: math.asin(self._to_number(args[0])) if args and -1 <= self._to_number(args[0]) <= 1 else "#NUM!"
-        m["ACOS"] = lambda args: math.acos(self._to_number(args[0])) if args and -1 <= self._to_number(args[0]) <= 1 else "#NUM!"
+        m["ASIN"] = lambda args: (
+            math.asin(self._to_number(args[0]))
+            if args and -1 <= self._to_number(args[0]) <= 1
+            else "#NUM!"
+        )
+        m["ACOS"] = lambda args: (
+            math.acos(self._to_number(args[0]))
+            if args and -1 <= self._to_number(args[0]) <= 1
+            else "#NUM!"
+        )
         m["ATAN"] = lambda args: math.atan(self._to_number(args[0])) if args else 0
         m["DEGREES"] = lambda args: math.degrees(self._to_number(args[0])) if args else 0
         m["RADIANS"] = lambda args: math.radians(self._to_number(args[0])) if args else 0
-        m["FACT"] = lambda args: math.factorial(int(self._to_number(args[0]))) if args and 0 <= int(self._to_number(args[0])) <= 170 else "#NUM!"
+        m["FACT"] = lambda args: (
+            math.factorial(int(self._to_number(args[0])))
+            if args and 0 <= int(self._to_number(args[0])) <= 170
+            else "#NUM!"
+        )
 
         # Statistical
         m["AVERAGE"] = self._fn_average
         m["AVG"] = self._fn_average
-        m["AVERAGEA"] = lambda args: sum(self._to_number(a) for a in args) / len(args) if args else 0
-        m["COUNT"] = lambda args: sum(1 for a in args if isinstance(a, (int, float)) or (isinstance(a, str) and a.replace(".", "").replace("-", "").isdigit() and a.strip() != ""))
+        m["AVERAGEA"] = lambda args: (
+            sum(self._to_number(a) for a in args) / len(args) if args else 0
+        )
+        m["COUNT"] = lambda args: sum(
+            1
+            for a in args
+            if isinstance(a, (int, float))
+            or (
+                isinstance(a, str)
+                and a.replace(".", "").replace("-", "").isdigit()
+                and a.strip() != ""
+            )
+        )
         m["COUNTA"] = lambda args: sum(1 for a in args if a is not None and a != "")
-        m["MIN"] = lambda args: min([self._to_number(a) for a in args if a is not None and a != ""] or [0])
-        m["MAX"] = lambda args: max([self._to_number(a) for a in args if a is not None and a != ""] or [0])
+        m["MIN"] = lambda args: min(
+            [self._to_number(a) for a in args if a is not None and a != ""] or [0]
+        )
+        m["MAX"] = lambda args: max(
+            [self._to_number(a) for a in args if a is not None and a != ""] or [0]
+        )
         m["MEDIAN"] = self._fn_median
         m["MODE"] = self._fn_mode
         m["MODE.SNGL"] = self._fn_mode
@@ -722,8 +1341,18 @@ class FormulaEngine:
         m["VAR.S"] = self._fn_var
         m["VARP"] = self._fn_varp
         m["VAR.P"] = self._fn_varp
-        m["LARGE"] = lambda args: sorted([self._to_number(a) for a in args[:-1]], reverse=True)[int(self._to_number(args[-1])) - 1] if len(args) >= 2 and 1 <= int(self._to_number(args[-1])) <= len(args) - 1 else "#NUM!"
-        m["SMALL"] = lambda args: sorted([self._to_number(a) for a in args[:-1]])[int(self._to_number(args[-1])) - 1] if len(args) >= 2 and 1 <= int(self._to_number(args[-1])) <= len(args) - 1 else "#NUM!"
+        m["LARGE"] = lambda args: (
+            sorted([self._to_number(a) for a in args[:-1]], reverse=True)[
+                int(self._to_number(args[-1])) - 1
+            ]
+            if len(args) >= 2 and 1 <= int(self._to_number(args[-1])) <= len(args) - 1
+            else "#NUM!"
+        )
+        m["SMALL"] = lambda args: (
+            sorted([self._to_number(a) for a in args[:-1]])[int(self._to_number(args[-1])) - 1]
+            if len(args) >= 2 and 1 <= int(self._to_number(args[-1])) <= len(args) - 1
+            else "#NUM!"
+        )
 
         # Logical
         m["AND"] = lambda args: all(self._to_bool(a) for a in args) if args else True
@@ -736,41 +1365,127 @@ class FormulaEngine:
         # Text
         m["CONCAT"] = lambda args: "".join(str(a if a is not None else "") for a in args)
         m["CONCATENATE"] = lambda args: "".join(str(a if a is not None else "") for a in args)
-        m["TEXTJOIN"] = lambda args: str(args[0]).join([str(a) for a in args[2:] if not (self._to_bool(args[1]) and (a is None or a == ""))]) if len(args) >= 3 else ""
-        m["LEFT"] = lambda args: str(args[0])[:int(self._to_number(args[1]))] if len(args) > 1 else str(args[0])[:1] if args else ""
-        m["RIGHT"] = lambda args: str(args[0])[-int(self._to_number(args[1])):] if len(args) > 1 else str(args[0])[-1:] if args else ""
-        m["MID"] = lambda args: str(args[0])[int(self._to_number(args[1])) - 1: int(self._to_number(args[1])) - 1 + int(self._to_number(args[2]))] if len(args) >= 3 else ""
+        m["TEXTJOIN"] = lambda args: (
+            str(args[0]).join(
+                [
+                    str(a)
+                    for a in args[2:]
+                    if not (self._to_bool(args[1]) and (a is None or a == ""))
+                ]
+            )
+            if len(args) >= 3
+            else ""
+        )
+        m["LEFT"] = lambda args: (
+            str(args[0])[: int(self._to_number(args[1]))]
+            if len(args) > 1
+            else str(args[0])[:1]
+            if args
+            else ""
+        )
+        m["RIGHT"] = lambda args: (
+            str(args[0])[-int(self._to_number(args[1])) :]
+            if len(args) > 1
+            else str(args[0])[-1:]
+            if args
+            else ""
+        )
+        m["MID"] = lambda args: (
+            str(args[0])[
+                int(self._to_number(args[1])) - 1 : int(self._to_number(args[1]))
+                - 1
+                + int(self._to_number(args[2]))
+            ]
+            if len(args) >= 3
+            else ""
+        )
         m["LEN"] = lambda args: len(str(args[0])) if args and args[0] is not None else 0
-        m["TRIM"] = lambda args: " ".join(str(args[0]).split()) if args and args[0] is not None else ""
+        m["TRIM"] = lambda args: (
+            " ".join(str(args[0]).split()) if args and args[0] is not None else ""
+        )
         m["UPPER"] = lambda args: str(args[0]).upper() if args and args[0] is not None else ""
         m["LOWER"] = lambda args: str(args[0]).lower() if args and args[0] is not None else ""
         m["PROPER"] = lambda args: str(args[0]).title() if args and args[0] is not None else ""
         m["EXACT"] = lambda args: str(args[0]) == str(args[1]) if len(args) >= 2 else False
-        m["FIND"] = lambda args: str(args[1]).find(str(args[0]), int(self._to_number(args[2])) - 1 if len(args) > 2 else 0) + 1 if len(args) >= 2 and str(args[0]) in str(args[1]) else "#VALUE!"
-        m["SEARCH"] = lambda args: str(args[1]).lower().find(str(args[0]).lower(), int(self._to_number(args[2])) - 1 if len(args) > 2 else 0) + 1 if len(args) >= 2 and str(args[0]).lower() in str(args[1]).lower() else "#VALUE!"
+        m["FIND"] = lambda args: (
+            str(args[1]).find(
+                str(args[0]), int(self._to_number(args[2])) - 1 if len(args) > 2 else 0
+            )
+            + 1
+            if len(args) >= 2 and str(args[0]) in str(args[1])
+            else "#VALUE!"
+        )
+        m["SEARCH"] = lambda args: (
+            str(args[1])
+            .lower()
+            .find(str(args[0]).lower(), int(self._to_number(args[2])) - 1 if len(args) > 2 else 0)
+            + 1
+            if len(args) >= 2 and str(args[0]).lower() in str(args[1]).lower()
+            else "#VALUE!"
+        )
         m["REPLACE"] = self._fn_replace
         m["SUBSTITUTE"] = self._fn_substitute
-        m["REPT"] = lambda args: str(args[0]) * int(self._to_number(args[1])) if len(args) >= 2 else ""
+        m["REPT"] = lambda args: (
+            str(args[0]) * int(self._to_number(args[1])) if len(args) >= 2 else ""
+        )
         m["TEXT"] = lambda args: str(args[0]) if args else ""
         m["VALUE"] = lambda args: self._to_number(args[0]) if args else 0
-        m["CHAR"] = lambda args: chr(int(self._to_number(args[0]))) if args and 0 <= int(self._to_number(args[0])) <= 65535 else "#VALUE!"
+        m["CHAR"] = lambda args: (
+            chr(int(self._to_number(args[0])))
+            if args and 0 <= int(self._to_number(args[0])) <= 65535
+            else "#VALUE!"
+        )
         m["CODE"] = lambda args: ord(str(args[0])[0]) if args and str(args[0]) else "#VALUE!"
-        m["CLEAN"] = lambda args: "".join(c for c in str(args[0]) if ord(c) >= 32) if args and args[0] else ""
+        m["CLEAN"] = lambda args: (
+            "".join(c for c in str(args[0]) if ord(c) >= 32) if args and args[0] else ""
+        )
         m["T"] = lambda args: str(args[0]) if args and isinstance(args[0], str) else ""
 
         # Date & Time
         m["TODAY"] = lambda args: date.today().isoformat()
         m["NOW"] = lambda args: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        m["DATE"] = lambda args: date(int(self._to_number(args[0])), int(self._to_number(args[1])), int(self._to_number(args[2]))).isoformat() if len(args) >= 3 else "#VALUE!"
-        m["TIME"] = lambda args: f"{int(self._to_number(args[0])) % 24:02d}:{int(self._to_number(args[1])) % 60:02d}:{int(self._to_number(args[2])) % 60:02d}" if len(args) >= 3 else "#VALUE!"
-        m["YEAR"] = lambda args: self._parse_date(args[0]).year if args and self._parse_date(args[0]) else "#VALUE!"
-        m["MONTH"] = lambda args: self._parse_date(args[0]).month if args and self._parse_date(args[0]) else "#VALUE!"
-        m["DAY"] = lambda args: self._parse_date(args[0]).day if args and self._parse_date(args[0]) else "#VALUE!"
-        m["HOUR"] = lambda args: self._parse_datetime(args[0]).hour if args and self._parse_datetime(args[0]) else 0
-        m["MINUTE"] = lambda args: self._parse_datetime(args[0]).minute if args and self._parse_datetime(args[0]) else 0
-        m["SECOND"] = lambda args: self._parse_datetime(args[0]).second if args and self._parse_datetime(args[0]) else 0
-        m["WEEKDAY"] = lambda args: ((self._parse_date(args[0]).weekday() + 1) % 7 + 1) if args and self._parse_date(args[0]) else "#VALUE!"
-        m["DAYS"] = lambda args: (self._parse_date(args[0]) - self._parse_date(args[1])).days if len(args) >= 2 and self._parse_date(args[0]) and self._parse_date(args[1]) else "#VALUE!"
+        m["DATE"] = lambda args: (
+            date(
+                int(self._to_number(args[0])),
+                int(self._to_number(args[1])),
+                int(self._to_number(args[2])),
+            ).isoformat()
+            if len(args) >= 3
+            else "#VALUE!"
+        )
+        m["TIME"] = lambda args: (
+            f"{int(self._to_number(args[0])) % 24:02d}:{int(self._to_number(args[1])) % 60:02d}:{int(self._to_number(args[2])) % 60:02d}"
+            if len(args) >= 3
+            else "#VALUE!"
+        )
+        m["YEAR"] = lambda args: (
+            self._parse_date(args[0]).year if args and self._parse_date(args[0]) else "#VALUE!"
+        )
+        m["MONTH"] = lambda args: (
+            self._parse_date(args[0]).month if args and self._parse_date(args[0]) else "#VALUE!"
+        )
+        m["DAY"] = lambda args: (
+            self._parse_date(args[0]).day if args and self._parse_date(args[0]) else "#VALUE!"
+        )
+        m["HOUR"] = lambda args: (
+            self._parse_datetime(args[0]).hour if args and self._parse_datetime(args[0]) else 0
+        )
+        m["MINUTE"] = lambda args: (
+            self._parse_datetime(args[0]).minute if args and self._parse_datetime(args[0]) else 0
+        )
+        m["SECOND"] = lambda args: (
+            self._parse_datetime(args[0]).second if args and self._parse_datetime(args[0]) else 0
+        )
+        m["WEEKDAY"] = lambda args: (
+            ((self._parse_date(args[0]).weekday() + 1) % 7 + 1)
+            if args and self._parse_date(args[0])
+            else "#VALUE!"
+        )
+        m["DAYS"] = lambda args: (
+            (self._parse_date(args[0]) - self._parse_date(args[1])).days
+            if len(args) >= 2 and self._parse_date(args[0]) and self._parse_date(args[1])
+            else "#VALUE!"
+        )
         m["DATEDIF"] = self._fn_datedif
         m["EDATE"] = self._fn_edate
         m["EOMONTH"] = self._fn_eomonth
@@ -788,11 +1503,27 @@ class FormulaEngine:
         # Information
         m["ISBLANK"] = lambda args: args[0] is None or args[0] == "" if args else True
         m["ISNUMBER"] = lambda args: isinstance(args[0], (int, float)) if args else False
-        m["ISTEXT"] = lambda args: isinstance(args[0], str) and not args[0].replace(".", "").replace("-", "").isdigit() if args else False
-        m["ISNONTEXT"] = lambda args: not (isinstance(args[0], str) and not args[0].replace(".", "").replace("-", "").isdigit()) if args else True
+        m["ISTEXT"] = lambda args: (
+            isinstance(args[0], str) and not args[0].replace(".", "").replace("-", "").isdigit()
+            if args
+            else False
+        )
+        m["ISNONTEXT"] = lambda args: (
+            not (
+                isinstance(args[0], str) and not args[0].replace(".", "").replace("-", "").isdigit()
+            )
+            if args
+            else True
+        )
         m["ISLOGICAL"] = lambda args: isinstance(args[0], bool) if args else False
-        m["ISERROR"] = lambda args: isinstance(args[0], str) and args[0].startswith("#") if args else False
-        m["ISERR"] = lambda args: isinstance(args[0], str) and args[0].startswith("#") and args[0] != "#N/A" if args else False
+        m["ISERROR"] = lambda args: (
+            isinstance(args[0], str) and args[0].startswith("#") if args else False
+        )
+        m["ISERR"] = lambda args: (
+            isinstance(args[0], str) and args[0].startswith("#") and args[0] != "#N/A"
+            if args
+            else False
+        )
         m["ISNA"] = lambda args: args[0] == "#N/A" if args else False
         m["TYPE"] = self._fn_type
         m["N"] = lambda args: self._to_number(args[0]) if args else 0
@@ -895,7 +1626,7 @@ class FormulaEngine:
         start = max(1, int(self._to_number(args[1]))) - 1
         num = int(self._to_number(args[2]))
         new = str(args[3])
-        return old[:start] + new + old[start + num:]
+        return old[:start] + new + old[start + num :]
 
     def _fn_substitute(self, args: list) -> str:
         if len(args) < 3:
@@ -913,11 +1644,14 @@ class FormulaEngine:
         if not args or args[0] is None:
             return 1
         val = args[0]
-        if isinstance(val, (int, float)): return 1
+        if isinstance(val, (int, float)):
+            return 1
         if isinstance(val, str):
             return 16 if val.startswith("#") else 2
-        if isinstance(val, bool): return 4
-        if isinstance(val, list): return 64
+        if isinstance(val, bool):
+            return 4
+        if isinstance(val, list):
+            return 64
         return 2
 
     def _parse_date(self, val: Any) -> date | None:
@@ -937,7 +1671,15 @@ class FormulaEngine:
         if isinstance(val, date):
             return datetime.combine(val, datetime.min.time())
         s = str(val).strip()
-        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y", "%H:%M:%S", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y"):
+        for fmt in (
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d",
+            "%d.%m.%Y %H:%M:%S",
+            "%d.%m.%Y",
+            "%H:%M:%S",
+            "%m/%d/%Y %H:%M:%S",
+            "%m/%d/%Y",
+        ):
             try:
                 return datetime.strptime(s, fmt)
             except ValueError:
@@ -1032,7 +1774,11 @@ class FormulaEngine:
             else:
                 fact = (1 + rate * type_) * (pvif - 1) / rate
                 y = pv * pvif + pmt * fact + fv
-                dy = nper * pv * (1 + rate) ** (nper - 1) + pmt * ((pvif - 1) / rate - (pvif - 1) / (rate * rate) + nper * (1 + rate) ** (nper - 1) / rate)
+                dy = nper * pv * (1 + rate) ** (nper - 1) + pmt * (
+                    (pvif - 1) / rate
+                    - (pvif - 1) / (rate * rate)
+                    + nper * (1 + rate) ** (nper - 1) / rate
+                )
             if abs(dy) < 1e-12:
                 break
             next_rate = rate - y / dy
@@ -1041,13 +1787,19 @@ class FormulaEngine:
             rate = next_rate
         return rate
 
-    def _custom_rank(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_rank(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 2:
             return "#VALUE!"
         num = engine._to_number(engine._eval_expr(raw_args[0], current_sheet))
         grid = self._get_2d_range(raw_args[1], current_sheet)
         ref_nums = [engine._to_number(x) for row in grid for x in row if x is not None and x != ""]
-        order = int(engine._to_number(engine._eval_expr(raw_args[2], current_sheet))) if len(raw_args) > 2 else 0
+        order = (
+            int(engine._to_number(engine._eval_expr(raw_args[2], current_sheet)))
+            if len(raw_args) > 2
+            else 0
+        )
         if not ref_nums:
             return "#N/A"
         sorted_nums = sorted(ref_nums, reverse=(order == 0))
@@ -1090,6 +1842,7 @@ class FormulaEngine:
             if d2.day >= d1.day:
                 return d2.day - d1.day
             from datetime import timedelta
+
             prev_month_last_day = (d2.replace(day=1) - timedelta(days=1)).day
             return prev_month_last_day - d1.day + d2.day
         return "#VALUE!"
@@ -1105,6 +1858,7 @@ class FormulaEngine:
         new_year = total_months // 12
         new_month = total_months % 12 + 1
         import calendar
+
         max_day = calendar.monthrange(new_year, new_month)[1]
         day = min(d.day, max_day)
         return date(new_year, new_month, day).isoformat()
@@ -1120,6 +1874,7 @@ class FormulaEngine:
         new_year = total_months // 12
         new_month = total_months % 12 + 1
         import calendar
+
         max_day = calendar.monthrange(new_year, new_month)[1]
         return date(new_year, new_month, max_day).isoformat()
 
@@ -1127,7 +1882,9 @@ class FormulaEngine:
     # Custom Control & Range Functions
     # -------------------------------------------------------------------------
 
-    def _custom_if(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_if(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 2:
             return "#VALUE!"
         cond = engine._to_bool(engine._eval_expr(raw_args[0], current_sheet))
@@ -1137,14 +1894,18 @@ class FormulaEngine:
             return engine._eval_expr(raw_args[2], current_sheet)
         return False
 
-    def _custom_ifs(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_ifs(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         for i in range(0, len(raw_args) - 1, 2):
             cond = engine._to_bool(engine._eval_expr(raw_args[i], current_sheet))
             if cond:
                 return engine._eval_expr(raw_args[i + 1], current_sheet)
         return "#N/A"
 
-    def _custom_iferror(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_iferror(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 2:
             return "#VALUE!"
         val = engine._eval_expr(raw_args[0], current_sheet)
@@ -1152,7 +1913,9 @@ class FormulaEngine:
             return engine._eval_expr(raw_args[1], current_sheet)
         return val
 
-    def _custom_ifna(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_ifna(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 2:
             return "#VALUE!"
         val = engine._eval_expr(raw_args[0], current_sheet)
@@ -1160,7 +1923,9 @@ class FormulaEngine:
             return engine._eval_expr(raw_args[1], current_sheet)
         return val
 
-    def _custom_switch(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_switch(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 3:
             return "#VALUE!"
         target = engine._eval_expr(raw_args[0], current_sheet)
@@ -1174,7 +1939,9 @@ class FormulaEngine:
             return engine._eval_expr(raw_args[i], current_sheet)
         return "#N/A"
 
-    def _custom_choose(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_choose(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 2:
             return "#VALUE!"
         idx = int(engine._to_number(engine._eval_expr(raw_args[0], current_sheet)))
@@ -1212,13 +1979,19 @@ class FormulaEngine:
             grid.append(row_vals)
         return grid
 
-    def _custom_vlookup(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_vlookup(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 3:
             return "#VALUE!"
         lookup_val = engine._eval_expr(raw_args[0], current_sheet)
         table = self._get_2d_range(raw_args[1], current_sheet)
         col_idx = int(engine._to_number(engine._eval_expr(raw_args[2], current_sheet))) - 1
-        approx = engine._to_bool(engine._eval_expr(raw_args[3], current_sheet)) if len(raw_args) > 3 else False
+        approx = (
+            engine._to_bool(engine._eval_expr(raw_args[3], current_sheet))
+            if len(raw_args) > 3
+            else False
+        )
 
         if not table or col_idx < 0:
             return "#REF!"
@@ -1233,7 +2006,9 @@ class FormulaEngine:
                 return "#REF!"
         return "#N/A"
 
-    def _custom_hlookup(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_hlookup(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 3:
             return "#VALUE!"
         lookup_val = engine._eval_expr(raw_args[0], current_sheet)
@@ -1251,13 +2026,17 @@ class FormulaEngine:
                 return "#REF!"
         return "#N/A"
 
-    def _custom_xlookup(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_xlookup(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 3:
             return "#VALUE!"
         lookup_val = engine._eval_expr(raw_args[0], current_sheet)
         lookup_arr = [x for row in self._get_2d_range(raw_args[1], current_sheet) for x in row]
         return_arr = [x for row in self._get_2d_range(raw_args[2], current_sheet) for x in row]
-        if_not_found = engine._eval_expr(raw_args[3], current_sheet) if len(raw_args) > 3 else "#N/A"
+        if_not_found = (
+            engine._eval_expr(raw_args[3], current_sheet) if len(raw_args) > 3 else "#N/A"
+        )
 
         for i, val in enumerate(lookup_arr):
             if engine._compare(val, lookup_val, "="):
@@ -1266,12 +2045,18 @@ class FormulaEngine:
                 return "#REF!"
         return if_not_found
 
-    def _custom_index(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_index(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 2:
             return "#VALUE!"
         table = self._get_2d_range(raw_args[0], current_sheet)
         row_idx = int(engine._to_number(engine._eval_expr(raw_args[1], current_sheet))) - 1
-        col_idx = int(engine._to_number(engine._eval_expr(raw_args[2], current_sheet))) - 1 if len(raw_args) >= 3 else 0
+        col_idx = (
+            int(engine._to_number(engine._eval_expr(raw_args[2], current_sheet))) - 1
+            if len(raw_args) >= 3
+            else 0
+        )
 
         if not table or row_idx < 0 or row_idx >= len(table):
             return "#REF!"
@@ -1279,33 +2064,45 @@ class FormulaEngine:
             return "#REF!"
         return table[row_idx][col_idx]
 
-    def _custom_match(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_match(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 2:
             return "#VALUE!"
         lookup_val = engine._eval_expr(raw_args[0], current_sheet)
         table = self._get_2d_range(raw_args[1], current_sheet)
         items = [x for row in table for x in row]
-        match_type = int(engine._to_number(engine._eval_expr(raw_args[2], current_sheet))) if len(raw_args) >= 3 else 1
+        match_type = (
+            int(engine._to_number(engine._eval_expr(raw_args[2], current_sheet)))
+            if len(raw_args) >= 3
+            else 1
+        )
 
         for i, val in enumerate(items):
             if engine._compare(val, lookup_val, "="):
                 return i + 1
         return "#N/A"
 
-    def _custom_countif(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> int:
+    def _custom_countif(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> int:
         if len(raw_args) < 2:
             return 0
         vals = [x for row in self._get_2d_range(raw_args[0], current_sheet) for x in row]
         crit = engine._eval_expr(raw_args[1], current_sheet)
         return sum(1 for v in vals if self._match_criteria(v, crit))
 
-    def _custom_countifs(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> int:
+    def _custom_countifs(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> int:
         if len(raw_args) < 2 or len(raw_args) % 2 != 0:
             return 0
         ranges = []
         criteria = []
         for i in range(0, len(raw_args), 2):
-            ranges.append([x for row in self._get_2d_range(raw_args[i], current_sheet) for x in row])
+            ranges.append(
+                [x for row in self._get_2d_range(raw_args[i], current_sheet) for x in row]
+            )
             criteria.append(engine._eval_expr(raw_args[i + 1], current_sheet))
 
         n = min(len(r) for r in ranges) if ranges else 0
@@ -1315,12 +2112,18 @@ class FormulaEngine:
                 count += 1
         return count
 
-    def _custom_sumif(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> float:
+    def _custom_sumif(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> float:
         if len(raw_args) < 2:
             return 0.0
         range_vals = [x for row in self._get_2d_range(raw_args[0], current_sheet) for x in row]
         crit = engine._eval_expr(raw_args[1], current_sheet)
-        sum_vals = [x for row in self._get_2d_range(raw_args[2], current_sheet) for x in row] if len(raw_args) >= 3 else range_vals
+        sum_vals = (
+            [x for row in self._get_2d_range(raw_args[2], current_sheet) for x in row]
+            if len(raw_args) >= 3
+            else range_vals
+        )
 
         total = 0.0
         for i, val in enumerate(range_vals):
@@ -1329,14 +2132,18 @@ class FormulaEngine:
                 total += self._to_number(s_val)
         return total
 
-    def _custom_sumifs(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> float:
+    def _custom_sumifs(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> float:
         if len(raw_args) < 3:
             return 0.0
         sum_vals = [x for row in self._get_2d_range(raw_args[0], current_sheet) for x in row]
         ranges = []
         criteria = []
         for i in range(1, len(raw_args) - 1, 2):
-            ranges.append([x for row in self._get_2d_range(raw_args[i], current_sheet) for x in row])
+            ranges.append(
+                [x for row in self._get_2d_range(raw_args[i], current_sheet) for x in row]
+            )
             criteria.append(engine._eval_expr(raw_args[i + 1], current_sheet))
 
         n = min(len(sum_vals), *(len(r) for r in ranges)) if ranges else 0
@@ -1346,12 +2153,18 @@ class FormulaEngine:
                 total += self._to_number(sum_vals[i])
         return total
 
-    def _custom_averageif(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_averageif(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 2:
             return 0.0
         range_vals = [x for row in self._get_2d_range(raw_args[0], current_sheet) for x in row]
         crit = engine._eval_expr(raw_args[1], current_sheet)
-        avg_vals = [x for row in self._get_2d_range(raw_args[2], current_sheet) for x in row] if len(raw_args) >= 3 else range_vals
+        avg_vals = (
+            [x for row in self._get_2d_range(raw_args[2], current_sheet) for x in row]
+            if len(raw_args) >= 3
+            else range_vals
+        )
 
         nums = []
         for i, val in enumerate(range_vals):
@@ -1360,14 +2173,18 @@ class FormulaEngine:
                 nums.append(self._to_number(a_val))
         return sum(nums) / len(nums) if nums else "#DIV/0!"
 
-    def _custom_averageifs(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_averageifs(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 3:
             return 0.0
         avg_vals = [x for row in self._get_2d_range(raw_args[0], current_sheet) for x in row]
         ranges = []
         criteria = []
         for i in range(1, len(raw_args) - 1, 2):
-            ranges.append([x for row in self._get_2d_range(raw_args[i], current_sheet) for x in row])
+            ranges.append(
+                [x for row in self._get_2d_range(raw_args[i], current_sheet) for x in row]
+            )
             criteria.append(engine._eval_expr(raw_args[i + 1], current_sheet))
 
         n = min(len(avg_vals), *(len(r) for r in ranges)) if ranges else 0
@@ -1377,14 +2194,18 @@ class FormulaEngine:
                 nums.append(self._to_number(avg_vals[i]))
         return sum(nums) / len(nums) if nums else "#DIV/0!"
 
-    def _custom_minifs(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_minifs(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 3:
             return 0.0
         min_vals = [x for row in self._get_2d_range(raw_args[0], current_sheet) for x in row]
         ranges = []
         criteria = []
         for i in range(1, len(raw_args) - 1, 2):
-            ranges.append([x for row in self._get_2d_range(raw_args[i], current_sheet) for x in row])
+            ranges.append(
+                [x for row in self._get_2d_range(raw_args[i], current_sheet) for x in row]
+            )
             criteria.append(engine._eval_expr(raw_args[i + 1], current_sheet))
 
         n = min(len(min_vals), *(len(r) for r in ranges)) if ranges else 0
@@ -1394,14 +2215,18 @@ class FormulaEngine:
                 nums.append(self._to_number(min_vals[i]))
         return min(nums) if nums else 0.0
 
-    def _custom_maxifs(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_maxifs(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 3:
             return 0.0
         max_vals = [x for row in self._get_2d_range(raw_args[0], current_sheet) for x in row]
         ranges = []
         criteria = []
         for i in range(1, len(raw_args) - 1, 2):
-            ranges.append([x for row in self._get_2d_range(raw_args[i], current_sheet) for x in row])
+            ranges.append(
+                [x for row in self._get_2d_range(raw_args[i], current_sheet) for x in row]
+            )
             criteria.append(engine._eval_expr(raw_args[i + 1], current_sheet))
 
         n = min(len(max_vals), *(len(r) for r in ranges)) if ranges else 0
@@ -1411,25 +2236,33 @@ class FormulaEngine:
                 nums.append(self._to_number(max_vals[i]))
         return max(nums) if nums else 0.0
 
-    def _custom_countblank(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> int:
+    def _custom_countblank(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> int:
         if not raw_args:
             return 0
         vals = [x for row in self._get_2d_range(raw_args[0], current_sheet) for x in row]
         return sum(1 for v in vals if v is None or v == "")
 
-    def _custom_rows(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> int:
+    def _custom_rows(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> int:
         if not raw_args:
             return 0
         table = self._get_2d_range(raw_args[0], current_sheet)
         return len(table)
 
-    def _custom_columns(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> int:
+    def _custom_columns(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> int:
         if not raw_args:
             return 0
         table = self._get_2d_range(raw_args[0], current_sheet)
         return len(table[0]) if table else 0
 
-    def _custom_row(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_row(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if not raw_args or not raw_args[0].strip():
             return 1
         ref_str = raw_args[0].strip()
@@ -1439,7 +2272,9 @@ class FormulaEngine:
             return cell.row + 1
         return 1
 
-    def _custom_column(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_column(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if not raw_args or not raw_args[0].strip():
             return 1
         ref_str = raw_args[0].strip()
@@ -1449,13 +2284,19 @@ class FormulaEngine:
             return cell.col + 1
         return 1
 
-    def _custom_lookup(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> Any:
+    def _custom_lookup(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> Any:
         if len(raw_args) < 2:
             return "#VALUE!"
         lookup_val = engine._eval_expr(raw_args[0], current_sheet)
         lookup_grid = self._get_2d_range(raw_args[1], current_sheet)
         lookup_items = [x for row in lookup_grid for x in row]
-        result_items = [x for row in self._get_2d_range(raw_args[2], current_sheet) for x in row] if len(raw_args) >= 3 else lookup_items
+        result_items = (
+            [x for row in self._get_2d_range(raw_args[2], current_sheet) for x in row]
+            if len(raw_args) >= 3
+            else lookup_items
+        )
 
         best_idx = -1
         for i, val in enumerate(lookup_items):
@@ -1468,7 +2309,9 @@ class FormulaEngine:
             return result_items[best_idx]
         return "#N/A"
 
-    def _custom_sumproduct(self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine") -> float:
+    def _custom_sumproduct(
+        self, raw_args: list[str], current_sheet: str | None, engine: "FormulaEngine"
+    ) -> float:
         if not raw_args:
             return 0.0
         arrays = []
@@ -1491,6 +2334,7 @@ class FormulaEngine:
 # =============================================================================
 # Formula Store
 # =============================================================================
+
 
 class FormulaStore:
     """Stores cell formulas per sheet."""

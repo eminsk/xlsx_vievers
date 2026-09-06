@@ -3,14 +3,11 @@ Application configuration, constants, and styling defaults for Excel Viewer Pro.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Any
-from openpyxl.utils import get_column_letter
-
 
 # =============================================================================
 # Application Configuration
 # =============================================================================
+
 
 class Config:
     """Application configuration constants."""
@@ -80,7 +77,7 @@ class Config:
         "Currency ($)": "$#,##0.00",
         "Currency (₽)": "#,##0.00 ₽",
         "Currency (€)": "€#,##0.00",
-        "Accounting": "_($* #,##0.00_);_($* (#,##0.00);_($* \"-\"??_);_(@_)",
+        "Accounting": '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)',
         "Short Date": "YYYY-MM-DD",
         "Date (DD.MM.YYYY)": "DD.MM.YYYY",
         "Long Date": "DD MMMM YYYY",
@@ -89,13 +86,23 @@ class Config:
         "Percentage (0.00%)": "0.00%",
         "Fraction": "# ?/?",
         "Scientific": "0.00E+00",
-        "Text": "@"
+        "Text": "@",
     }
 
     # Available UI Themes
     AVAILABLE_THEMES = [
-        "litera", "flatly", "cosmo", "minty", "pulse", "sandstone",
-        "journal", "united", "yeti", "darkly", "cyborg", "superhero"
+        "litera",
+        "flatly",
+        "cosmo",
+        "minty",
+        "pulse",
+        "sandstone",
+        "journal",
+        "united",
+        "yeti",
+        "darkly",
+        "cyborg",
+        "superhero",
     ]
 
     # Standard Chart Palettes
@@ -107,5 +114,5 @@ class Config:
         "Emerald Forest": ["#0F5132", "#198754", "#20C997", "#0DCAF0", "#3DD5F3", "#6EDFF6"],
         "Warm Sunset": ["#C0392B", "#E67E22", "#F39C12", "#F1C40F", "#D35400", "#E74C3C"],
         "Indigo Night": ["#3B4252", "#4C566A", "#5E81AC", "#81A1C1", "#88C0D0", "#8FBCBB"],
-        "Monochrome": ["#252525", "#525252", "#737373", "#969696", "#BDBDBD", "#D9D9D9"]
+        "Monochrome": ["#252525", "#525252", "#737373", "#969696", "#BDBDBD", "#D9D9D9"],
     }

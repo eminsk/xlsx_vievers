@@ -3,15 +3,13 @@ Unit and integration test suite for Excel Viewer Pro.
 """
 
 import unittest
-from pathlib import Path
-from models import CellPosition, CellRange, CellStyle, SheetData
-from formulas import FormulaEngine, FormulaStore, shift_formula_references, CellRef, parse_range
-from formatting import NumberFormatter, ConditionalFormattingEngine
-from openpyxl import Workbook
+
+from formatting import ConditionalFormattingEngine, NumberFormatter
+from formulas import FormulaEngine, shift_formula_references
+from models import CellPosition, CellRange, SheetData
 
 
 class TestExcelViewerPro(unittest.TestCase):
-
     def test_cell_and_range_models(self):
         p1 = CellPosition(0, 0)
         self.assertEqual(p1.to_excel(), "A1")
@@ -36,10 +34,18 @@ class TestExcelViewerPro(unittest.TestCase):
 
     def test_formula_lookup_and_math_functions(self):
         data = {
-            (0, 0): "Name", (0, 1): "Salary", (0, 2): "Dept",
-            (1, 0): "Alice", (1, 1): 50000, (1, 2): "IT",
-            (2, 0): "Bob", (2, 1): 60000, (2, 2): "HR",
-            (3, 0): "Charlie", (3, 1): 70000, (3, 2): "IT",
+            (0, 0): "Name",
+            (0, 1): "Salary",
+            (0, 2): "Dept",
+            (1, 0): "Alice",
+            (1, 1): 50000,
+            (1, 2): "IT",
+            (2, 0): "Bob",
+            (2, 1): 60000,
+            (2, 2): "HR",
+            (3, 0): "Charlie",
+            (3, 1): 70000,
+            (3, 2): "IT",
         }
         engine = FormulaEngine(lambda r, c, s=None: data.get((r, c), 0))
 
@@ -53,7 +59,7 @@ class TestExcelViewerPro(unittest.TestCase):
         self.assertEqual(engine.evaluate('=VLOOKUP("Charlie", A2:C4, 3, FALSE)'), "IT")
 
         # INDEX and MATCH
-        self.assertEqual(engine.evaluate('=INDEX(B2:B4, 2)'), 60000)
+        self.assertEqual(engine.evaluate("=INDEX(B2:B4, 2)"), 60000)
         self.assertEqual(engine.evaluate('=MATCH("Charlie", A2:A4, 0)'), 3)
 
         # SUMIFS & COUNTIFS
@@ -85,7 +91,12 @@ class TestExcelViewerPro(unittest.TestCase):
         self.assertEqual(NumberFormatter.format_value(5000, "#,##0"), "5,000")
 
     def test_conditional_formatting_engine(self):
-        rule_gt = {"type": "greater_than", "value": 50, "bg_color": "#00FF00", "fg_color": "#000000"}
+        rule_gt = {
+            "type": "greater_than",
+            "value": 50,
+            "bg_color": "#00FF00",
+            "fg_color": "#000000",
+        }
         bg, fg = ConditionalFormattingEngine.evaluate_rule(75, rule_gt)
         self.assertEqual(bg, "#00FF00")
 
@@ -128,18 +139,20 @@ class TestExcelViewerPro(unittest.TestCase):
 
         engine = FormulaEngine(get_val)
         import time
+
         t0 = time.time()
-        res = get_val(199, 0) # A200
+        res = get_val(199, 0)  # A200
         t1 = time.time()
         # 10 + 199 * 5 = 1005
         self.assertEqual(res, 1005)
-        self.assertLess(t1 - t0, 0.2) # Must compute in < 200ms
+        self.assertLess(t1 - t0, 0.2)  # Must compute in < 200ms
 
     def test_cross_sheet_unicode_references(self):
         sheets = {
-            "Дашборд и Сводка": {(4, 2): 100}, # C5
-            "Форекс (5 дней)": {(0, 0): "=MIN('Дашборд и Сводка'!$C$5, 50)"}
+            "Дашборд и Сводка": {(4, 2): 100},  # C5
+            "Форекс (5 дней)": {(0, 0): "=MIN('Дашборд и Сводка'!$C$5, 50)"},
         }
+
         def get_val(r, c, sheet=None):
             target = sheet or "Дашборд и Сводка"
             return sheets.get(target, {}).get((r, c), 0)
@@ -154,6 +167,7 @@ class TestExcelViewerPro(unittest.TestCase):
         # A1 = =B1, B1 = =A1
         formulas = {(0, 0): "=B1", (0, 1): "=A1"}
         evaluating = set()
+
         def get_val(r, c, sheet=None):
             key = (sheet, r, c)
             if key in evaluating:
@@ -196,7 +210,7 @@ class TestExcelViewerPro(unittest.TestCase):
 
     def test_new_date_and_time_functions(self):
         engine = FormulaEngine(lambda r, c, s=None: 0)
-        self.assertEqual(engine.evaluate('=TIME(14, 30, 15)'), "14:30:15")
+        self.assertEqual(engine.evaluate("=TIME(14, 30, 15)"), "14:30:15")
         self.assertEqual(engine.evaluate('=DATEDIF("2020-01-01", "2023-01-01", "Y")'), 3)
         self.assertEqual(engine.evaluate('=DATEDIF("2020-01-01", "2020-05-01", "M")'), 4)
         self.assertEqual(engine.evaluate('=DATEDIF("2020-01-01", "2020-01-15", "D")'), 14)
@@ -208,9 +222,12 @@ class TestExcelViewerPro(unittest.TestCase):
 
     def test_sumproduct_lookup_rank_row_col(self):
         data = {
-            (0, 0): 10, (0, 1): 2,
-            (1, 0): 20, (1, 1): 3,
-            (2, 0): 30, (2, 1): 4,
+            (0, 0): 10,
+            (0, 1): 2,
+            (1, 0): 20,
+            (1, 1): 3,
+            (2, 0): 30,
+            (2, 1): 4,
         }
         engine = FormulaEngine(lambda r, c, s=None: data.get((r, c), 0))
         # SUMPRODUCT: 10*2 + 20*3 + 30*4 = 20 + 60 + 120 = 200
@@ -237,19 +254,30 @@ class TestExcelViewerPro(unittest.TestCase):
 
     def test_additional_formula_functions(self):
         data = {
-            (0, 0): "Alpha", (0, 1): "Beta",
-            (1, 0): "", (1, 1): 42,
-            (2, 0): None, (2, 1): 99,
+            (0, 0): "Alpha",
+            (0, 1): "Beta",
+            (1, 0): "",
+            (1, 1): 42,
+            (2, 0): None,
+            (2, 1): 99,
         }
         engine = FormulaEngine(lambda r, c, s=None: data.get((r, c)))
         self.assertEqual(engine.evaluate("=COUNTBLANK(A1:B3)"), 2)
         self.assertEqual(engine.evaluate("=ROWS(A1:B3)"), 3)
         self.assertEqual(engine.evaluate("=COLUMNS(A1:B3)"), 2)
-        self.assertEqual(engine.evaluate('=WEEKDAY("2023-01-01")'), 1) # Sunday = 1
+        self.assertEqual(engine.evaluate('=WEEKDAY("2023-01-01")'), 1)  # Sunday = 1
 
     def test_accounting_and_serial_date_formatting(self):
-        self.assertEqual(NumberFormatter.format_value(0, "_($* #,##0.00_);_($* (#,##0.00);_($* \"-\"??_);_(@_)"), "$ -")
-        self.assertEqual(NumberFormatter.format_value(-1234.56, "_($* #,##0.00_);_($* (#,##0.00);_($* \"-\"??_);_(@_)"), "($1,234.56)")
+        self.assertEqual(
+            NumberFormatter.format_value(0, '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'),
+            "$ -",
+        )
+        self.assertEqual(
+            NumberFormatter.format_value(
+                -1234.56, '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+            ),
+            "($1,234.56)",
+        )
         self.assertEqual(NumberFormatter.format_value(44927, "yyyy-mm-dd"), "2023-01-01")
 
 
