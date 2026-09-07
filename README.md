@@ -1,12 +1,12 @@
 # xlsx-viewer-pro (Excel Viewer Pro)
 
 [![PyPI version](https://img.shields.io/pypi/v/xlsx-viewer-pro.svg)](https://pypi.org/project/xlsx-viewer-pro/)
-[![Python Versions](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg)](https://pypi.org/project/xlsx-viewer-pro/)
+[![Python Versions](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14%20%7C%203.15-blue.svg)](https://pypi.org/project/xlsx-viewer-pro/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/eminsk/xlsx_vievers/actions/workflows/ci.yml/badge.svg)](https://github.com/eminsk/xlsx_vievers/actions)
 [![Downloads](https://static.pepy.tech/badge/xlsx-viewer-pro)](https://pepy.tech/project/xlsx-viewer-pro)
 
-A high-performance Python spreadsheet library, headless formula engine (129+ functions), native x64 SIMD SSE2 math engine, and modern Office Ribbon desktop application for `.xlsx`, `.xlsm`, `.csv`, and `.tsv` files.
+A high-performance Python spreadsheet library, headless formula engine (129+ functions), native x64 SIMD SSE2 math engine, and modern Office Ribbon desktop application for `.xlsx`, `.xlsm`, `.csv`, and `.tsv` files. Compatible with **Python 3.10, 3.11, 3.12, 3.13, 3.14, and Python 3.15 (RC & Preview)**.
 
 ---
 
@@ -38,6 +38,14 @@ You can also run the CLI instantly without installing using `uvx`:
 
 ```bash
 uvx xlsx-viewer-pro --calc "=SUM(10, 20, 30) * 2"
+```
+
+#### ⚡ Python 3.15 Ready (Early Adopters)
+`xlsx-viewer-pro` is **100% verified (29/29 tests passing)** on upcoming **Python 3.15** (`cpython-3.15.0rc2`), including native SIMD SSE2 assembly acceleration.
+
+Pre-compiled native Windows x64 binary wheels for `matplotlib` (cp315) are attached to our [Release Assets](https://github.com/eminsk/xlsx_vievers/releases/tag/v1.0.0). To install on a Python 3.15 project:
+```bash
+uv add xlsx-viewer-pro --find-links https://github.com/eminsk/xlsx_vievers/releases/expanded_assets/v1.0.0
 ```
 
 ---
