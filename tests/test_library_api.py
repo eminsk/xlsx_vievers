@@ -17,7 +17,7 @@ from xlsx_viewer.models import CellPosition, CellRange, WorkbookData
 
 class TestXlsxViewerLibrary(unittest.TestCase):
     def test_version_and_metadata(self):
-        self.assertEqual(xv.__version__, "1.0.0")
+        self.assertEqual(xv.__version__, "1.0.1")
         self.assertGreaterEqual(len(xv.FUNCTION_METADATA), 120)
 
     def test_evaluate_arithmetic(self):
@@ -93,6 +93,29 @@ class TestXlsxViewerLibrary(unittest.TestCase):
         # Test --calc
         ret_calc = cli_main(["--calc", "=SUM(10, 20, 30)"])
         self.assertEqual(ret_calc, 0)
+
+    def test_launch_viewer_and_cli_default(self):
+        from unittest.mock import MagicMock, patch
+        from xlsx_viewer.cli import main as cli_main
+
+        with patch("xlsx_viewer.gui.ExcelViewerPro") as mock_cls:
+            mock_app = MagicMock()
+            mock_cls.return_value = mock_app
+
+            # 1. Test launch_viewer() with no args
+            xv.launch_viewer()
+            mock_app.run.assert_called()
+
+            # 2. Test launch_viewer("test.xlsx") with arg
+            mock_app.reset_mock()
+            xv.launch_viewer("test.xlsx")
+            mock_app.run.assert_called()
+
+            # 3. Test cli_main([]) default GUI launch
+            mock_app.reset_mock()
+            ret = cli_main([])
+            self.assertEqual(ret, 0)
+            mock_app.run.assert_called()
 
 
 if __name__ == "__main__":

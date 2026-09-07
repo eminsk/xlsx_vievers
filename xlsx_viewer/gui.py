@@ -2824,12 +2824,16 @@ class ExcelViewerPro(ttk.Window):
 # =============================================================================
 
 
-def main() -> None:
+def main(file_path: str | Path | None = None) -> None:
     app = ExcelViewerPro()
-    if len(sys.argv) > 1:
-        target_path = Path(sys.argv[1])
-        if target_path.exists() and target_path.is_file():
-            app._load_file(target_path)
+    target: Path | None = None
+    if file_path:
+        target = Path(file_path)
+    elif len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
+        target = Path(sys.argv[1])
+
+    if target and target.exists() and target.is_file():
+        app._load_file(target)
     app.run()
 
 
