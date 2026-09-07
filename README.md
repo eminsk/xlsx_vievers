@@ -22,16 +22,22 @@ A high-performance Python spreadsheet library, headless formula engine (129+ fun
 
 ## 📦 Installation
 
-Install via `pip`:
+Add to your project with `uv` (recommended):
+
+```bash
+uv add xlsx-viewer-pro
+```
+
+Or install via standard `pip`:
 
 ```bash
 pip install xlsx-viewer-pro
 ```
 
-Or via `uv`:
+You can also run the CLI instantly without installing using `uvx`:
 
 ```bash
-uv pip install xlsx-viewer-pro
+uvx xlsx-viewer-pro --calc "=SUM(10, 20, 30) * 2"
 ```
 
 ---
