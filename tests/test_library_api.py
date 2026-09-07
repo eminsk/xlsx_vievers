@@ -117,6 +117,19 @@ class TestXlsxViewerLibrary(unittest.TestCase):
             self.assertEqual(ret, 0)
             mock_app.run.assert_called()
 
+    def test_multithreading_and_no_gil(self):
+        import concurrent.futures
+
+        def worker(i):
+            return xv.evaluate_formula(f"=SUM({i}, 10, 20) * 2")
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+            results = list(ex.map(worker, range(50)))
+
+        self.assertEqual(len(results), 50)
+        self.assertEqual(results[0], 60.0)
+        self.assertEqual(results[10], 80.0)
+
 
 if __name__ == "__main__":
     unittest.main()

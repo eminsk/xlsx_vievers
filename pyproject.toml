@@ -24,7 +24,10 @@ keywords = [
     "xlookup",
     "viewer",
     "desktop-app",
-    "calculator"
+    "calculator",
+    "free-threaded",
+    "no-gil",
+    "pep-703"
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

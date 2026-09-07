@@ -48,6 +48,9 @@ Pre-compiled native Windows x64 binary wheels for `matplotlib` (cp315) are attac
 uv add xlsx-viewer-pro --find-links https://github.com/eminsk/xlsx_vievers/releases/expanded_assets/v1.0.0
 ```
 
+#### 🧵 Free-Threaded (No-GIL / PEP 703) Verified
+`xlsx-viewer-pro` is **100% verified on Python 3.13t, 3.14t, and 3.15t without GIL** (`-X gil=0`). All 129 formula functions and the native x64 SIMD SSE2 FASM engine are fully thread-safe, enabling parallel formula evaluation across all CPU cores without GIL bottlenecks via standard `ThreadPoolExecutor`.
+
 ---
 
 ## 🐍 Python Library Quickstart
