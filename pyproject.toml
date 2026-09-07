@@ -1,12 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "xlsx-viewer"
+name = "xlsx-viewer-pro"
 version = "1.0.0"
-description = "Modern Excel file viewer with professional UI"
+description = "Modern Excel spreadsheet engine, 129 formula functions, SIMD SSE2 math, and desktop GUI viewer."
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "eminsk", email = "M_N_Nik@yahoo.com" }
+]
+keywords = [
+    "excel",
+    "xlsx",
+    "spreadsheet",
+    "formula-engine",
+    "simd",
+    "sse2",
+    "openpyxl",
+    "vlookup",
+    "xlookup",
+    "viewer",
+    "desktop-app",
+    "calculator"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Assembly",
+    "Topic :: Office/Business :: Financial :: Spreadsheet",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
 dependencies = [
-    "matplotlib>=3.10.8",
     "openpyxl>=3.1.0",
+    "matplotlib>=3.7.0",
     "ttkbootstrap>=1.10.0",
 ]
 
@@ -14,13 +53,31 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
     "ruff>=0.3.0",
+    "build>=1.0.0",
+    "twine>=5.0.0",
 ]
 
 [project.scripts]
-xlsx-viewer = "main:main"
+xlsx-viewer-pro = "xlsx_viewer.cli:main"
+xlsx-viewer = "xlsx_viewer.cli:main"
+xv = "xlsx_viewer.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/eminsk/xlsx_vievers"
+Repository = "https://github.com/eminsk/xlsx_vievers"
+Issues = "https://github.com/eminsk/xlsx_vievers/issues"
+Changelog = "https://github.com/eminsk/xlsx_vievers/releases"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["xlsx_viewer*"]
+
+[tool.setuptools.package-data]
+xlsx_viewer = ["*.ico", "*.png", "asm/*.dll", "asm/*.asm"]
 
 [tool.pytest.ini_options]
-testpaths = [".", "asm"]
+testpaths = ["tests", "asm"]
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
@@ -29,4 +86,3 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
 ignore = ["E501", "E402", "E741", "F403", "F405", "F841"]
-

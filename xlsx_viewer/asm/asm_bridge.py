@@ -35,65 +35,65 @@ if sys.maxsize > 2**32:
             _dll.vec_sum_f64.restype = ctypes.c_double
             _dll.vec_sum_f64.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.c_uint64]
 
-            # 2. vec_avg_f64: (const double* arr, uint64_t count) -> double
-            _dll.vec_avg_f64.restype = ctypes.c_double
-            _dll.vec_avg_f64.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.c_uint64]
+        # 2. vec_avg_f64: (const double* arr, uint64_t count) -> double
+        _dll.vec_avg_f64.restype = ctypes.c_double
+        _dll.vec_avg_f64.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.c_uint64]
 
-            # 3. vec_min_f64: (const double* arr, uint64_t count) -> double
-            _dll.vec_min_f64.restype = ctypes.c_double
-            _dll.vec_min_f64.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.c_uint64]
+        # 3. vec_min_f64: (const double* arr, uint64_t count) -> double
+        _dll.vec_min_f64.restype = ctypes.c_double
+        _dll.vec_min_f64.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.c_uint64]
 
-            # 4. vec_max_f64: (const double* arr, uint64_t count) -> double
-            _dll.vec_max_f64.restype = ctypes.c_double
-            _dll.vec_max_f64.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.c_uint64]
+        # 4. vec_max_f64: (const double* arr, uint64_t count) -> double
+        _dll.vec_max_f64.restype = ctypes.c_double
+        _dll.vec_max_f64.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.c_uint64]
 
-            # 5. vec_sumproduct_f64: (const double* a, const double* b, uint64_t count) -> double
-            _dll.vec_sumproduct_f64.restype = ctypes.c_double
-            _dll.vec_sumproduct_f64.argtypes = [
-                ctypes.POINTER(ctypes.c_double),
-                ctypes.POINTER(ctypes.c_double),
-                ctypes.c_uint64,
-            ]
+        # 5. vec_sumproduct_f64: (const double* a, const double* b, uint64_t count) -> double
+        _dll.vec_sumproduct_f64.restype = ctypes.c_double
+        _dll.vec_sumproduct_f64.argtypes = [
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_uint64,
+        ]
 
-            # 6. fast_pmt_f64: (double rate, double nper, double pv, double fv, int64_t type) -> double
-            _dll.fast_pmt_f64.restype = ctypes.c_double
-            _dll.fast_pmt_f64.argtypes = [
-                ctypes.c_double,
-                ctypes.c_double,
-                ctypes.c_double,
-                ctypes.c_double,
-                ctypes.c_int64,
-            ]
+        # 6. fast_pmt_f64: (double rate, double nper, double pv, double fv, int64_t type) -> double
+        _dll.fast_pmt_f64.restype = ctypes.c_double
+        _dll.fast_pmt_f64.argtypes = [
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_int64,
+        ]
 
-            # 7. fast_pv_f64: (double rate, double nper, double pmt, double fv, int64_t type) -> double
-            _dll.fast_pv_f64.restype = ctypes.c_double
-            _dll.fast_pv_f64.argtypes = [
-                ctypes.c_double,
-                ctypes.c_double,
-                ctypes.c_double,
-                ctypes.c_double,
-                ctypes.c_int64,
-            ]
+        # 7. fast_pv_f64: (double rate, double nper, double pmt, double fv, int64_t type) -> double
+        _dll.fast_pv_f64.restype = ctypes.c_double
+        _dll.fast_pv_f64.argtypes = [
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_int64,
+        ]
 
-            # 8. fast_fv_f64: (double rate, double nper, double pmt, double pv, int64_t type) -> double
-            _dll.fast_fv_f64.restype = ctypes.c_double
-            _dll.fast_fv_f64.argtypes = [
-                ctypes.c_double,
-                ctypes.c_double,
-                ctypes.c_double,
-                ctypes.c_double,
-                ctypes.c_int64,
-            ]
+        # 8. fast_fv_f64: (double rate, double nper, double pmt, double pv, int64_t type) -> double
+        _dll.fast_fv_f64.restype = ctypes.c_double
+        _dll.fast_fv_f64.argtypes = [
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_int64,
+        ]
 
-            # 9. fast_str_hash: (const char* str, uint64_t len) -> uint64_t
-            _dll.fast_str_hash.restype = ctypes.c_uint64
-            _dll.fast_str_hash.argtypes = [ctypes.c_char_p, ctypes.c_uint64]
+        # 9. fast_str_hash: (const char* str, uint64_t len) -> uint64_t
+        _dll.fast_str_hash.restype = ctypes.c_uint64
+        _dll.fast_str_hash.argtypes = [ctypes.c_char_p, ctypes.c_uint64]
 
-            # 10. fast_count_nonblank: (const uint64_t* ptr_arr, uint64_t count) -> uint64_t
-            _dll.fast_count_nonblank.restype = ctypes.c_uint64
-            _dll.fast_count_nonblank.argtypes = [ctypes.POINTER(ctypes.c_uint64), ctypes.c_uint64]
+        # 10. fast_count_nonblank: (const uint64_t* ptr_arr, uint64_t count) -> uint64_t
+        _dll.fast_count_nonblank.restype = ctypes.c_uint64
+        _dll.fast_count_nonblank.argtypes = [ctypes.POINTER(ctypes.c_uint64), ctypes.c_uint64]
 
-            _is_available = True
+        _is_available = True
     except Exception:
         _is_available = False
 

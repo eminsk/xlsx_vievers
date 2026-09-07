@@ -1,0 +1,6 @@
+include LICENSE
+include README.md
+include pyproject.toml
+recursive-include xlsx_viewer *.py *.dll *.asm *.ico *.png
+recursive-include tests *.py
+recursive-include asm *.py *.asm *.dll *.exe

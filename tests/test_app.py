@@ -2,16 +2,17 @@
 Unit and integration test suite for Excel Viewer Pro.
 """
 
+import sys
 import unittest
+from pathlib import Path
 
-try:
-    from xlsx_viewer.formatting import ConditionalFormattingEngine, NumberFormatter
-    from xlsx_viewer.formulas import FormulaEngine, shift_formula_references
-    from xlsx_viewer.models import CellPosition, CellRange, SheetData
-except ImportError:
-    from formatting import ConditionalFormattingEngine, NumberFormatter
-    from formulas import FormulaEngine, shift_formula_references
-    from models import CellPosition, CellRange, SheetData
+root_dir = Path(__file__).resolve().parent.parent
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
+
+from xlsx_viewer.formatting import ConditionalFormattingEngine, NumberFormatter
+from xlsx_viewer.formulas import FormulaEngine, shift_formula_references
+from xlsx_viewer.models import CellPosition, CellRange, SheetData
 
 
 class TestExcelViewerPro(unittest.TestCase):
