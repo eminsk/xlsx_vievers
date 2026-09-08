@@ -96,6 +96,7 @@ class TestXlsxViewerLibrary(unittest.TestCase):
 
     def test_launch_viewer_and_cli_default(self):
         from unittest.mock import MagicMock, patch
+
         from xlsx_viewer.cli import main as cli_main
 
         with patch("xlsx_viewer.gui.ExcelViewerPro") as mock_cls:
