@@ -162,12 +162,21 @@ print("Sumproduct:", simd_sumproduct(data_a, data_b))
 
 ### 5. In-Memory Workbook Data Models
 
-Load, inspect, and manipulate Excel workbooks programmatically:
+Load, inspect, and manipulate Excel workbooks programmatically. If you don't have an existing workbook, you can create one with `openpyxl` or inspect any existing `.xlsx` file:
 
 ```python
-from xlsx_viewer import WorkbookData, load_workbook
+import openpyxl
+from xlsx_viewer import load_workbook
 
-# Load an existing workbook
+# 1. Create a sample workbook if one doesn't exist
+sample_wb = openpyxl.Workbook()
+sample_sheet = sample_wb.active
+sample_sheet.title = "Sheet1"
+sample_sheet["A1"] = 100
+sample_sheet["B1"] = 200
+sample_wb.save("report.xlsx")
+
+# 2. Load the workbook into xlsx-viewer
 wb = load_workbook("report.xlsx")
 print(f"Sheets: {wb.sheet_names}")
 
@@ -186,6 +195,8 @@ sheet.set_cell(row=0, col=1, value=1250.50)
 ---
 
 ## 💻 Command Line Interface (CLI)
+
+> **Note:** The commands below are **terminal commands** (PowerShell / CMD / Bash), not Python code. Run them directly in your shell or with `uv run`.
 
 `xlsx-viewer` comes with a CLI tool accessible as both `xlsx-viewer` and `xv`:
 
@@ -207,6 +218,9 @@ xv --info
 # Open a workbook in the desktop GUI
 xv sample_report.xlsx
 ```
+
+*(To invoke the CLI from inside a Python script, use `from xlsx_viewer.cli import main; main(["--calc", "=SUM(10, 20)"])`)*
+
 
 ---
 
