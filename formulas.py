@@ -782,11 +782,25 @@ FUNCTION_METADATA: dict[str, dict[str, Any]] = {
 class FormulaEngine:
     """Excel-like formula parser and evaluator with 80+ functions, memoization, and multi-sheet support."""
 
-    def __init__(self, get_cell_value_callback: Callable[[int, int, str | None], Any]) -> None:
+    def __init__(
+        self,
+        get_cell_value_callback: Callable[[int, int, str | None], Any] | None = None,
+        *,
+        resolver: Callable[[int, int, str | None], Any] | None = None,
+    ) -> None:
         """
-        get_cell_value_callback: func(row, col, sheet_name=None) -> Any
+        get_cell_value_callback / resolver: func(row, col, sheet_name=None) -> Any
         """
-        self._get_val = get_cell_value_callback
+        if get_cell_value_callback is not None:
+            self._get_val = get_cell_value_callback
+        elif resolver is not None:
+            self._get_val = resolver
+        else:
+
+            def _empty_val(r: int, c: int, s: str | None = None) -> Any:
+                return None
+
+            self._get_val = _empty_val
         self._functions = self._build_function_map()
         self._cache: dict[tuple[str | None, str], Any] = {}
         self._evaluating: set[tuple[str | None, str]] = set()
