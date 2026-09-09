@@ -17,7 +17,7 @@ from xlsx_viewer.models import CellPosition, CellRange, WorkbookData
 
 class TestXlsxViewerLibrary(unittest.TestCase):
     def test_version_and_metadata(self):
-        self.assertEqual(xv.__version__, "1.0.3")
+        self.assertEqual(xv.__version__, "1.0.4")
         self.assertGreaterEqual(len(xv.FUNCTION_METADATA), 120)
 
     def test_evaluate_arithmetic(self):

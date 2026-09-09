@@ -254,6 +254,33 @@ class SheetData:
         self.rows[row][col] = value
         self.row_count = len(self.rows)
 
+    @property
+    def max_row(self) -> int:
+        """Total row count in sheet."""
+        return self.row_count
+
+    @property
+    def max_col(self) -> int:
+        """Total column count in sheet."""
+        return self.col_count
+
+    def get_cell(self, row: int, col: int) -> "CellData | None":
+        """Get cell data container at (row, col)."""
+        val = self.get_cell_value(row, col)
+        if val is None and (row >= self.row_count or col >= self.col_count):
+            return None
+        formula = None
+        if isinstance(val, str) and val.startswith("="):
+            formula = val
+        return CellData(
+            row=row,
+            col=col,
+            value=val,
+            formula=formula,
+            style=self.cell_styles.get((row, col)),
+            comment=self.comments.get((row, col)),
+        )
+
     def set_cell(self, row: int, col: int, value: Any, formula: str | None = None) -> None:
         """Set cell value and optional formula string."""
         self.set_cell_value(row, col, value)
