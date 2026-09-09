@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Iterator
 
 from openpyxl.utils import column_index_from_string, get_column_letter
@@ -326,3 +327,25 @@ class WorkbookData:
     @property
     def sheet_names(self) -> list[str]:
         return list(self.sheets.keys())
+
+    def save(self, path: str | Path | None = None) -> None:
+        """Save the workbook to an .xlsx file."""
+        target = path or self.file_path
+        if not target:
+            raise ValueError("No file path specified to save workbook.")
+        from pathlib import Path
+
+        target = Path(target)
+        from openpyxl import Workbook
+
+        pyxl_wb = Workbook()
+        if pyxl_wb.sheetnames:
+            pyxl_wb.remove(pyxl_wb.active)
+        for sname, sdata in self.sheets.items():
+            ws = pyxl_wb.create_sheet(title=sname)
+            for r_idx, row in enumerate(sdata.rows):
+                for c_idx, val in enumerate(row):
+                    if val != "" and val is not None:
+                        ws.cell(row=r_idx + 1, column=c_idx + 1, value=val)
+        pyxl_wb.save(target)
+        self.file_path = str(target)

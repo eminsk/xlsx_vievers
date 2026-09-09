@@ -4,7 +4,7 @@ xlsx-viewer: Modern Excel File Viewer, Data Models, and 129-Function Formula Eng
 
 from __future__ import annotations
 
-from .api import evaluate_formula, launch_viewer, load_workbook
+from .api import evaluate_formula, launch_viewer, load_workbook, save_workbook
 from .asm import (
     asm_avg,
     asm_fv,
@@ -36,7 +36,7 @@ from .models import (
     WorkbookData,
 )
 
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 __author__ = "eminsk"
 __license__ = "MIT"
 
@@ -44,6 +44,7 @@ __all__ = [
     # Top-Level Helpers
     "evaluate_formula",
     "load_workbook",
+    "save_workbook",
     "launch_viewer",
     "__version__",
     # Formula Engine

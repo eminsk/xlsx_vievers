@@ -17,7 +17,7 @@ from xlsx_viewer.models import CellPosition, CellRange, WorkbookData
 
 class TestXlsxViewerLibrary(unittest.TestCase):
     def test_version_and_metadata(self):
-        self.assertEqual(xv.__version__, "1.0.5")
+        self.assertEqual(xv.__version__, "1.0.6")
         self.assertGreaterEqual(len(xv.FUNCTION_METADATA), 120)
 
     def test_evaluate_arithmetic(self):
@@ -131,6 +131,31 @@ class TestXlsxViewerLibrary(unittest.TestCase):
         self.assertEqual(len(results), 50)
         self.assertEqual(results[0], 60.0)
         self.assertEqual(results[10], 80.0)
+
+    def test_load_and_save_workbook(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_path = Path(tmpdir) / "nonexistent.xlsx"
+
+            # 1. create_if_missing=True (default) should succeed and create Sheet1
+            wb = xv.load_workbook(test_path)
+            self.assertIn("Sheet1", wb.sheet_names)
+            sheet = wb.get_sheet("Sheet1")
+            sheet.set_cell(0, 0, "TestValue")
+
+            # 2. Save workbook to disk
+            wb.save()
+            self.assertTrue(test_path.exists())
+
+            # 3. Reload existing workbook
+            wb_reloaded = xv.load_workbook(test_path)
+            self.assertEqual(wb_reloaded.get_sheet("Sheet1").get_cell(0, 0).value, "TestValue")
+
+            # 4. create_if_missing=False on missing file should raise FileNotFoundError
+            missing = Path(tmpdir) / "missing.xlsx"
+            with self.assertRaises(FileNotFoundError):
+                xv.load_workbook(missing, create_if_missing=False)
 
 
 if __name__ == "__main__":

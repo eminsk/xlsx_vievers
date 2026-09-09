@@ -54,12 +54,15 @@ def evaluate_formula(
     return engine.evaluate(formula)
 
 
-def load_workbook(path: str | Path) -> WorkbookData:
+def load_workbook(path: str | Path, create_if_missing: bool = True) -> WorkbookData:
     """
     Load an Excel (.xlsx) file into memory data models.
+    If create_if_missing is True and the file does not exist, an empty workbook
+    with a default 'Sheet1' will be created automatically.
 
     Args:
         path: Path to the .xlsx file.
+        create_if_missing: If True, initialize a new empty workbook when path is not found.
 
     Returns:
         WorkbookData instance containing sheets, cells, formulas, and formatting.
@@ -68,6 +71,10 @@ def load_workbook(path: str | Path) -> WorkbookData:
 
     path = Path(path)
     if not path.exists():
+        if create_if_missing:
+            wb_data = WorkbookData(file_path=str(path))
+            wb_data.add_sheet("Sheet1")
+            return wb_data
         raise FileNotFoundError(f"Workbook not found: {path}")
 
     wb_data = WorkbookData(file_path=str(path))
@@ -87,6 +94,17 @@ def load_workbook(path: str | Path) -> WorkbookData:
                     sheet_data.set_cell(row_idx, col_idx, val, formula=formula)
 
     return wb_data
+
+
+def save_workbook(wb: WorkbookData, path: str | Path | None = None) -> None:
+    """
+    Save a WorkbookData instance to disk as an .xlsx file.
+
+    Args:
+        wb: WorkbookData instance to save.
+        path: Optional destination file path. If omitted, wb.file_path is used.
+    """
+    wb.save(path)
 
 
 def launch_viewer(path: str | Path | None = None) -> None:

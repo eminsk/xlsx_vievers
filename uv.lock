@@ -1618,16 +1618,18 @@ wheels = [
 
 [[package]]
 name = "xlsx-viewer-pro"
-version = "1.0.1"
+version = "1.0.6"
 source = { editable = "." }
 dependencies = [
-    { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "matplotlib", version = "3.11.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "openpyxl" },
     { name = "ttkbootstrap" },
 ]
 
 [package.optional-dependencies]
+charts = [
+    { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "matplotlib", version = "3.11.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
 dev = [
     { name = "build" },
     { name = "pytest" },
@@ -1638,14 +1640,14 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.0.0" },
-    { name = "matplotlib", specifier = ">=3.7.0" },
+    { name = "matplotlib", marker = "extra == 'charts'", specifier = ">=3.7.0" },
     { name = "openpyxl", specifier = ">=3.1.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.3.0" },
     { name = "ttkbootstrap", specifier = ">=1.10.0" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5.0.0" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["charts", "dev"]
 
 [[package]]
 name = "zipp"
