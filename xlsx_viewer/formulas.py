@@ -887,12 +887,29 @@ class FormulaEngine:
         if expr.upper() == "FALSE":
             return False
 
-        # Functions FUNC(...)
-        func_match = re.match(r"^([A-Z0-9_\.]+)\s*\((.*)\)$", expr, re.IGNORECASE | re.DOTALL)
-        if func_match:
+        # Functions FUNC(...) - check that paren matches to the end of expr
+        func_match = re.match(r"^([A-Z0-9_\.]+)\s*\(", expr, re.IGNORECASE)
+        if func_match and expr.endswith(")"):
             fn_name = func_match.group(1).upper()
-            args_str = func_match.group(2)
-            if fn_name in self._functions:
+            open_pos = expr.index("(")
+            depth = 0
+            in_quote = False
+            closes_at_end = False
+            for i in range(open_pos, len(expr)):
+                c = expr[i]
+                if c == '"':
+                    in_quote = not in_quote
+                elif not in_quote:
+                    if c == "(":
+                        depth += 1
+                    elif c == ")":
+                        depth -= 1
+                        if depth == 0:
+                            if i == len(expr) - 1:
+                                closes_at_end = True
+                            break
+            if closes_at_end and fn_name in self._functions:
+                args_str = expr[open_pos + 1 : -1]
                 return self._call_func(fn_name, args_str, current_sheet)
 
         # Comparisons (=, <>, <=, >=, <, >)

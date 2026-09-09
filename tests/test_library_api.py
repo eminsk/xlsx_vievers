@@ -17,12 +17,13 @@ from xlsx_viewer.models import CellPosition, CellRange, WorkbookData
 
 class TestXlsxViewerLibrary(unittest.TestCase):
     def test_version_and_metadata(self):
-        self.assertEqual(xv.__version__, "1.0.4")
+        self.assertEqual(xv.__version__, "1.0.5")
         self.assertGreaterEqual(len(xv.FUNCTION_METADATA), 120)
 
     def test_evaluate_arithmetic(self):
         self.assertEqual(xv.evaluate_formula("=2+3*4"), 14)
         self.assertEqual(xv.evaluate_formula("=(2+3)*4"), 20)
+        self.assertEqual(xv.evaluate_formula("=SUM(10, 20) + MAX(5, 15)"), 45)
         self.assertEqual(xv.evaluate_formula("=2^8"), 256)
         self.assertEqual(xv.evaluate_formula("=100/4"), 25)
         self.assertEqual(xv.evaluate_formula("=10/0"), "#DIV/0!")
