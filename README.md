@@ -40,13 +40,21 @@ You can also run the CLI instantly without installing using `uvx`:
 uvx xlsx-viewer-pro --calc "=SUM(10, 20, 30) * 2"
 ```
 
-#### ⚡ Python 3.15 Ready (Early Adopters)
-`xlsx-viewer-pro` is **100% verified (29/29 tests passing)** on upcoming **Python 3.15** (`cpython-3.15.0rc2`), including native SIMD SSE2 assembly acceleration.
+#### ⚡ Zero C-Build Requirements & Python 3.15 Ready
+`xlsx-viewer-pro` installs in milliseconds with **zero C build requirements** by default (`openpyxl` + `ttkbootstrap`), and bundles pre-compiled standalone Flat Assembler (FASM) 64-bit DLLs for SIMD SSE2 math.
 
-Pre-compiled native Windows x64 binary wheels for `matplotlib` (cp315) are attached to our [Release Assets](https://github.com/eminsk/xlsx_vievers/releases/tag/v1.0.0). To install on a Python 3.15 project:
-```bash
-uv add xlsx-viewer-pro --find-links https://github.com/eminsk/xlsx_vievers/releases/expanded_assets/v1.0.0
-```
+* **Standard install (CLI, desktop viewer, 129 formula functions, SIMD SSE2):**
+  ```bash
+  uv add xlsx-viewer-pro
+  # or
+  pip install xlsx-viewer-pro
+  ```
+* **Optional charting support (Matplotlib Chart Wizard):**
+  ```bash
+  uv add "xlsx-viewer-pro[charts]"
+  # or
+  pip install "xlsx-viewer-pro[charts]"
+  ```
 
 #### 🧵 Free-Threaded (No-GIL / PEP 703) Verified
 `xlsx-viewer-pro` is **100% verified on Python 3.13t, 3.14t, and 3.15t without GIL** (`-X gil=0`). All 129 formula functions and the native x64 SIMD SSE2 FASM engine are fully thread-safe, enabling parallel formula evaluation across all CPU cores without GIL bottlenecks via standard `ThreadPoolExecutor`.

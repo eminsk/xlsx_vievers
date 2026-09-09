@@ -24,7 +24,7 @@ if sys.maxsize > 2**32:
         if sys.platform == "win32":
             _h = ctypes.windll.kernel32.GetModuleHandleW("xlsx_math64.dll")
             if _h:
-                _dll = ctypes.CDLL(None, handle=_h)
+                _dll = ctypes.CDLL("xlsx_math64.dll", handle=_h)
 
         if _dll is None and _DLL_PATH.exists():
             _dll = ctypes.CDLL(str(_DLL_PATH.resolve()))

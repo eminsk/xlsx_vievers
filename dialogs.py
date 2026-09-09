@@ -695,7 +695,10 @@ class ChartWizardDialog(tk.Toplevel):
             import matplotlib.pyplot as plt
             from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
         except ImportError:
-            messagebox.showerror("Error", "Matplotlib is not installed.")
+            messagebox.showerror(
+                "Chart Wizard Error",
+                'Matplotlib is not installed.\nTo enable charting, install with:\npip install "xlsx-viewer-pro[charts]"',
+            )
             return
 
         try:
