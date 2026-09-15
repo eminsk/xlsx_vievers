@@ -3261,18 +3261,24 @@ wheels = [
 
 [[package]]
 name = "xlsx-viewer-pro"
-version = "1.0.6"
+version = "1.0.7"
 source = { editable = "." }
 dependencies = [
     { name = "openpyxl" },
-    { name = "ttkbootstrap", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
-    { name = "ttkbootstrap", version = "1.18.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
-    { name = "ttkbootstrap", version = "2.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "typing-extensions", version = "4.16.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "matplotlib", version = "3.7.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
+    { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "matplotlib", version = "3.11.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "ttkbootstrap", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "ttkbootstrap", version = "1.18.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
+    { name = "ttkbootstrap", version = "2.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
 charts = [
     { name = "matplotlib", version = "3.7.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
@@ -3291,19 +3297,26 @@ dev = [
     { name = "twine", version = "6.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "twine", version = "7.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
+gui = [
+    { name = "ttkbootstrap", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "ttkbootstrap", version = "1.18.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
+    { name = "ttkbootstrap", version = "2.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "matplotlib", marker = "extra == 'all'", specifier = ">=3.7.0" },
     { name = "matplotlib", marker = "extra == 'charts'", specifier = ">=3.7.0" },
     { name = "openpyxl", specifier = ">=3.1.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.3.0" },
-    { name = "ttkbootstrap", specifier = ">=1.10.0" },
+    { name = "ttkbootstrap", marker = "extra == 'all'", specifier = ">=1.10.0" },
+    { name = "ttkbootstrap", marker = "extra == 'gui'", specifier = ">=1.10.0" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5.0.0" },
     { name = "typing-extensions", marker = "python_full_version < '3.10'", specifier = ">=4.0" },
 ]
-provides-extras = ["charts", "dev"]
+provides-extras = ["gui", "charts", "all", "dev"]
 
 [[package]]
 name = "zipp"
