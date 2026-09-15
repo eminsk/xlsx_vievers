@@ -7,7 +7,7 @@ name = "xlsx-viewer-pro"
 version = "1.0.6"
 description = "Modern Excel spreadsheet engine, 129 formula functions, SIMD SSE2 math, and desktop GUI viewer."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 license = "MIT"
 authors = [
     { name = "eminsk", email = "M_N_Nik@yahoo.com" }
@@ -27,7 +27,9 @@ keywords = [
     "calculator",
     "free-threaded",
     "no-gil",
-    "pep-703"
+    "pep-703",
+    "pypy",
+    "pypy3"
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -37,12 +39,16 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3.15",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
     "Programming Language :: Assembly",
     "Topic :: Office/Business :: Financial :: Spreadsheet",
     "Topic :: Scientific/Engineering :: Mathematics",
@@ -50,6 +56,7 @@ classifiers = [
 dependencies = [
     "openpyxl>=3.1.0",
     "ttkbootstrap>=1.10.0",
+    "typing-extensions>=4.0; python_version < '3.10'",
 ]
 
 [project.optional-dependencies]
