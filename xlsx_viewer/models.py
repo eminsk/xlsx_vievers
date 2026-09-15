@@ -5,6 +5,7 @@ Data models and state classes for Excel Viewer Pro.
 from __future__ import annotations
 
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterator
@@ -18,8 +19,10 @@ from openpyxl.utils import column_index_from_string, get_column_letter
 CELL_REF_REGEX = re.compile(r"^\$?([A-Za-z]+)\$?(\d+)$")
 RANGE_REF_REGEX = re.compile(r"^(\$?[A-Za-z]+\$?\d+):(\$?[A-Za-z]+\$?\d+)$")
 
+_dataclass_kwargs = {"slots": True} if sys.version_info >= (3, 10) else {}
 
-@dataclass(slots=True)
+
+@dataclass(**_dataclass_kwargs)
 class CellPosition:
     """Represents a 0-based cell coordinate (row, col)."""
 
@@ -48,7 +51,7 @@ class CellPosition:
         yield self.col
 
 
-@dataclass(slots=True)
+@dataclass(**_dataclass_kwargs)
 class CellRange:
     """Represents a rectangular range of cells (anchor and active/extent)."""
 

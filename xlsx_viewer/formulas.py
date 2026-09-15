@@ -38,8 +38,10 @@ RANGE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+_dataclass_kwargs = {"slots": True} if sys.version_info >= (3, 10) else {}
 
-@dataclass(slots=True)
+
+@dataclass(**_dataclass_kwargs)
 class CellRef:
     """Parsed cell reference with optional sheet name."""
 
