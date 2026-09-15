@@ -8,7 +8,7 @@ version = "1.0.6"
 description = "Modern Excel spreadsheet engine, 129 formula functions, SIMD SSE2 math, and desktop GUI viewer."
 readme = "README.md"
 requires-python = ">=3.8"
-license = "MIT"
+license = { text = "MIT" }
 authors = [
     { name = "eminsk", email = "M_N_Nik@yahoo.com" }
 ]
