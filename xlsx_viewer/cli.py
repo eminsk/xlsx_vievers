@@ -56,6 +56,8 @@ def main(argv: list[str] | None = None) -> int:
 
     parser.add_argument(
         "--list-formulas",
+        "--list-funcs",
+        dest="list_formulas",
         action="store_true",
         help="Print all 129 supported Excel formula functions grouped by category.",
     )
