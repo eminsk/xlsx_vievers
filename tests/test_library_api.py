@@ -96,9 +96,9 @@ class TestXlsxViewerLibrary(unittest.TestCase):
         self.assertEqual(ret_calc, 0)
 
     def test_launch_viewer_and_cli_default(self):
-        try:
-            import ttkbootstrap
-        except ImportError:
+        import importlib.util
+
+        if importlib.util.find_spec("ttkbootstrap") is None:
             self.skipTest("ttkbootstrap not installed (headless/PyPy environment)")
 
         from unittest.mock import MagicMock, patch
