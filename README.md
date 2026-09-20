@@ -5,6 +5,7 @@
 [![MSYS2](https://img.shields.io/badge/MSYS2-pacman-orange.svg?style=flat)](https://packages.msys2.org/package/mingw-w64-x86_64-python-xlsx-viewer-pro)
 [![Debian / Ubuntu PPA](https://img.shields.io/badge/Debian%20%2F%20Ubuntu-APT%20PPA-E95420.svg?style=flat)](https://eminsk.github.io/ppa/)
 [![Arch Linux AUR](https://img.shields.io/badge/Arch_Linux-AUR-1793D1.svg?style=flat)](https://aur.archlinux.org/packages/python-xlsx-viewer-pro)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/xlsx_vievers/blob/master/notebooks/xlsx_viewer_quickstart.ipynb)
 [![Python Versions](https://img.shields.io/badge/python-3.8%20--%203.15-blue.svg)](https://pypi.org/project/xlsx-viewer-pro/)
 [![PyPy](https://img.shields.io/badge/PyPy-3.8%20--%203.11-orange.svg)](https://www.pypy.org/)
 [![No-GIL](https://img.shields.io/badge/No--GIL-3.13t%20--%203.15t-purple.svg)](https://peps.python.org/pep-0703/)
