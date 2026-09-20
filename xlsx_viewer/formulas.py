@@ -789,14 +789,17 @@ class FormulaEngine:
         get_cell_value_callback: Callable[[int, int, str | None], Any] | None = None,
         *,
         resolver: Callable[[int, int, str | None], Any] | None = None,
+        cell_value_resolver: Callable[[int, int, str | None], Any] | None = None,
     ) -> None:
         """
-        get_cell_value_callback / resolver: func(row, col, sheet_name=None) -> Any
+        get_cell_value_callback / resolver / cell_value_resolver: func(row, col, sheet_name=None) -> Any
         """
         if get_cell_value_callback is not None:
             self._get_val = get_cell_value_callback
         elif resolver is not None:
             self._get_val = resolver
+        elif cell_value_resolver is not None:
+            self._get_val = cell_value_resolver
         else:
 
             def _empty_val(r: int, c: int, s: str | None = None) -> Any:
