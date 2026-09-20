@@ -1,6 +1,10 @@
 # xlsx-viewer-pro (Excel Viewer Pro)
 
 [![PyPI version](https://img.shields.io/pypi/v/xlsx-viewer-pro.svg)](https://pypi.org/project/xlsx-viewer-pro/)
+[![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/xlsx-viewer-pro.svg?style=flat)](https://anaconda.org/conda-forge/xlsx-viewer-pro)
+[![MSYS2](https://img.shields.io/badge/MSYS2-pacman-orange.svg?style=flat)](https://packages.msys2.org/package/mingw-w64-x86_64-python-xlsx-viewer-pro)
+[![Debian/Ubuntu](https://img.shields.io/badge/Debian%2FUbuntu-.deb%20package-E95420.svg?style=flat)](https://github.com/eminsk/xlsx_vievers/releases)
+[![Arch Linux AUR](https://img.shields.io/badge/Arch_Linux-AUR-1793D1.svg?style=flat)](https://aur.archlinux.org/packages/python-xlsx-viewer-pro)
 [![Python Versions](https://img.shields.io/badge/python-3.8%20--%203.15-blue.svg)](https://pypi.org/project/xlsx-viewer-pro/)
 [![PyPy](https://img.shields.io/badge/PyPy-3.8%20--%203.11-orange.svg)](https://www.pypy.org/)
 [![No-GIL](https://img.shields.io/badge/No--GIL-3.13t%20--%203.15t-purple.svg)](https://peps.python.org/pep-0703/)
@@ -34,6 +38,15 @@ A high-performance Python spreadsheet library, headless formula engine (129+ fun
 ---
 
 ## 📦 Installation
+
+| Platform / Manager | Installation Command |
+|---|---|
+| **PyPI (Standard)** | `pip install xlsx-viewer-pro` |
+| **PyPI (uv)** | `uv add xlsx-viewer-pro` |
+| **Conda-Forge** | `conda install -c conda-forge xlsx-viewer-pro` |
+| **MSYS2 (MinGW-w64)** | `pacman -S mingw-w64-x86_64-python-xlsx-viewer-pro` |
+| **Ubuntu / Debian (.deb)** | `sudo dpkg -i python3-xlsx-viewer-pro_1.0.7-1_all.deb` |
+| **Arch Linux (AUR)** | `yay -S python-xlsx-viewer-pro` |
 
 Add to your project with `uv` (recommended):
 

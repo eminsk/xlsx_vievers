@@ -1,0 +1,17 @@
+pkgbase = python-xlsx-viewer-pro
+	pkgdesc = Modern Excel spreadsheet engine, 129 formula functions, SIMD SSE2 math, and desktop GUI viewer
+	pkgver = 1.0.7
+	pkgrel = 1
+	url = https://github.com/eminsk/xlsx_vievers
+	arch = any
+	license = MIT
+	makedepends = python-build
+	makedepends = python-installer
+	makedepends = python-wheel
+	makedepends = python-setuptools
+	depends = python
+	depends = python-openpyxl
+	source = https://files.pythonhosted.org/packages/source/x/xlsx_viewer_pro/xlsx_viewer_pro-1.0.7.tar.gz
+	sha256sums = 3ec7652133b26146f05312f0fcf88a46e9b62a9ace7ba3232b487f1b06042469
+
+pkgname = python-xlsx-viewer-pro

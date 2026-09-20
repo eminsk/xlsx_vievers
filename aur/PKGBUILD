@@ -1,0 +1,33 @@
+# Maintainer: eminsk <M_N_N@tut.by>
+
+pkgname=python-xlsx-viewer-pro
+_name=xlsx_viewer_pro
+pkgver=1.0.7
+pkgrel=1
+pkgdesc="Modern Excel spreadsheet engine, 129 formula functions, SIMD SSE2 math, and desktop GUI viewer"
+arch=('any')
+url="https://github.com/eminsk/xlsx_vievers"
+license=('MIT')
+depends=(
+  'python'
+  'python-openpyxl'
+)
+makedepends=(
+  'python-build'
+  'python-installer'
+  'python-wheel'
+  'python-setuptools'
+)
+source=("https://files.pythonhosted.org/packages/source/${_name::1}/${_name}/${_name}-${pkgver}.tar.gz")
+sha256sums=('3ec7652133b26146f05312f0fcf88a46e9b62a9ace7ba3232b487f1b06042469')
+
+build() {
+  cd "${srcdir}/${_name}-${pkgver}"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "${srcdir}/${_name}-${pkgver}"
+  python -m installer --destdir="${pkgdir}" dist/*.whl
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

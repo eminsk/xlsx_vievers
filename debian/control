@@ -1,0 +1,21 @@
+Source: python-xlsx-viewer-pro
+Section: python
+Priority: optional
+Maintainer: eminsk <M_N_N@tut.by>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               pybuild-plugin-pyproject,
+               python3-all,
+               python3-setuptools,
+               python3-openpyxl
+Standards-Version: 4.6.2
+Homepage: https://github.com/eminsk/xlsx_vievers
+
+Package: python3-xlsx-viewer-pro
+Architecture: all
+Depends: ${misc:Depends},
+         ${python3:Depends},
+         python3-openpyxl
+Description: Modern Excel spreadsheet engine, SIMD math, and GUI viewer
+ High-performance spreadsheet engine with 129 formula functions,
+ SIMD SSE2 math engine, and desktop viewer.
