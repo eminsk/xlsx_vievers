@@ -5,13 +5,13 @@
 [![Debian / Ubuntu PPA](https://img.shields.io/badge/Debian%20%2F%20Ubuntu-APT%20PPA-E95420.svg?style=flat)](https://eminsk.github.io/ppa/)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/xlsx_vievers/blob/master/notebooks/xlsx_viewer_quickstart.ipynb)
 [![Python Versions](https://img.shields.io/badge/python-3.8%20--%203.15-blue.svg)](https://pypi.org/project/xlsx-viewer-pro/)
-[![PyPy](https://img.shields.io/badge/PyPy-3.8%20--%203.11-orange.svg)](https://www.pypy.org/)
+[![PyPy](https://img.shields.io/badge/PyPy-3.8%20--%203.12-orange.svg)](https://www.pypy.org/)
 [![No-GIL](https://img.shields.io/badge/No--GIL-3.13t%20--%203.15t-purple.svg)](https://peps.python.org/pep-0703/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/eminsk/xlsx_vievers/actions/workflows/ci.yml/badge.svg)](https://github.com/eminsk/xlsx_vievers/actions)
 [![Downloads](https://static.pepy.tech/badge/xlsx-viewer-pro)](https://pepy.tech/project/xlsx-viewer-pro)
 
-A high-performance Python spreadsheet library, headless formula engine (129+ functions), native x64 SIMD SSE2 math engine, and modern Office Ribbon desktop application for `.xlsx`, `.xlsm`, `.csv`, and `.tsv` files. Compatible with **Python 3.8 to 3.15 (including Free-Threaded No-GIL 3.13t–3.15t and PyPy 3.8–3.11)**.
+A high-performance Python spreadsheet library, headless formula engine (129+ functions), native x64 SIMD SSE2 math engine, and modern Office Ribbon desktop application for `.xlsx`, `.xlsm`, `.csv`, and `.tsv` files. Compatible with **Python 3.8 to 3.15 (including Free-Threaded No-GIL 3.13t–3.15t and PyPy 3.8–3.12)**.
 
 ---
 
@@ -21,7 +21,7 @@ A high-performance Python spreadsheet library, headless formula engine (129+ fun
 |:---|:---|:---|:---:|
 | **CPython (Standard)** | 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, 3.14, 3.15 | Bytecode + GIL | ✅ Fully Supported |
 | **CPython (Free-Threaded)** | 3.13t, 3.14t, 3.15t | Multi-core No-GIL (PEP 703) | ✅ Fully Supported |
-| **PyPy (JIT Accelerated)** | 3.8, 3.9, 3.10, 3.11 | High-speed JIT tracing | ✅ Fully Supported |
+| **PyPy (JIT Accelerated)** | 3.8, 3.9, 3.10, 3.11, 3.12 | High-speed JIT tracing | ✅ Fully Supported |
 | **Operating Systems** | Windows (7, 8, 10, 11), Linux, macOS (Intel & Apple Silicon) | x86_64 (SIMD SSE2), ARM64 (Pure Python Fallback) | ✅ Fully Supported |
 
 ---
