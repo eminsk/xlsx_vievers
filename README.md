@@ -343,9 +343,11 @@ xlsx-viewer/
 │   └── asm/                # Hardware acceleration
 │       ├── xlsx_math64.dll # Native x64 SSE2 assembly DLL
 │       └── asm_bridge.py   # ctypes bridge with fallback
-├── tests/                  # Integration and Unit Test Suite (29 tests)
+├── tests/                  # Integration and Unit Test Suite (32 tests)
 │   ├── test_app.py
 │   └── test_library_api.py
+├── asm/                    # Standalone assembly tests
+│   └── test_asm.py
 ├── pyproject.toml          # PEP 517 / 621 Build Specification
 └── README.md
 ```
@@ -354,13 +356,15 @@ xlsx-viewer/
 
 ## 🧪 Running Tests
 
-Run the test suite with pytest:
+Run the full test suite with pytest:
 
 ```bash
-uv run pytest -v
+uv run --extra dev pytest -v
+# or with standard pytest
+pytest -v
 ```
 
-All 29 tests pass with 100% success rate on Python 3.10 through 3.14.
+All 32 tests pass with 100% success rate across **Python 3.8 through 3.15 (including No-GIL free-threaded 3.13t–3.15t)** and **PyPy 3.8 through 3.12**.
 
 ---
 
