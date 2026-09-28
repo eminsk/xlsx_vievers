@@ -36,7 +36,7 @@ from .models import (
     WorkbookData,
 )
 
-__version__ = "1.0.8"
+__version__ = "1.0.9"
 __author__ = "eminsk"
 __license__ = "MIT"
 

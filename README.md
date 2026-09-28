@@ -44,7 +44,7 @@ A high-performance Python spreadsheet library, headless formula engine (129+ fun
 | **PyPI (uv)** | `uv add xlsx-viewer-pro` |
 | **Conda-Forge** | `conda install -c conda-forge xlsx-viewer-pro` |
 | **Ubuntu / Debian (APT PPA)** | `curl -sS https://eminsk.github.io/ppa/setup.sh \| sudo bash`<br>`sudo apt install python3-xlsx-viewer-pro` |
-| **Ubuntu / Debian (.deb)** | `sudo dpkg -i python3-xlsx-viewer-pro_1.0.8-1_all.deb` |
+| **Ubuntu / Debian (.deb)** | `sudo dpkg -i python3-xlsx-viewer-pro_1.0.9-1_all.deb` |
 
 Add to your project with `uv` (recommended):
 
