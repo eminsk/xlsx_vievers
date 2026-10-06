@@ -1,3 +1,9 @@
+python-xlsx-viewer-pro (1.1.0-1) unstable; urgency=medium
+
+  * Release version 1.1.0 with Native Model Context Protocol (MCP) Server (xlsx-mcp / xv --mcp) and Python 3.16 / No-GIL 3.16t support.
+
+ -- eminsk <M_N_N@tut.by>  Tue, 06 Oct 2026 10:35:00 +0000
+
 python-xlsx-viewer-pro (1.0.9-1) unstable; urgency=medium
 
   * Release version 1.0.9 with Python 3.16 and multi-runtime support.

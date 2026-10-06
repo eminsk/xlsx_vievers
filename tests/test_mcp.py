@@ -89,3 +89,15 @@ def test_xlsx_mcp_server_lifecycle(tmp_path):
     r_data = json.loads(read_resp["result"]["content"][0]["text"])
     assert r_data["cells"]["B1"] == 600
     assert r_data["formulas"]["B1"] == "=SUM(A1:A3)"
+
+
+import tempfile
+import unittest
+from pathlib import Path
+
+
+class TestXlsxMCPServer(unittest.TestCase):
+    def test_mcp_lifecycle(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_xlsx_mcp_server_lifecycle(Path(tmpdir))
+

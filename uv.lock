@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.8"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -3261,10 +3261,13 @@ wheels = [
 
 [[package]]
 name = "xlsx-viewer-pro"
-version = "1.0.8"
+version = "1.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "openpyxl" },
+    { name = "ttkbootstrap", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "ttkbootstrap", version = "1.18.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
+    { name = "ttkbootstrap", version = "2.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "typing-extensions", version = "4.16.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
 ]
@@ -3311,6 +3314,7 @@ requires-dist = [
     { name = "openpyxl", specifier = ">=3.1.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.3.0" },
+    { name = "ttkbootstrap", specifier = ">=1.17.0" },
     { name = "ttkbootstrap", marker = "extra == 'all'", specifier = ">=1.10.0" },
     { name = "ttkbootstrap", marker = "extra == 'gui'", specifier = ">=1.10.0" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5.0.0" },

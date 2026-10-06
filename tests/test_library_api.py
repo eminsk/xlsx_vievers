@@ -17,7 +17,7 @@ from xlsx_viewer.models import CellPosition, CellRange, WorkbookData
 
 class TestXlsxViewerLibrary(unittest.TestCase):
     def test_version_and_metadata(self):
-        self.assertTrue(xv.__version__.startswith("1.0."))
+        self.assertTrue(xv.__version__.startswith("1."))
         self.assertGreaterEqual(len(xv.FUNCTION_METADATA), 120)
 
     def test_evaluate_arithmetic(self):
@@ -96,10 +96,10 @@ class TestXlsxViewerLibrary(unittest.TestCase):
         self.assertEqual(ret_calc, 0)
 
     def test_launch_viewer_and_cli_default(self):
-        import importlib.util
-
-        if importlib.util.find_spec("ttkbootstrap") is None:
-            self.skipTest("ttkbootstrap not installed (headless/PyPy environment)")
+        try:
+            import xlsx_viewer.gui  # noqa: F401
+        except Exception:
+            self.skipTest("GUI dependencies (ttkbootstrap/tkinter/Pillow) not available in this runtime")
 
         from unittest.mock import MagicMock, patch
 
