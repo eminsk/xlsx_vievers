@@ -241,10 +241,28 @@ xv --info
 
 # Open a workbook in the desktop GUI
 xv sample_report.xlsx
+
+# Start Model Context Protocol (MCP) Server over stdio:
+xlsx-mcp
 ```
 
 *(To invoke the CLI from inside a Python script, use `from xlsx_viewer.cli import main; main(["--calc", "=SUM(10, 20)"])`)*
 
+---
+
+## 🤖 Native MCP (Model Context Protocol) Server
+
+Connect **xlsx-viewer-pro** directly to **Claude Desktop**, **Cursor**, **Windsurf**, or **Antigravity** via the built-in `xlsx-mcp` (`xv --mcp`) JSON-RPC 2.0 server to give your AI assistant deterministic 129-function Excel formula calculation (`XLOOKUP`, `PMT`, `IRR`, `SUMIFS`) and headless `.xlsx` reading/writing (`xlsx_evaluate_formula`, `xlsx_read_workbook`, `xlsx_write_cells`, `xlsx_list_formulas`):
+
+```json
+{
+  "mcpServers": {
+    "xlsx-engine": {
+      "command": "xlsx-mcp"
+    }
+  }
+}
+```
 
 ---
 

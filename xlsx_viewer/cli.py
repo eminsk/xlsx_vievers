@@ -68,7 +68,19 @@ def main(argv: list[str] | None = None) -> int:
         help="Display library information, active hardware ISA acceleration, and version.",
     )
 
+    parser.add_argument(
+        "--mcp",
+        action="store_true",
+        help="Start Model Context Protocol (MCP) Server over stdio for Claude/Cursor/Windsurf.",
+    )
+
     args = parser.parse_args(argv)
+
+    if args.mcp:
+        from .mcp_server import XlsxMCPServer
+
+        XlsxMCPServer().run_stdio()
+        return 0
 
     if args.list_formulas:
         categories: dict[str, list[str]] = {}

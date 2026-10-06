@@ -56,6 +56,7 @@ classifiers = [
 ]
 dependencies = [
     "openpyxl>=3.1.0",
+    "ttkbootstrap>=1.17.0",
     "typing-extensions>=4.0; python_version < '3.10'",
 ]
 
@@ -81,6 +82,7 @@ dev = [
 xlsx-viewer-pro = "xlsx_viewer.cli:main"
 xlsx-viewer = "xlsx_viewer.cli:main"
 xv = "xlsx_viewer.cli:main"
+xlsx-mcp = "xlsx_viewer.mcp_server:main_mcp"
 
 [project.urls]
 Homepage = "https://github.com/eminsk/xlsx_vievers"

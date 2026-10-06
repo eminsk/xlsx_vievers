@@ -40,12 +40,15 @@ __version__ = "1.0.9"
 __author__ = "eminsk"
 __license__ = "MIT"
 
+from .mcp_server import XlsxMCPServer
+
 __all__ = [
     # Top-Level Helpers
     "evaluate_formula",
     "load_workbook",
     "save_workbook",
     "launch_viewer",
+    "XlsxMCPServer",
     "__version__",
     # Formula Engine
     "FormulaEngine",
