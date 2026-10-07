@@ -1,0 +1,43 @@
+context:
+  name: xlsx-viewer-pro
+  version: "1.1.1"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  path: ..
+
+build:
+  number: 0
+  noarch: python
+  script: ${{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
+  python:
+    entry_points:
+      - xlsx-viewer-pro = xlsx_viewer.cli:main
+      - xlsx-viewer = xlsx_viewer.cli:main
+      - xv = xlsx_viewer.cli:main
+      - xlsx-mcp = xlsx_viewer.mcp_server:main_mcp
+
+requirements:
+  host:
+    - python >=3.8
+    - pip
+    - setuptools >=61.0
+    - wheel
+  run:
+    - python >=3.8
+    - openpyxl >=3.1.0
+    - ttkbootstrap >=1.10.0
+
+tests:
+  - python:
+      imports:
+        - xlsx_viewer
+      pip_check: true
+
+about:
+  homepage: https://github.com/eminsk/xlsx_vievers
+  license: MIT
+  summary: Modern Excel spreadsheet engine, 129 formula functions, SIMD SSE2 math, and desktop GUI viewer

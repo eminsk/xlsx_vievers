@@ -1,7 +1,7 @@
 # xlsx-viewer-pro (Excel Viewer Pro)
 
 [![PyPI version](https://img.shields.io/pypi/v/xlsx-viewer-pro.svg)](https://pypi.org/project/xlsx-viewer-pro/)
-[![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/xlsx-viewer-pro.svg?style=flat)](https://anaconda.org/conda-forge/xlsx-viewer-pro)
+[![Conda](https://img.shields.io/conda/vn/m_n_nik/xlsx-viewer-pro.svg?style=flat&logo=anaconda)](https://anaconda.org/m_n_nik/xlsx-viewer-pro)
 [![Debian / Ubuntu PPA](https://img.shields.io/badge/Debian%20%2F%20Ubuntu-APT%20PPA-E95420.svg?style=flat)](https://eminsk.github.io/ppa/)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/xlsx_vievers/blob/master/notebooks/xlsx_viewer_quickstart.ipynb)
 [![Python Versions](https://img.shields.io/badge/python-3.8%20--%203.16-blue.svg)](https://pypi.org/project/xlsx-viewer-pro/)
@@ -47,7 +47,7 @@ A high-performance Python spreadsheet library, headless formula engine (129+ fun
 |---|---|
 | **PyPI (Standard)** | `pip install xlsx-viewer-pro` |
 | **PyPI (uv)** | `uv add xlsx-viewer-pro` |
-| **Conda-Forge** | `conda install -c conda-forge xlsx-viewer-pro` |
+| **Conda (Anaconda.org)** | `conda install -c m_n_nik xlsx-viewer-pro` |
 | **Ubuntu / Debian (APT PPA)** | `curl -sS https://eminsk.github.io/ppa/setup.sh \| sudo bash`<br>`sudo apt install python3-xlsx-viewer-pro` |
 | **Ubuntu / Debian (.deb)** | `sudo dpkg -i python3-xlsx-viewer-pro_1.1.0-1_all.deb` |
 
