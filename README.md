@@ -11,6 +11,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/eminsk/xlsx_vievers/actions/workflows/ci.yml/badge.svg)](https://github.com/eminsk/xlsx_vievers/actions)
 [![Downloads](https://static.pepy.tech/badge/xlsx-viewer-pro)](https://pepy.tech/project/xlsx-viewer-pro)
+[![Donate USDT](https://img.shields.io/badge/Donate-USDT-26A17B?logo=tether&logoColor=white)](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P)
+
+> ⭐ **Enjoying xlsx-viewer-pro?** Give it a star on GitHub to support development!  
+> ☕ **Want to support the author?** USDT (TRC-20): `TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P` ([TronScan](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P))
 
 A high-performance Python spreadsheet library, headless formula engine (129+ functions), native x64 SIMD SSE2 math engine, Native MCP Server (`xlsx-mcp`), and modern Office Ribbon desktop application for `.xlsx`, `.xlsm`, `.csv`, and `.tsv` files. Compatible with **Python 3.8 to 3.16 (including Free-Threaded No-GIL 3.13t–3.16t and PyPy 3.8–3.12)**.
 
@@ -397,6 +401,18 @@ All 32 tests pass with 100% success rate across **Python 3.8 through 3.16 (inclu
 * 🖥️ [**NanoRecall**](https://github.com/eminsk/nanorecall) — 100% Private, offline desktop memory & semantic screen search engine powered by NanoVector (`pip install nanorecall`).
 * 🛒 [**avito-sdk**](https://github.com/eminsk/avito-sdk) — Headless Avito scraping & data extraction SDK with price drop tracking, Playwright cookies, Telegram/VK bots, and Native MCP Server (`pip install avito-sdk`).
 * 📈 [**yfinance-ta-patterns**](https://github.com/eminsk/yfinance-ta-patterns) — Candlestick & chart pattern scanner with AI Confluence Scoring, Backtesting, and Native MCP Server (`pip install yfinance-ta-patterns`).
+
+---
+
+## ☕ Support & Donations
+
+If you find this project valuable and would like to support ongoing development, spreadsheet formula enhancements, and SIMD optimizations, contributions are deeply appreciated!
+
+* **USDT (TRC-20)**:  
+  `TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P`  
+  *(Network: TRON / TRC-20 | [Verify on TronScan](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P))*
+
+[![Donate USDT](https://img.shields.io/badge/Donate-USDT_(TRC20)-26A17B?style=for-the-badge&logo=tether&logoColor=white)](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P)
 
 ---
 
