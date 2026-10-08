@@ -1,20 +1,26 @@
 # xlsx-viewer-pro (Excel Viewer Pro)
 
 [![PyPI version](https://img.shields.io/pypi/v/xlsx-viewer-pro.svg)](https://pypi.org/project/xlsx-viewer-pro/)
-[![Conda](https://img.shields.io/conda/vn/m_n_nik/xlsx-viewer-pro.svg?style=flat&logo=anaconda)](https://anaconda.org/m_n_nik/xlsx-viewer-pro)
+[![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/xlsx-viewer-pro.svg?style=flat&logo=condaforge)](https://anaconda.org/conda-forge/xlsx-viewer-pro)
 [![Debian / Ubuntu PPA](https://img.shields.io/badge/Debian%20%2F%20Ubuntu-APT%20PPA-E95420.svg?style=flat)](https://eminsk.github.io/ppa/)
+[![Downloads](https://static.pepy.tech/badge/xlsx-viewer-pro)](https://pepy.tech/project/xlsx-viewer-pro)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/xlsx_vievers/blob/master/notebooks/xlsx_viewer_quickstart.ipynb)
 [![Python Versions](https://img.shields.io/badge/python-3.8%20--%203.16-blue.svg)](https://pypi.org/project/xlsx-viewer-pro/)
 [![PyPy](https://img.shields.io/badge/PyPy-3.8%20--%203.12-orange.svg)](https://www.pypy.org/)
 [![No-GIL](https://img.shields.io/badge/No--GIL-3.13t%20--%203.16t-purple.svg)](https://peps.python.org/pep-0703/)
 [![MCP Server](https://img.shields.io/badge/MCP-Native_Stdio_Server-00a67e.svg)](#native-mcp-model-context-protocol-server-for-ai-agents)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/eminsk/xlsx_vievers/actions/workflows/ci.yml/badge.svg)](https://github.com/eminsk/xlsx_vievers/actions)
-[![Downloads](https://static.pepy.tech/badge/xlsx-viewer-pro)](https://pepy.tech/project/xlsx-viewer-pro)
-[![Donate USDT](https://img.shields.io/badge/Donate-USDT-26A17B?logo=tether&logoColor=white)](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P)
+[![GitHub Stars](https://img.shields.io/github/stars/eminsk/xlsx_vievers?style=flat&logo=github)](https://github.com/eminsk/xlsx_vievers/stargazers)
+[![GitHub Issues](https://img.shields.io/github/issues/eminsk/xlsx_vievers?style=flat&color=red&logo=github)](https://github.com/eminsk/xlsx_vievers/issues)
+[![GitHub Discussions](https://img.shields.io/badge/Discussions-Join_Community-blue?style=flat&logo=github)](https://github.com/eminsk/xlsx_vievers/discussions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Donate USDT](https://img.shields.io/badge/Donate-USDT_(TRC20)-26A17B?style=flat&logo=tether&logoColor=white)](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P)
 
-> ⭐ **Enjoying xlsx-viewer-pro?** Give it a star on GitHub to support development!  
-> ☕ **Want to support the author?** USDT (TRC-20): `TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P` ([TronScan](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P))
+> ### 🤝 Community, Issues & Support
+> - 🐛 **Found a bug, formula calculation issue, or file parsing error?** Please [Open an Issue](https://github.com/eminsk/xlsx_vievers/issues) — reports are tracked and resolved quickly!
+> - 💬 **Questions, formula additions, or GUI feature ideas?** Join our [GitHub Discussions](https://github.com/eminsk/xlsx_vievers/discussions).
+> - ⭐ **Find xlsx-viewer-pro useful?** Give it a star on GitHub — it helps more developers and analysts discover it!
+> - ☕ **Support development (USDT TRC-20):** `TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P` ([Verify on TronScan](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P))
 
 A high-performance Python spreadsheet library, headless formula engine (129+ functions), native x64 SIMD SSE2 math engine, Native MCP Server (`xlsx-mcp`), and modern Office Ribbon desktop application for `.xlsx`, `.xlsm`, `.csv`, and `.tsv` files. Compatible with **Python 3.8 to 3.16 (including Free-Threaded No-GIL 3.13t–3.16t and PyPy 3.8–3.12)**.
 
