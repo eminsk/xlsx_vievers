@@ -164,6 +164,48 @@ class TestXlsxViewerLibrary(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 xv.load_workbook(missing, create_if_missing=False)
 
+    def test_load_legacy_xls(self):
+        import tempfile
+
+        import xlwt
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            xls_path = Path(tmpdir) / "test.xls"
+            wb = xlwt.Workbook()
+            ws = wb.add_sheet("TestSheet")
+            ws.write(0, 0, "Hello")
+            ws.write(0, 1, 123.45)
+            wb.save(str(xls_path))
+
+            loaded = xv.load_workbook(xls_path)
+            self.assertIn("TestSheet", loaded.sheet_names)
+            sh = loaded.get_sheet("TestSheet")
+            self.assertEqual(sh.get_cell_value(0, 0), "Hello")
+            self.assertEqual(sh.get_cell_value(0, 1), 123.45)
+
+    def test_cli_to_csv(self):
+        import tempfile
+
+        from xlsx_viewer.cli import main
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            xlsx_path = Path(tmpdir) / "test.xlsx"
+            csv_path = Path(tmpdir) / "test.csv"
+            wb = xv.load_workbook(xlsx_path)
+            sh = wb.get_sheet("Sheet1")
+            sh.set_cell(0, 0, "Name")
+            sh.set_cell(0, 1, "Score")
+            sh.set_cell(1, 0, "Alice")
+            sh.set_cell(1, 1, 95)
+            wb.save(xlsx_path)
+
+            ret = main(["--to-csv", str(xlsx_path), str(csv_path)])
+            self.assertEqual(ret, 0)
+            self.assertTrue(csv_path.exists())
+            content = csv_path.read_text(encoding="utf-8")
+            self.assertIn("Name,Score", content)
+            self.assertIn("Alice,95", content)
+
 
 if __name__ == "__main__":
     unittest.main()

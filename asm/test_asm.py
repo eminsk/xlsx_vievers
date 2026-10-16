@@ -57,6 +57,14 @@ class TestAsmEngine(unittest.TestCase):
         self.assertNotEqual(h1, h3)
         self.assertIsInstance(h1, int)
 
+    def test_gui_executable_exists_and_valid(self):
+        exe_path = Path(__file__).parent / "xlsx_gui64.exe"
+        self.assertTrue(exe_path.exists(), "xlsx_gui64.exe must exist")
+        self.assertGreater(exe_path.stat().st_size, 30000, "Executable must be > 30KB")
+        with open(exe_path, "rb") as f:
+            header = f.read(2)
+            self.assertEqual(header, b"MZ", "Must be valid Windows PE executable")
+
 
 def run_benchmark():
     print("=" * 70)

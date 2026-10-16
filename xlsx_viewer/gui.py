@@ -812,7 +812,7 @@ class ExcelViewerPro(ttk.Window):
         path = filedialog.askopenfilename(
             title="Open Spreadsheet File",
             filetypes=[
-                ("Excel Files", "*.xlsx *.xlsm *.xltx *.xltm"),
+                ("Excel Files", "*.xlsx *.xls *.xlsm *.xltx *.xltm"),
                 ("CSV Files", "*.csv"),
                 ("TSV Files", "*.tsv"),
                 ("All Files", "*.*"),
@@ -832,6 +832,8 @@ class ExcelViewerPro(ttk.Window):
 
             if path.suffix.lower() in (".csv", ".tsv"):
                 self._load_delimited_file(path)
+            elif path.suffix.lower() == ".xls":
+                self._load_xls_file(path)
             else:
                 self._workbook = load_workbook(path, data_only=False)
                 self._sheets_data.clear()
@@ -1015,6 +1017,59 @@ class ExcelViewerPro(ttk.Window):
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load file:\n{e}")
             self._status_bar.set_mode("Error")
+
+    def _load_xls_file(self, path: Path) -> None:
+        """Load legacy Excel 97-2003 (.xls) file via xlrd."""
+        import xlrd
+        from openpyxl import Workbook
+        from openpyxl.utils import get_column_letter
+
+        book = xlrd.open_workbook(str(path))
+        self._sheets_data = {}
+
+        wb = Workbook()
+        wb.remove(wb.active)  # remove default sheet
+
+        for s_name in book.sheet_names():
+            sh = book.sheet_by_name(s_name)
+            ws = wb.create_sheet(title=s_name)
+            rows = []
+            for r in range(sh.nrows):
+                row_vals = []
+                for c in range(sh.ncols):
+                    cell = sh.cell(r, c)
+                    val = cell.value
+                    if cell.ctype == xlrd.XL_CELL_DATE:
+                        try:
+                            val = xlrd.xldate_as_datetime(val, book.datemode).strftime("%Y-%m-%d")
+                        except Exception:
+                            pass
+                    row_vals.append(val)
+                    if val != "" and val is not None:
+                        ws.cell(row=r + 1, column=c + 1, value=val)
+                rows.append(row_vals)
+
+            max_c = max((len(r) for r in rows), default=sh.ncols or 10)
+            headers = [get_column_letter(i + 1) for i in range(max_c)]
+            s_data = SheetData(
+                name=s_name,
+                headers=headers,
+                rows=rows,
+                col_count=max_c,
+                row_count=len(rows),
+            )
+            self._sheets_data[s_name] = s_data
+
+        if not self._sheets_data:
+            self._load_delimited_file(path)
+            return
+
+        self._workbook = wb
+        first_sheet = next(iter(self._sheets_data))
+        self._active_sheet_name = first_sheet
+        self._sheet = self._workbook[first_sheet]
+        self._sheet_tabs.set_sheets(list(self._sheets_data.keys()))
+        self._load_active_sheet()
 
     def _load_delimited_file(self, path: Path) -> None:
         """Load CSV / TSV file."""
@@ -3142,8 +3197,44 @@ class ExcelViewerPro(ttk.Window):
         InsertFunctionDialog(self, on_insert_formula=self._insert_formula_text)
 
     def _insert_formula_text(self, prefix: str) -> None:
-        self._formula_bar.focus_entry()
-        self._formula_bar.set_value(prefix)
+        name = prefix.lstrip("=").rstrip("()")
+        name = name.rstrip("(")
+
+        r = self._selected.row
+        c = self._selected.col
+        s_data = self._get_active_sheet_data()
+
+        # Check for numbers in column above
+        start_r = r - 1
+        while start_r >= 0 and s_data.get_cell_value(start_r, c) not in (None, ""):
+            start_r -= 1
+        start_r += 1
+
+        if start_r < r:
+            p1 = CellPosition(start_r, c).to_excel()
+            p2 = CellPosition(r - 1, c).to_excel()
+            formula = f"={name}({p1}:{p2})"
+        else:
+            # Fallback to left
+            start_c = c - 1
+            while start_c >= 0 and s_data.get_cell_value(r, start_c) not in (None, ""):
+                start_c -= 1
+            start_c += 1
+            if start_c < c:
+                p1 = CellPosition(r, start_c).to_excel()
+                p2 = CellPosition(r, c - 1).to_excel()
+                formula = f"={name}({p1}:{p2})"
+            else:
+                formula = f"={name}()"
+
+        self._formula_bar.set_value(formula)
+        self._formula_bar.entry.focus_set()
+        if formula.endswith("()"):
+            self._formula_bar.entry.icursor(len(formula) - 1)
+        else:
+            self._formula_bar.entry.icursor(len(formula))
+        self._formula_bar.entry.selection_clear()
+        self._apply_cell_value_change(r, c, formula)
 
     # =========================================================================
     # Find & Replace & Go To

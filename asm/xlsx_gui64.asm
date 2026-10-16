@@ -141,6 +141,9 @@ ID_STATUSBAR        = 1303
 ; Windows Constants
 ; -----------------------------------------------------------------------------
 WS_OVERLAPPEDWINDOW = 00CF0000h
+WS_POPUP            = 80000000h
+WS_CAPTION          = 00C00000h
+WS_SYSMENU          = 00080000h
 WS_VISIBLE          = 10000000h
 WS_CHILD            = 40000000h
 WS_BORDER           = 00800000h
@@ -156,11 +159,13 @@ COLOR_BTNFACE       = 15
 COLOR_WINDOW        = 5
 CS_HREDRAW          = 0002h
 CS_VREDRAW          = 0001h
-WM_COMMAND          = 0111h
-WM_NOTIFY           = 004Eh
+WM_CREATE           = 0001h
 WM_DESTROY          = 0002h
+WM_CLOSE            = 0010h
 WM_SIZE             = 0005h
 WM_SETFONT          = 0030h
+WM_COMMAND          = 0111h
+WM_NOTIFY           = 004Eh
 MF_STRING           = 0000h
 MF_POPUP            = 0010h
 MF_SEPARATOR        = 0800h
@@ -212,8 +217,13 @@ VK_TAB              = 09h
 VK_CONTROL          = 11h
 VK_DELETE           = 2Eh
 VK_F2               = 71h
+VK_F3               = 72h
 VK_F5               = 74h
 VK_F9               = 78h
+ID_WIZ_LIST         = 2001
+ID_WIZ_OK           = 2002
+ID_WIZ_CANCEL       = 2003
+NUM_WIZ_FUNCS       = 14
 LVN_KEYDOWN         = -155
 
 TCM_FIRST           = 1300h
@@ -305,9 +315,13 @@ section '.data' data readable writeable
     m_simd_info     db '&SIMD Hardware Architecture Details...', 0
     m_about         db '&About Excel Viewer Pro x64...', 0
 
-    csv_filter      db 'CSV Files (*.csv)', 0, '*.csv', 0, 'Text Files (*.txt)', 0, '*.txt', 0, 'All Files (*.*)', 0, '*.*', 0, 0
-    def_ext_csv     db 'csv', 0
-    ofn_title_open  db 'Open CSV Spreadsheet File', 0
+    csv_filter      db 'All Supported Files (*.xlsx;*.xls;*.csv;*.tsv;*.txt)', 0, '*.xlsx;*.xls;*.csv;*.tsv;*.txt', 0,\
+                       'Excel Workbooks (*.xlsx)', 0, '*.xlsx', 0,\
+                       'Excel 97-2003 (*.xls)', 0, '*.xls', 0,\
+                       'CSV / TSV Files (*.csv;*.tsv)', 0, '*.csv;*.tsv', 0,\
+                       'All Files (*.*)', 0, '*.*', 0, 0
+    def_ext_csv     db 'xlsx', 0
+    ofn_title_open  db 'Open Spreadsheet File (XLSX, XLS, CSV)', 0
     ofn_title_save  db 'Save Spreadsheet As CSV', 0
     mode_r          db 'r', 0
     mode_w          db 'w', 0
@@ -579,6 +593,103 @@ section '.data' data readable writeable
     wrap_txt_msg    db 'Word Wrap enabled for selected column.', 0
     merge_ct_msg    db 'Merge & Center active for range.', 0
     sample_fx_str   db '=SUM(B1:B5)', 0
+
+    wc_wiz          rb 80
+    szTempCsv       rb 512
+    szCmdBuf        rb 2048
+    is_temp_file    db 0
+    mode_rb         db 'rb', 0
+    fmt_temp_csv    db '%sxlsx_view_tmp.csv', 0
+    fmt_convert_cmd db 'cmd.exe /c "uv run python -m xlsx_viewer.cli --to-csv ""%s"" ""%s"""', 0
+
+    hFxWizWnd       dq 0
+    hWizList        dq 0
+    hWizSyntax      dq 0
+    hWizDesc        dq 0
+    wiz_class_reg   dd 0
+
+    fx_wiz_class_name db 'FxWizardClass', 0
+    fx_wiz_title      db 'Мастер функций (Insert Function Wizard)', 0
+    lbl_wiz_prompt    db 'Выберите функцию (Select Function):', 0
+    lbl_wiz_syntax_t  db 'Синтаксис (Syntax):', 0
+    lbl_wiz_desc_t    db 'Описание (Description):', 0
+    btn_wiz_ok_txt    db 'Вставить (OK)', 0
+    btn_wiz_can_txt   db 'Отмена (Cancel)', 0
+    static_class_name db 'STATIC', 0
+    listbox_class     db 'LISTBOX', 0
+
+    fmt_fn_range      db '=%s(%c1:%c%d)', 0
+    fmt_fn_empty      db '=%s()', 0
+
+    fn_sum_name       db 'SUM', 0
+    fn_sum_syntax     db '=SUM(number1, [number2], ...)', 0
+    fn_sum_desc       db 'Sums all numbers in a range of cells using native SIMD SSE2 acceleration.', 0
+
+    fn_avg_name       db 'AVERAGE', 0
+    fn_avg_syntax     db '=AVERAGE(number1, [number2], ...)', 0
+    fn_avg_desc       db 'Returns the average (arithmetic mean) of its arguments.', 0
+
+    fn_min_name       db 'MIN', 0
+    fn_min_syntax     db '=MIN(number1, [number2], ...)', 0
+    fn_min_desc       db 'Returns the minimum value in a set of values via SSE2 minsd.', 0
+
+    fn_max_name       db 'MAX', 0
+    fn_max_syntax     db '=MAX(number1, [number2], ...)', 0
+    fn_max_desc       db 'Returns the maximum value in a set of values via SSE2 maxsd.', 0
+
+    fn_count_name     db 'COUNT', 0
+    fn_count_syntax   db '=COUNT(value1, [value2], ...)', 0
+    fn_count_desc     db 'Counts the number of cells that contain numbers.', 0
+
+    fn_pmt_name       db 'PMT', 0
+    fn_pmt_syntax     db '=PMT(rate, nper, pv, [fv], [type])', 0
+    fn_pmt_desc       db 'Calculates loan payment based on constant payments and constant interest rate.', 0
+
+    fn_pv_name        db 'PV', 0
+    fn_pv_syntax      db '=PV(rate, nper, pmt, [fv], [type])', 0
+    fn_pv_desc        db 'Calculates present value of an investment or loan.', 0
+
+    fn_fv_name        db 'FV', 0
+    fn_fv_syntax      db '=FV(rate, nper, pmt, [pv], [type])', 0
+    fn_fv_desc        db 'Calculates future value of an investment based on periodic payments.', 0
+
+    fn_if_name        db 'IF', 0
+    fn_if_syntax      db '=IF(logical_test, value_if_true, [value_if_false])', 0
+    fn_if_desc        db 'Returns one value if condition is TRUE, and another if FALSE.', 0
+
+    fn_vlookup_name   db 'VLOOKUP', 0
+    fn_vlookup_syntax db '=VLOOKUP(lookup_val, table_range, col_idx, [approx])', 0
+    fn_vlookup_desc   db 'Searches for a value in the leftmost column and returns value in same row.', 0
+
+    fn_xlookup_name   db 'XLOOKUP', 0
+    fn_xlookup_syntax db '=XLOOKUP(lookup_val, lookup_range, return_range)', 0
+    fn_xlookup_desc   db 'Modern 2-way lookup across vertical or horizontal arrays.', 0
+
+    fn_concat_name    db 'CONCAT', 0
+    fn_concat_syntax  db '=CONCAT(text1, [text2], ...)', 0
+    fn_concat_desc    db 'Combines text from multiple ranges and strings.', 0
+
+    fn_round_name     db 'ROUND', 0
+    fn_round_syntax   db '=ROUND(number, num_digits)', 0
+    fn_round_desc     db 'Rounds a number to a specified number of digits.', 0
+
+    fn_prod_name      db 'PRODUCT', 0
+    fn_prod_syntax    db '=PRODUCT(number1, [number2], ...)', 0
+    fn_prod_desc      db 'Multiplies all numbers given as arguments.', 0
+
+    align 8
+    fn_names_table:
+        dq fn_sum_name, fn_avg_name, fn_min_name, fn_max_name, fn_count_name
+        dq fn_pmt_name, fn_pv_name, fn_fv_name, fn_if_name, fn_vlookup_name
+        dq fn_xlookup_name, fn_concat_name, fn_round_name, fn_prod_name
+    fn_syntax_table:
+        dq fn_sum_syntax, fn_avg_syntax, fn_min_syntax, fn_max_syntax, fn_count_syntax
+        dq fn_pmt_syntax, fn_pv_syntax, fn_fv_syntax, fn_if_syntax, fn_vlookup_syntax
+        dq fn_xlookup_syntax, fn_concat_syntax, fn_round_syntax, fn_prod_syntax
+    fn_desc_table:
+        dq fn_sum_desc, fn_avg_desc, fn_min_desc, fn_max_desc, fn_count_desc
+        dq fn_pmt_desc, fn_pv_desc, fn_fv_desc, fn_if_desc, fn_vlookup_desc
+        dq fn_xlookup_desc, fn_concat_desc, fn_round_desc, fn_prod_desc
 
     align 32
     bench_array     rq 1000000
@@ -3018,6 +3129,8 @@ WndProc:
 .handle_key:
     cmp r8d, VK_F2
     je .key_f2
+    cmp r8d, VK_F3
+    je .on_insert_fx
     cmp r8d, VK_DELETE
     je .key_del
     cmp r8d, VK_F5
@@ -3349,7 +3462,7 @@ WndProc:
     cmp eax, ID_BTN_COND_FMT
     je .on_cond_format
     cmp eax, ID_BTN_FX
-    je .on_eval_formula
+    je .on_insert_fx
 
     ; Combobox Selection Changes
     cmp eax, ID_COMBO_FONT
@@ -3427,7 +3540,7 @@ WndProc:
     jmp .ret0
 
 .on_insert_fx:
-    call DoInsertFxPrompt
+    call DoShowFxWizard
     jmp .ret0
 
 .on_toggle_gridlines:
@@ -5726,13 +5839,76 @@ DoFileOpen:
     test eax, eax
     jz .open_done
 
+    ; Open in binary mode first to check magic
     lea rcx, [szFileName]
-    lea rdx, [mode_r]
+    lea rdx, [mode_rb]
     call [fopen]
     test rax, rax
     jz .open_done
     mov r12, rax
 
+    ; Read first 4 bytes
+    lea rcx, [szTemp]
+    mov edx, 1
+    mov r8d, 4
+    mov r9, r12
+    call [fread]
+    cmp eax, 4
+    jl .not_excel_magic
+
+    ; Check .xlsx (PK\x03\x04 -> 04034B50h)
+    cmp dword [szTemp], 04034B50h
+    je .is_excel_convert
+
+    ; Check .xls (D0 CF 11 E0 -> 0E011CFD0h)
+    cmp dword [szTemp], 0E011CFD0h
+    je .is_excel_convert
+
+.not_excel_magic:
+    ; Rewind back to 0 for normal CSV/TSV
+    mov rcx, r12
+    xor edx, edx
+    xor r8d, r8d
+    call [fseek]
+    mov byte [is_temp_file], 0
+    jmp .start_read_grid
+
+.is_excel_convert:
+    mov rcx, r12
+    call [fclose]
+
+    ; Get Temp Path
+    mov ecx, 500
+    lea rdx, [szTemp]
+    call [GetTempPathA]
+
+    ; Form szTempCsv: "%sxlsx_view_tmp.csv"
+    lea rcx, [szTempCsv]
+    lea rdx, [fmt_temp_csv]
+    lea r8, [szTemp]
+    call [sprintf]
+
+    ; Build shell command:
+    ; cmd.exe /c "uv run python -m xlsx_viewer.cli --to-csv ""%s"" ""%s"""
+    lea rcx, [szCmdBuf]
+    lea rdx, [fmt_convert_cmd]
+    lea r8, [szFileName]
+    lea r9, [szTempCsv]
+    call [sprintf]
+
+    lea rcx, [szCmdBuf]
+    call [system]
+
+    ; Open the converted temp CSV
+    lea rcx, [szTempCsv]
+    lea rdx, [mode_r]
+    call [fopen]
+    test rax, rax
+    jz .open_done
+    mov r12, rax
+    mov byte [is_temp_file], 1
+
+.start_read_grid:
     mov rcx, [hGrid]
     mov edx, LVM_DELETEALLITEMS
     xor r8d, r8d
@@ -5788,7 +5964,7 @@ DoFileOpen:
     lea r9, [lvitem]
     call [SendMessageA]
 
-    ; Split line by comma
+    ; Split line by comma, semicolon or tab
     lea rsi, [szLineBuf]
     mov ebx, 1
 .next_token:
@@ -5804,6 +5980,10 @@ DoFileOpen:
     jz .token_end
     cmp al, ','
     je .found_comma
+    cmp al, ';'
+    je .found_comma
+    cmp al, 9
+    je .found_comma
     inc rsi
     jmp .scan_comma
 
@@ -5811,6 +5991,19 @@ DoFileOpen:
     mov byte [rsi], 0
     inc rsi
 .token_end:
+    ; Trim leading quote if present
+    cmp byte [rdi], '"'
+    jne @f
+    inc rdi
+@@:
+    ; Trim trailing quote if present
+    cmp rsi, rdi
+    jle .do_set_text
+    cmp byte [rsi-2], '"'
+    jne .do_set_text
+    mov byte [rsi-2], 0
+
+.do_set_text:
     mov dword [lvitem], LVIF_TEXT
     mov dword [lvitem+4], r13d
     mov dword [lvitem+8], ebx
@@ -5834,6 +6027,11 @@ DoFileOpen:
     mov rcx, r12
     call [fclose]
 
+    cmp byte [is_temp_file], 1
+    jne @f
+    lea rcx, [szTempCsv]
+    call [remove]
+@@:
     mov [total_rows], r13d
     call SaveActiveSheetToBuffer
     call UpdateStatusStats
@@ -6382,14 +6580,452 @@ DoRefreshGrid:
     ret
 
 DoInsertFxPrompt:
+DoShowFxWizard:
     push rbp
     mov rbp, rsp
-    sub rsp, 20h
-    mov rcx, [hFormulaEdit]
-    lea rdx, [sample_fx_str]
+    sub rsp, 80h
+
+    ; If wizard already open, bring to front
+    cmp qword [hFxWizWnd], 0
+    je .register_or_create
+    mov rcx, [hFxWizWnd]
+    call [SetFocus]
+    jmp .wiz_done
+
+.register_or_create:
+    cmp dword [wiz_class_reg], 1
+    je .create_wiz_window
+
+    ; Register FxWizardClass
+    lea rdi, [wc_wiz]
+    xor eax, eax
+    mov ecx, 80
+    rep stosb
+
+    mov dword [wc_wiz], 80
+    mov dword [wc_wiz+4], CS_HREDRAW or CS_VREDRAW
+    lea rax, [FxWizardWndProc]
+    mov qword [wc_wiz+8], rax
+    mov rax, [hInst]
+    mov qword [wc_wiz+24], rax
+
+    xor ecx, ecx
+    mov edx, 32512 ; IDC_ARROW
+    call [LoadCursorA]
+    mov qword [wc_wiz+40], rax
+    mov qword [wc_wiz+48], COLOR_BTNFACE + 1
+    lea rax, [fx_wiz_class_name]
+    mov qword [wc_wiz+64], rax
+
+    lea rcx, [wc_wiz]
+    call [RegisterClassExA]
+    mov dword [wiz_class_reg], 1
+
+.create_wiz_window:
+    ; Disable main window (modal behavior)
+    mov rcx, [hWnd]
+    xor edx, edx ; FALSE
+    call [EnableWindow]
+
+    ; Create Wizard Dialog (x=240, y=140, w=480, h=430)
+    sub rsp, 60h
+    mov ecx, 00000001h ; WS_EX_DLGMODALFRAME
+    lea rdx, [fx_wiz_class_name]
+    lea r8, [fx_wiz_title]
+    mov r9d, WS_POPUP or WS_CAPTION or WS_SYSMENU or WS_VISIBLE
+    mov dword [rsp+20h], 240
+    mov dword [rsp+28h], 140
+    mov dword [rsp+30h], 480
+    mov dword [rsp+38h], 430
+    mov rax, [hWnd]
+    mov qword [rsp+40h], rax
+    mov qword [rsp+48h], 0
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    add rsp, 60h
+    mov [hFxWizWnd], rax
+
+    mov rcx, rax
+    mov edx, 1 ; SW_SHOWNORMAL
+    call [ShowWindow]
+    mov rcx, [hFxWizWnd]
+    call [UpdateWindow]
+
+.wiz_done:
+    leave
+    ret
+
+
+; =============================================================================
+; FxWizardWndProc: Window Procedure for Function Wizard Dialog
+; =============================================================================
+FxWizardWndProc:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 70h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
+
+    cmp edx, WM_CREATE
+    je .on_create
+    cmp edx, WM_COMMAND
+    je .on_command
+    cmp edx, WM_CLOSE
+    je .on_close
+    cmp edx, WM_DESTROY
+    je .on_destroy
+
+    call [DefWindowProcA]
+    jmp .ret_w
+
+.on_create:
+    mov r12, rcx ; hWndWizard
+
+    ; 1. Static Label "Выберите функцию:"
+    sub rsp, 60h
+    xor ecx, ecx
+    lea rdx, [static_class_name]
+    lea r8, [lbl_wiz_prompt]
+    mov r9d, WS_CHILD or WS_VISIBLE
+    mov dword [rsp+20h], 18
+    mov dword [rsp+28h], 14
+    mov dword [rsp+30h], 430
+    mov dword [rsp+38h], 18
+    mov qword [rsp+40h], r12
+    mov qword [rsp+48h], 0
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    add rsp, 60h
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontBold]
+    mov r9d, 1
+    call [SendMessageA]
+
+    ; 2. ListBox ID_WIZ_LIST (x=18, y=36, w=430, h=145)
+    sub rsp, 60h
+    mov ecx, WS_EX_CLIENTEDGE
+    lea rdx, [listbox_class]
+    mov r8, 0
+    mov r9d, WS_CHILD or WS_VISIBLE or WS_BORDER or WS_VSCROLL or 0001h
+    mov dword [rsp+20h], 18
+    mov dword [rsp+28h], 36
+    mov dword [rsp+30h], 430
+    mov dword [rsp+38h], 145
+    mov qword [rsp+40h], r12
+    mov qword [rsp+48h], ID_WIZ_LIST
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    add rsp, 60h
+    mov [hWizList], rax
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontUI]
+    mov r9d, 1
+    call [SendMessageA]
+
+    ; Populate ListBox with 14 functions
+    xor ebx, ebx
+.populate_loop:
+    cmp ebx, NUM_WIZ_FUNCS
+    jge .populate_done
+    mov rcx, [hWizList]
+    mov edx, 0180h ; LB_ADDSTRING
+    xor r8d, r8d
+    mov r9, [fn_names_table + rbx*8]
+    call [SendMessageA]
+    inc ebx
+    jmp .populate_loop
+
+.populate_done:
+    ; Select first item (SUM)
+    mov rcx, [hWizList]
+    mov edx, 0186h ; LB_SETCURSEL
+    xor r8d, r8d
+    xor r9d, r9d
+    call [SendMessageA]
+
+    ; 3. Static Label "Синтаксис (Syntax):"
+    sub rsp, 60h
+    xor ecx, ecx
+    lea rdx, [static_class_name]
+    lea r8, [lbl_wiz_syntax_t]
+    mov r9d, WS_CHILD or WS_VISIBLE
+    mov dword [rsp+20h], 18
+    mov dword [rsp+28h], 192
+    mov dword [rsp+30h], 430
+    mov dword [rsp+38h], 18
+    mov qword [rsp+40h], r12
+    mov qword [rsp+48h], 0
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    add rsp, 60h
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontBold]
+    mov r9d, 1
+    call [SendMessageA]
+
+    ; 4. Static Control hWizSyntax (x=18, y=212, w=430, h=22)
+    sub rsp, 60h
+    xor ecx, ecx
+    lea rdx, [static_class_name]
+    lea r8, [fn_sum_syntax]
+    mov r9d, WS_CHILD or WS_VISIBLE
+    mov dword [rsp+20h], 18
+    mov dword [rsp+28h], 212
+    mov dword [rsp+30h], 430
+    mov dword [rsp+38h], 22
+    mov qword [rsp+40h], r12
+    mov qword [rsp+48h], 0
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    add rsp, 60h
+    mov [hWizSyntax], rax
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontBold]
+    mov r9d, 1
+    call [SendMessageA]
+
+    ; 5. Static Label "Описание (Description):"
+    sub rsp, 60h
+    xor ecx, ecx
+    lea rdx, [static_class_name]
+    lea r8, [lbl_wiz_desc_t]
+    mov r9d, WS_CHILD or WS_VISIBLE
+    mov dword [rsp+20h], 18
+    mov dword [rsp+28h], 240
+    mov dword [rsp+30h], 430
+    mov dword [rsp+38h], 18
+    mov qword [rsp+40h], r12
+    mov qword [rsp+48h], 0
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    add rsp, 60h
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontBold]
+    mov r9d, 1
+    call [SendMessageA]
+
+    ; 6. Static Control hWizDesc (x=18, y=260, w=430, h=60)
+    sub rsp, 60h
+    xor ecx, ecx
+    lea rdx, [static_class_name]
+    lea r8, [fn_sum_desc]
+    mov r9d, WS_CHILD or WS_VISIBLE
+    mov dword [rsp+20h], 18
+    mov dword [rsp+28h], 260
+    mov dword [rsp+30h], 430
+    mov dword [rsp+38h], 60
+    mov qword [rsp+40h], r12
+    mov qword [rsp+48h], 0
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    add rsp, 60h
+    mov [hWizDesc], rax
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontUI]
+    mov r9d, 1
+    call [SendMessageA]
+
+    ; 7. Button OK [Вставить (OK)] (x=216, y=335, w=115, h=30)
+    sub rsp, 60h
+    xor ecx, ecx
+    lea rdx, [btn_class]
+    lea r8, [btn_wiz_ok_txt]
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
+    mov dword [rsp+20h], 216
+    mov dword [rsp+28h], 335
+    mov dword [rsp+30h], 115
+    mov dword [rsp+38h], 30
+    mov qword [rsp+40h], r12
+    mov qword [rsp+48h], ID_WIZ_OK
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    add rsp, 60h
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontBold]
+    mov r9d, 1
+    call [SendMessageA]
+
+    ; 8. Button Cancel [Отмена] (x=338, y=335, w=110, h=30)
+    sub rsp, 60h
+    xor ecx, ecx
+    lea rdx, [btn_class]
+    lea r8, [btn_wiz_can_txt]
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
+    mov dword [rsp+20h], 338
+    mov dword [rsp+28h], 335
+    mov dword [rsp+30h], 110
+    mov dword [rsp+38h], 30
+    mov qword [rsp+40h], r12
+    mov qword [rsp+48h], ID_WIZ_CANCEL
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    add rsp, 60h
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontUI]
+    mov r9d, 1
+    call [SendMessageA]
+
+    xor eax, eax
+    jmp .ret_w
+
+.on_command:
+    mov eax, r8d
+    and eax, 0FFFFh ; LOWORD(wParam)
+    shr r8d, 16     ; HIWORD(wParam)
+
+    cmp eax, ID_WIZ_LIST
+    je .cmd_wiz_list
+    cmp eax, ID_WIZ_OK
+    je .cmd_wiz_ok
+    cmp eax, ID_WIZ_CANCEL
+    je .cmd_wiz_cancel
+    jmp .ret0_w
+
+.cmd_wiz_list:
+    cmp r8d, 1 ; LBN_SELCHANGE
+    je .on_wiz_selchange
+    cmp r8d, 2 ; LBN_DBLCLK
+    je .cmd_wiz_ok
+    jmp .ret0_w
+
+.on_wiz_selchange:
+    mov rcx, [hWizList]
+    mov edx, 0188h ; LB_GETCURSEL
+    xor r8d, r8d
+    xor r9d, r9d
+    call [SendMessageA]
+    cmp eax, 0
+    jl .ret0_w
+    cmp eax, NUM_WIZ_FUNCS
+    jge .ret0_w
+
+    mov ebx, eax
+    mov rcx, [hWizSyntax]
+    mov rdx, [fn_syntax_table + rbx*8]
     call [SetWindowTextA]
+
+    mov rcx, [hWizDesc]
+    mov rdx, [fn_desc_table + rbx*8]
+    call [SetWindowTextA]
+    jmp .ret0_w
+
+.cmd_wiz_ok:
+    mov rcx, [hWizList]
+    mov edx, 0188h ; LB_GETCURSEL
+    xor r8d, r8d
+    xor r9d, r9d
+    call [SendMessageA]
+    cmp eax, 0
+    jl .def_first
+    cmp eax, NUM_WIZ_FUNCS
+    jl .idx_ok
+.def_first:
+    xor eax, eax
+.idx_ok:
+    mov ebx, eax
+    mov rsi, [fn_names_table + rbx*8]
+
+    ; Check if cur_col >= 1 and cur_row > 0
+    cmp [cur_col], 1
+    jl .format_empty_fn
+    cmp [cur_row], 0
+    jle .format_empty_fn
+
+    mov eax, [cur_col]
+    add al, 'A' - 1
+    movzx eax, al
+
+    lea rcx, [szTemp]
+    lea rdx, [fmt_fn_range]
+    mov r8, rsi
+    mov r9d, eax
+    mov [rsp+20h], rax
+    mov r10d, [cur_row]
+    mov [rsp+28h], r10
+    call [sprintf]
+    jmp .apply_to_formula_edit
+
+.format_empty_fn:
+    lea rcx, [szTemp]
+    lea rdx, [fmt_fn_empty]
+    mov r8, rsi
+    call [sprintf]
+
+.apply_to_formula_edit:
+    mov rcx, [hFormulaEdit]
+    lea rdx, [szTemp]
+    call [SetWindowTextA]
+
     mov rcx, [hFormulaEdit]
     call [SetFocus]
+
+    mov rcx, [hFormulaEdit]
+    mov edx, EM_SETSEL
+    mov r8d, -1
+    mov r9d, -1
+    call [SendMessageA]
+
+    mov rcx, [hFxWizWnd]
+    call [DestroyWindow]
+    jmp .ret0_w
+
+.cmd_wiz_cancel:
+    mov rcx, [hFxWizWnd]
+    call [DestroyWindow]
+    jmp .ret0_w
+
+.on_close:
+    mov rcx, [hFxWizWnd]
+    call [DestroyWindow]
+    jmp .ret0_w
+
+.on_destroy:
+    mov rcx, [hWnd]
+    mov edx, 1 ; TRUE
+    call [EnableWindow]
+    mov rcx, [hWnd]
+    call [SetFocus]
+    mov qword [hFxWizWnd], 0
+    xor eax, eax
+    jmp .ret_w
+
+.ret0_w:
+    xor eax, eax
+.ret_w:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
     leave
     ret
 
@@ -6809,6 +7445,7 @@ kernel32_table:
     GlobalLock                  dq RVA _GlobalLock
     GlobalUnlock                dq RVA _GlobalUnlock
     lstrcmpiA                   dq RVA _lstrcmpiA
+    GetTempPathA                dq RVA _GetTempPathA
                                 dq 0
 
 user32_table:
@@ -6844,6 +7481,8 @@ user32_table:
     SetFocus                    dq RVA _SetFocus
     GetKeyState                 dq RVA _GetKeyState
     InvalidateRect              dq RVA _InvalidateRect
+    EnableWindow                dq RVA _EnableWindow
+    DestroyWindow               dq RVA _DestroyWindow
                                 dq 0
 
 gdi32_table:
@@ -6867,6 +7506,10 @@ msvcrt_table:
     fgets                       dq RVA _fgets
     fprintf                     dq RVA _fprintf
     fclose                      dq RVA _fclose
+    fread                       dq RVA _fread
+    fseek                       dq RVA _fseek
+    system                      dq RVA _system
+    remove                      dq RVA _remove
                                 dq 0
 
 kernel32_name   db 'KERNEL32.DLL', 0
@@ -6892,6 +7535,8 @@ _GlobalUnlock dw 0
  db 'GlobalUnlock', 0
 _lstrcmpiA dw 0
  db 'lstrcmpiA', 0
+_GetTempPathA dw 0
+ db 'GetTempPathA', 0
 
 _RegisterClassExA dw 0
  db 'RegisterClassExA', 0
@@ -6957,6 +7602,10 @@ _GetKeyState dw 0
  db 'GetKeyState', 0
 _InvalidateRect dw 0
  db 'InvalidateRect', 0
+_EnableWindow dw 0
+ db 'EnableWindow', 0
+_DestroyWindow dw 0
+ db 'DestroyWindow', 0
 
 _CreateFontA dw 0
  db 'CreateFontA', 0
@@ -6983,4 +7632,12 @@ _fprintf dw 0
  db 'fprintf', 0
 _fclose dw 0
  db 'fclose', 0
+_fread dw 0
+ db 'fread', 0
+_fseek dw 0
+ db 'fseek', 0
+_system dw 0
+ db 'system', 0
+_remove dw 0
+ db 'remove', 0
 

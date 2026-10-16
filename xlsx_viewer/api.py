@@ -78,6 +78,32 @@ def load_workbook(path: str | Path, create_if_missing: bool = True) -> WorkbookD
         raise FileNotFoundError(f"Workbook not found: {path}")
 
     wb_data = WorkbookData(file_path=str(path))
+
+    if path.suffix.lower() == ".xls":
+        try:
+            import xlrd
+
+            book = xlrd.open_workbook(str(path))
+            for sheet_name in book.sheet_names():
+                sh = book.sheet_by_name(sheet_name)
+                sheet_data = wb_data.add_sheet(sheet_name)
+                for r in range(sh.nrows):
+                    for c in range(sh.ncols):
+                        cell = sh.cell(r, c)
+                        val = cell.value
+                        if cell.ctype == xlrd.XL_CELL_DATE:
+                            try:
+                                val = xlrd.xldate_as_datetime(val, book.datemode).strftime(
+                                    "%Y-%m-%d"
+                                )
+                            except Exception:
+                                pass
+                        if val != "" and val is not None:
+                            sheet_data.set_cell(r, c, val)
+            return wb_data
+        except Exception:
+            pass
+
     pyxl_wb = _load_wb(path, data_only=False)
 
     for sheet_name in pyxl_wb.sheetnames:

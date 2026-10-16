@@ -234,6 +234,7 @@ class InsertFunctionDialog(tk.Toplevel):
 
         self._listbox.bind("<<ListboxSelect>>", self._on_select_fn)
         self._listbox.bind("<Double-1>", lambda e: self._do_insert())
+        self._listbox.bind("<Return>", lambda e: self._do_insert())
 
         # Description Box
         desc_box = ttk.LabelFrame(main, text="Function Details", padding=8)

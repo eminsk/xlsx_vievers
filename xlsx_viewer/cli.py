@@ -74,7 +74,37 @@ def main(argv: list[str] | None = None) -> int:
         help="Start Model Context Protocol (MCP) Server over stdio for Claude/Cursor/Windsurf.",
     )
 
+    parser.add_argument(
+        "--to-csv",
+        nargs=2,
+        metavar=("INPUT", "OUTPUT"),
+        help="Export first sheet of an Excel (.xlsx / .xls) file to CSV format.",
+    )
+
     args = parser.parse_args(argv)
+
+    if args.to_csv:
+        import csv
+
+        from .api import load_workbook
+
+        in_file, out_file = args.to_csv
+        try:
+            wb_data = load_workbook(in_file)
+            s_data = wb_data.get_sheet()
+            if not s_data and wb_data.sheets:
+                s_data = next(iter(wb_data.sheets.values()))
+            if not s_data:
+                print(f"Error: No sheets found in {in_file}", file=sys.stderr)
+                return 1
+            with open(out_file, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                for row in s_data.rows:
+                    writer.writerow([str(v) if v is not None else "" for v in row])
+            return 0
+        except Exception as e:
+            print(f"Error converting to CSV: {e}", file=sys.stderr)
+            return 1
 
     if args.mcp:
         from .mcp_server import XlsxMCPServer
