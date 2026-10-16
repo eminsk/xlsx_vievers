@@ -135,6 +135,33 @@ class TestEnhancedFeatures(unittest.TestCase):
             machine = int.from_bytes(header[pe_offset + 4 : pe_offset + 6], "little")
             self.assertEqual(machine, 0x8664)
 
+    def test_asm_gui64_imports_and_symbols(self):
+        exe_path = Path(__file__).resolve().parent.parent / "asm" / "xlsx_gui64.exe"
+        data = exe_path.read_bytes()
+        required_symbols = [
+            b"GetKeyState",
+            b"InvalidateRect",
+            b"SendMessageA",
+            b"MoveWindow",
+            b"SetWindowLongPtrA",
+            b"CallWindowProcA",
+            b"OpenClipboard",
+            b"CloseClipboard",
+            b"GetOpenFileNameA",
+            b"GetSaveFileNameA",
+        ]
+        for sym in required_symbols:
+            self.assertIn(sym, data, f"Required Win32 API {sym.decode()} missing from PE binary.")
+
+    def test_python_compatibility_declarations(self):
+        """Verify Python 3.8 - 3.16 and free-threaded support declarations."""
+        pyproject_path = Path(__file__).resolve().parent.parent / "pyproject.toml"
+        content = pyproject_path.read_text(encoding="utf-8")
+        self.assertIn("Programming Language :: Python :: 3.16", content)
+        self.assertIn('requires-python = ">=3.8"', content)
+        self.assertIn("free-threaded", content)
+        self.assertIn("no-gil", content)
+
     def test_gui_menu_structure(self):
         import inspect
 

@@ -372,14 +372,38 @@ xlsx-viewer/
 │   └── asm/                # Hardware acceleration
 │       ├── xlsx_math64.dll # Native x64 SSE2 assembly DLL
 │       └── asm_bridge.py   # ctypes bridge with fallback
-├── tests/                  # Integration and Unit Test Suite (32 tests)
+├── tests/                  # Integration and Unit Test Suite (44 tests)
 │   ├── test_app.py
-│   └── test_library_api.py
-├── asm/                    # Standalone assembly tests
-│   └── test_asm.py
+│   ├── test_enhanced_features.py
+│   ├── test_library_api.py
+│   └── test_mcp.py
+├── asm/                    # Standalone 64-bit Assembly Spreadsheet Engine
+│   ├── xlsx_gui64.asm      # 100% Native x86-64 GUI Spreadsheet (FASM)
+│   ├── xlsx_gui64.exe      # Compiled standalone Windows 64-bit binary (~44KB)
+│   ├── xlsx_math64.asm     # Vectorized SIMD SSE2 math engine (DLL)
+│   ├── xlsx_math64.dll     # Compiled acceleration DLL
+│   └── test_asm.py         # Hardware SIMD test & benchmark suite
 ├── pyproject.toml          # PEP 517 / 621 Build Specification
 └── README.md
 ```
+
+---
+
+## ⚡ Standalone 64-bit Assembly Spreadsheet (`asm/xlsx_gui64.exe`)
+
+For extreme performance, zero-runtime environments, and bare-metal Windows execution, `xlsx-viewer-pro` includes a **100% native x86-64 assembly spreadsheet application** written in Flat Assembler (`FASM`):
+
+- **Zero Runtime Dependencies**: Pure Win32 PE64 binary (`~44 KB`), requiring no Python, .NET, C runtime, or external DLLs.
+- **Office Ribbon & Menus**: Active 8-category menu bar (`File`, `Edit`, `View`, `Insert`, `Format`, `Formulas`, `Data`, `Help`) with full keyboard shortcuts (`Ctrl+N`, `Ctrl+O`, `Ctrl+S`, `Ctrl+C`, `Ctrl+V`, `Ctrl+Z`, `Ctrl+Y`, `Ctrl+F`, `F2`, `F5`, `F9`).
+- **Live Font & Formatting**: Dynamic Font Family (`Segoe UI`, `Calibri`, `Arial`, `Consolas`), Font Size (`8` through `16 pt`, `A+`, `A-`), Bold, Italic, Underline, and Number Formats (`$`, `₽`, `%`, comma decimals).
+- **Multi-Sheet Data Persistence**: Interactive `Sheet1`, `Sheet2`, `Sheet3`, and `[+] Add Sheet` tabs with full cell memory isolation and persistence across tab switching.
+- **Formula Bar & Evaluator**: Subclassed live formula bar with `[fx]` evaluator supporting `=SUM(range)`, `=AVG(range)`, `=MIN(range)`, `=MAX(range)`, `=COUNT(range)`, and arithmetic expressions (`+`, `-`, `*`, `/`).
+- **Tabular Multi-Cell Clipboard**: Intelligent clipboard parser handling both single cell and tab/CRLF-delimited multi-cell range copy/paste.
+- **Building with FASM**:
+  ```cmd
+  fasm asm/xlsx_gui64.asm asm/xlsx_gui64.exe
+  fasm asm/xlsx_math64.asm asm/xlsx_math64.dll
+  ```
 
 ---
 
@@ -388,12 +412,12 @@ xlsx-viewer/
 Run the full test suite with pytest:
 
 ```bash
-uv run --extra dev pytest -v
+uv run pytest -v
 # or with standard pytest
 pytest -v
 ```
 
-All 32 tests pass with 100% success rate across **Python 3.8 through 3.16 (including No-GIL free-threaded 3.13t–3.16t)** and **PyPy 3.8 through 3.12**.
+All 44 tests pass with 100% success rate across **Python 3.8 through 3.16 (including No-GIL free-threaded 3.13t–3.16t)** and **PyPy 3.8 through 3.12**.
 
 ---
 

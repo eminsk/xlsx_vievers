@@ -205,6 +205,17 @@ LVNI_SELECTED       = 0002h
 NM_CLICK            = -2
 NM_DBLCLK           = -3
 
+WM_KEYDOWN          = 0100h
+EM_SETSEL           = 00B1h
+VK_RETURN           = 0Dh
+VK_TAB              = 09h
+VK_CONTROL          = 11h
+VK_DELETE           = 2Eh
+VK_F2               = 71h
+VK_F5               = 74h
+VK_F9               = 78h
+LVN_KEYDOWN         = -155
+
 TCM_FIRST           = 1300h
 TCM_INSERTITEMA     = TCM_FIRST + 7
 TCM_GETCURSEL       = TCM_FIRST + 11
@@ -523,6 +534,8 @@ section '.data' data readable writeable
     cur_sheet       dd 0
 
     font_size_pt    dd 10
+    pCurFontFace    dq 0
+    font_size_table dd 8, 9, 10, 11, 12, 14, 16
     is_bold_active  dd 0
     is_italic_act   dd 0
     is_under_act    dd 0
@@ -569,6 +582,9 @@ section '.data' data readable writeable
 
     align 32
     bench_array     rq 1000000
+
+    align 16
+    sheet_cells     rb 16 * 30 * 11 * 128
 
 section '.code' code readable executable
 
@@ -2854,6 +2870,8 @@ WndProc:
     je .command
     cmp edx, WM_NOTIFY
     je .notify
+    cmp edx, WM_KEYDOWN
+    je .keydown
     cmp edx, WM_SIZE
     je .size
     cmp edx, WM_DESTROY
@@ -2968,118 +2986,126 @@ WndProc:
     cmp edx, NM_CLICK
     je .on_grid_click
     cmp edx, NM_DBLCLK
-    je .on_grid_click
+    je .on_grid_dblclick
     cmp edx, TCN_SELCHANGE
     je .on_tab_change
+    cmp edx, LVN_KEYDOWN
+    je .on_lvn_keydown
     jmp .ret0
 
+.on_lvn_keydown:
+    movzx r8d, word [rax+24]
+    jmp .handle_key
+
 .on_grid_click:
-    ; Use LVM_SUBITEMHITTEST to accurately identify clicked row and column
-    lea rcx, [pt]
-    call [GetCursorPos]
-    mov rcx, [hGrid]
-    lea rdx, [pt]
-    call [ScreenToClient]
+    call DoGridCellHitTest
+    jmp .ret0
 
-    lea rdi, [lvhit]
-    xor eax, eax
-    mov ecx, 24
-    rep stosb
-
-    mov eax, dword [pt]
-    mov dword [lvhit], eax      ; pt.x
-    mov eax, dword [pt+4]
-    mov dword [lvhit+4], eax    ; pt.y
-
-    mov rcx, [hGrid]
-    mov edx, 1039h              ; LVM_SUBITEMHITTEST
-    xor r8d, r8d
-    lea r9, [lvhit]
-    call [SendMessageA]
-
-    cmp dword [lvhit+12], -1    ; iItem
-    je .use_selected_row
-
-    mov eax, dword [lvhit+12]
-    mov [cur_row], eax
-
-    mov eax, dword [lvhit+16]   ; iSubItem (0 = #, 1 = A, 2 = B, ..., 10 = J)
-    cmp eax, 1
-    jl .update_display
-    cmp eax, 10
-    jg .update_display
-    mov [cur_col], eax
-    jmp .update_display
-
-.use_selected_row:
-    mov rcx, [hGrid]
-    mov edx, LVM_GETNEXTITEM
-    mov r8d, -1
-    mov r9d, LVNI_SELECTED
-    call [SendMessageA]
-    cmp eax, -1
-    je .ret0
-    mov [cur_row], eax
-
-.update_display:
-    ; Format Address: e.g. A1, B3, C10...
-    mov al, byte [cur_col]
-    dec al
-    add al, 'A'
-    lea rdi, [szTemp]
-    mov [rdi], al
-    inc rdi
-
-    mov eax, [cur_row]
-    inc eax
-    mov ecx, 10
-    lea rsi, [szTemp+16]
-    mov byte [rsi], 0
-.itos2:
-    xor edx, edx
-    div ecx
-    add dl, '0'
-    dec rsi
-    mov [rsi], dl
-    test eax, eax
-    jnz .itos2
-
-.copy_row_str:
-    lodsb
-    stosb
-    test al, al
-    jnz .copy_row_str
-
-    mov rcx, [hNameBox]
-    lea rdx, [szTemp]
-    call [SetWindowTextA]
-
-    mov rcx, [hStatusBar]
-    mov edx, SB_SETTEXTA
-    mov r8d, 1
-    lea r9, [szTemp]
-    call [SendMessageA]
-
-    ; Get cell content into Formula Bar
-    mov dword [lvitem], LVIF_TEXT
-    mov eax, [cur_row]
-    mov dword [lvitem+4], eax
-    mov eax, [cur_col]
-    mov dword [lvitem+8], eax
-    lea rax, [szCellVal]
-    mov qword [lvitem+24], rax
-    mov dword [lvitem+32], 1000
-    mov rcx, [hGrid]
-    mov edx, LVM_GETITEMTEXTA
-    mov r8d, [cur_row]
-    lea r9, [lvitem]
-    call [SendMessageA]
-
+.on_grid_dblclick:
+    call DoGridCellHitTest
     mov rcx, [hFormulaEdit]
-    lea rdx, [szCellVal]
-    call [SetWindowTextA]
+    call [SetFocus]
+    mov rcx, [hFormulaEdit]
+    mov edx, EM_SETSEL
+    xor r8d, r8d
+    mov r9d, -1
+    call [SendMessageA]
+    jmp .ret0
 
-    call UpdateStatusStats
+.keydown:
+    jmp .handle_key
+
+.handle_key:
+    cmp r8d, VK_F2
+    je .key_f2
+    cmp r8d, VK_DELETE
+    je .key_del
+    cmp r8d, VK_F5
+    je .key_f5
+    cmp r8d, VK_F9
+    je .key_f9
+
+    ; Check Control key
+    mov ecx, VK_CONTROL
+    call [GetKeyState]
+    test ax, 8000h
+    jz .ret0
+
+    ; Control Shortcuts
+    cmp r8d, 'C'
+    je .on_copy
+    cmp r8d, 'c'
+    je .on_copy
+    cmp r8d, 'V'
+    je .on_paste
+    cmp r8d, 'v'
+    je .on_paste
+    cmp r8d, 'X'
+    je .on_cut
+    cmp r8d, 'x'
+    je .on_cut
+    cmp r8d, 'Z'
+    je .on_undo
+    cmp r8d, 'z'
+    je .on_undo
+    cmp r8d, 'Y'
+    je .on_redo
+    cmp r8d, 'y'
+    je .on_redo
+    cmp r8d, 'S'
+    je .on_save_csv
+    cmp r8d, 's'
+    je .on_save_csv
+    cmp r8d, 'O'
+    je .on_open_csv
+    cmp r8d, 'o'
+    je .on_open_csv
+    cmp r8d, 'N'
+    je .on_clear_all
+    cmp r8d, 'n'
+    je .on_clear_all
+    cmp r8d, 'A'
+    je .on_select_all
+    cmp r8d, 'a'
+    je .on_select_all
+    cmp r8d, 'F'
+    je .on_find
+    cmp r8d, 'f'
+    je .on_find
+    cmp r8d, 'B'
+    je .on_toggle_bold
+    cmp r8d, 'b'
+    je .on_toggle_bold
+    cmp r8d, 'I'
+    je .on_toggle_italic
+    cmp r8d, 'i'
+    je .on_toggle_italic
+    cmp r8d, 'U'
+    je .on_toggle_underline
+    cmp r8d, 'u'
+    je .on_toggle_underline
+    jmp .ret0
+
+.key_f2:
+    mov rcx, [hFormulaEdit]
+    call [SetFocus]
+    mov rcx, [hFormulaEdit]
+    mov edx, EM_SETSEL
+    xor r8d, r8d
+    mov r9d, -1
+    call [SendMessageA]
+    jmp .ret0
+
+.key_del:
+    call DoClearCell
+    jmp .ret0
+
+.key_f5:
+    call DoRefreshGrid
+    jmp .ret0
+
+.key_f9:
+    call DoRecalculateAll
     jmp .ret0
 
 .on_tab_change:
@@ -3095,13 +3121,29 @@ WndProc:
     xor r8d, r8d
     xor r9d, r9d
     call [SendMessageA]
-    cmp eax, 3               ; [+] Add sheet tab
-    je .on_add_sheet
+    cmp eax, [sheet_count]   ; [+] Add sheet tab
+    jge .on_add_sheet
+
+    cmp eax, [cur_sheet]
+    je .ret0
+
+    ; Save active sheet before switching
+    push rax
+    call SaveActiveSheetToBuffer
+    pop rax
+
     mov [cur_sheet], eax
-    call LoadSheetData
+    call LoadSheetFromBuffer
     jmp .ret0
 
 .on_add_sheet:
+    ; Save active sheet before adding new sheet
+    call SaveActiveSheetToBuffer
+
+    mov eax, [sheet_count]
+    cmp eax, 15
+    jge .ret0
+
     inc [sheet_count]
     lea rdi, [tcitem]
     xor eax, eax
@@ -3131,7 +3173,7 @@ WndProc:
     mov r8d, eax
     xor r9d, r9d
     call [SendMessageA]
-    call LoadSheetData
+    call LoadSheetFromBuffer
     jmp .ret0
 
 .command:
@@ -3309,6 +3351,14 @@ WndProc:
     cmp eax, ID_BTN_FX
     je .on_eval_formula
 
+    ; Combobox Selection Changes
+    cmp eax, ID_COMBO_FONT
+    je .on_combo_font
+    cmp eax, ID_COMBO_SIZE
+    je .on_combo_size
+    cmp eax, ID_COMBO_NUM_FMT
+    je .on_combo_num_fmt
+
     jmp .ret0
 
 ; -----------------------------------------------------------------------------
@@ -3417,6 +3467,7 @@ WndProc:
 .on_inc_font:
     inc [font_size_pt]
     call ApplyNewGridFont
+    call SyncComboSize
     jmp .ret0
 
 .on_dec_font:
@@ -3424,6 +3475,7 @@ WndProc:
     jle .ret0
     dec [font_size_pt]
     call ApplyNewGridFont
+    call SyncComboSize
     jmp .ret0
 
 .on_align_left:
@@ -3552,6 +3604,67 @@ WndProc:
     call DoEvalFormula
     jmp .ret0
 
+.on_combo_font:
+    mov rcx, [hComboFont]
+    mov edx, CB_GETCURSEL
+    xor r8d, r8d
+    xor r9d, r9d
+    call [SendMessageA]
+    cmp eax, 0
+    jne @f
+    lea rax, [cb_font1]
+    mov [pCurFontFace], rax
+    jmp .apply_f_change
+@@: cmp eax, 1
+    jne @f
+    lea rax, [cb_font2]
+    mov [pCurFontFace], rax
+    jmp .apply_f_change
+@@: cmp eax, 2
+    jne @f
+    lea rax, [cb_font3]
+    mov [pCurFontFace], rax
+    jmp .apply_f_change
+@@: cmp eax, 3
+    jne .ret0
+    lea rax, [cb_font4]
+    mov [pCurFontFace], rax
+.apply_f_change:
+    call ApplyNewGridFont
+    jmp .ret0
+
+.on_combo_size:
+    mov rcx, [hComboSize]
+    mov edx, CB_GETCURSEL
+    xor r8d, r8d
+    xor r9d, r9d
+    call [SendMessageA]
+    cmp eax, 0
+    jl .ret0
+    cmp eax, 6
+    jg .ret0
+    lea rdx, [font_size_table]
+    mov eax, dword [rdx + rax*4]
+    mov [font_size_pt], eax
+    call ApplyNewGridFont
+    jmp .ret0
+
+.on_combo_num_fmt:
+    mov rcx, [hComboNumFmt]
+    mov edx, CB_GETCURSEL
+    xor r8d, r8d
+    xor r9d, r9d
+    call [SendMessageA]
+    cmp eax, 1
+    je .on_fmt_comma
+    cmp eax, 2
+    je .on_fmt_dollar
+    cmp eax, 3
+    je .on_fmt_percent
+    cmp eax, 4
+    je .on_fmt_ruble
+    jmp .ret0
+
 .ret0:
     xor eax, eax
 
@@ -3559,6 +3672,125 @@ WndProc:
     mov rbx, [rbp-8]
     mov rsi, [rbp-16]
     mov rdi, [rbp-24]
+    leave
+    ret
+
+
+; =============================================================================
+; Cell Hit-Testing & UI Synchronization
+; =============================================================================
+DoGridCellHitTest:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 40h
+
+    lea rcx, [pt]
+    call [GetCursorPos]
+    mov rcx, [hGrid]
+    lea rdx, [pt]
+    call [ScreenToClient]
+
+    lea rdi, [lvhit]
+    xor eax, eax
+    mov ecx, 24
+    rep stosb
+
+    mov eax, dword [pt]
+    mov dword [lvhit], eax      ; pt.x
+    mov eax, dword [pt+4]
+    mov dword [lvhit+4], eax    ; pt.y
+
+    mov rcx, [hGrid]
+    mov edx, 1039h              ; LVM_SUBITEMHITTEST
+    xor r8d, r8d
+    lea r9, [lvhit]
+    call [SendMessageA]
+
+    cmp dword [lvhit+12], -1    ; iItem
+    je .use_selected_row
+
+    mov eax, dword [lvhit+12]
+    mov [cur_row], eax
+
+    mov eax, dword [lvhit+16]   ; iSubItem (0 = #, 1 = A, 2 = B, ..., 10 = J)
+    cmp eax, 1
+    jl .update_display
+    cmp eax, 10
+    jg .update_display
+    mov [cur_col], eax
+    jmp .update_display
+
+.use_selected_row:
+    mov rcx, [hGrid]
+    mov edx, LVM_GETNEXTITEM
+    mov r8d, -1
+    mov r9d, LVNI_SELECTED
+    call [SendMessageA]
+    cmp eax, -1
+    je .hit_done
+    mov [cur_row], eax
+
+.update_display:
+    ; Format Address: e.g. A1, B3, C10...
+    mov al, byte [cur_col]
+    dec al
+    add al, 'A'
+    lea rdi, [szTemp]
+    mov [rdi], al
+    inc rdi
+
+    mov eax, [cur_row]
+    inc eax
+    mov ecx, 10
+    lea rsi, [szTemp+16]
+    mov byte [rsi], 0
+.itos2:
+    xor edx, edx
+    div ecx
+    add dl, '0'
+    dec rsi
+    mov [rsi], dl
+    test eax, eax
+    jnz .itos2
+
+.copy_row_str:
+    lodsb
+    stosb
+    test al, al
+    jnz .copy_row_str
+
+    mov rcx, [hNameBox]
+    lea rdx, [szTemp]
+    call [SetWindowTextA]
+
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 1
+    lea r9, [szTemp]
+    call [SendMessageA]
+
+    ; Get cell content into Formula Bar
+    mov dword [lvitem], LVIF_TEXT
+    mov eax, [cur_row]
+    mov dword [lvitem+4], eax
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 1000
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, [cur_row]
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov rcx, [hFormulaEdit]
+    lea rdx, [szCellVal]
+    call [SetWindowTextA]
+
+    call UpdateStatusStats
+
+.hit_done:
     leave
     ret
 
@@ -3594,7 +3826,11 @@ ApplyNewGridFont:
     mov dword [rsp+50h], 0
     mov dword [rsp+58h], 0
     mov dword [rsp+60h], 0
+    mov rax, [pCurFontFace]
+    test rax, rax
+    jnz .have_font
     lea rax, [font_ui_name]
+.have_font:
     mov qword [rsp+68h], rax
     call [CreateFontA]
     mov [hFontGrid], rax
@@ -3605,6 +3841,38 @@ ApplyNewGridFont:
     mov r9d, 1
     call [SendMessageA]
 
+    mov rcx, [hGrid]
+    xor edx, edx
+    mov r8d, 1
+    call [InvalidateRect]
+
+    leave
+    ret
+
+; =============================================================================
+; Synchronize Combobox with Current Font Size
+; =============================================================================
+SyncComboSize:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    xor edx, edx
+.sync_loop:
+    cmp edx, 7
+    jge .sync_done
+    lea rax, [font_size_table]
+    mov ecx, [rax + rdx*4]
+    cmp ecx, [font_size_pt]
+    je .sync_found
+    inc edx
+    jmp .sync_loop
+.sync_found:
+    mov rcx, [hComboSize]
+    mov r8d, edx
+    mov edx, CB_SETCURSEL
+    xor r9d, r9d
+    call [SendMessageA]
+.sync_done:
     leave
     ret
 
@@ -3820,6 +4088,7 @@ DoEvalFormula:
     lea rdx, [szTemp]
     call [SetWindowTextA]
 
+    call SaveActiveSheetToBuffer
     call UpdateStatusStats
 
 .eval_done:
@@ -3929,8 +4198,12 @@ DoClipboardCut:
 DoClipboardPaste:
     push rbp
     mov rbp, rsp
-    sub rsp, 40h
-    mov [rbp-8], r12
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], r12
+    mov [rbp-24], r13
+    mov [rbp-32], r14
+    mov [rbp-40], r15
 
     mov rcx, [hWnd]
     call [OpenClipboard]
@@ -3945,6 +4218,8 @@ DoClipboardPaste:
 
     mov rcx, r12
     call [GlobalLock]
+    test rax, rax
+    jz .close_p
     mov rsi, rax
     lea rdi, [szTemp]
     mov ecx, 2040
@@ -3961,6 +4236,19 @@ DoClipboardPaste:
     mov rcx, r12
     call [GlobalUnlock]
 
+    ; Check if szTemp contains tab or newline (multi-cell paste)
+    lea rsi, [szTemp]
+.check_multi:
+    lodsb
+    test al, al
+    jz .paste_single
+    cmp al, 9
+    je .paste_multi
+    cmp al, 10
+    je .paste_multi
+    jmp .check_multi
+
+.paste_single:
     ; Write pasted text into active cell
     mov dword [lvitem], LVIF_TEXT
     mov eax, [cur_row]
@@ -3978,14 +4266,102 @@ DoClipboardPaste:
     mov rcx, [hFormulaEdit]
     lea rdx, [szTemp]
     call [SetWindowTextA]
+    jmp .paste_finish
 
+.paste_multi:
+    lea rsi, [szTemp]
+    mov r12d, [cur_row]
+    mov r13d, [cur_col]
+    mov r14d, [cur_col]
+
+.cell_tok_start:
+    lea rdi, [szCellVal]
+    mov ecx, 250
+.cell_tok_scan:
+    lodsb
+    test al, al
+    jz .cell_tok_eof
+    cmp al, 9
+    je .cell_tok_tab
+    cmp al, 13
+    je .cell_tok_cr
+    cmp al, 10
+    je .cell_tok_lf
+    stosb
+    dec ecx
+    jnz .cell_tok_scan
+    jmp .cell_tok_scan
+
+.cell_tok_tab:
+    mov byte [rdi], 0
+    call .write_p_cell
+    inc r13d
+    cmp r13d, 10
+    jg .skip_past_col
+    jmp .cell_tok_start
+
+.skip_past_col:
+.skip_col_loop:
+    lodsb
+    test al, al
+    jz .cell_tok_eof
+    cmp al, 10
+    je .cell_tok_lf
+    jmp .skip_col_loop
+
+.cell_tok_cr:
+    cmp byte [rsi], 10
+    jne .cr_no_lf
+    inc rsi
+.cr_no_lf:
+.cell_tok_lf:
+    mov byte [rdi], 0
+    call .write_p_cell
+    inc r12d
+    cmp r12d, [total_rows]
+    jge .paste_finish
+    mov r13d, r14d
+    jmp .cell_tok_start
+
+.cell_tok_eof:
+    mov byte [rdi], 0
+    call .write_p_cell
+    jmp .paste_finish
+
+.write_p_cell:
+    push rcx
+    push rdx
+    push r8
+    push r9
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r12d
+    mov dword [lvitem+8], r13d
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov rcx, [hGrid]
+    mov edx, LVM_SETITEMTEXTA
+    mov r8d, r12d
+    lea r9, [lvitem]
+    call [SendMessageA]
+    pop r9
+    pop r8
+    pop rdx
+    pop rcx
+    ret
+
+.paste_finish:
+    call SaveActiveSheetToBuffer
     call UpdateStatusStats
 
 .close_p:
     call [CloseClipboard]
 
 .done:
-    mov r12, [rbp-8]
+    mov rbx, [rbp-8]
+    mov r12, [rbp-16]
+    mov r13, [rbp-24]
+    mov r14, [rbp-32]
+    mov r15, [rbp-40]
     leave
     ret
 
@@ -4036,6 +4412,12 @@ ApplyDollarFormat:
     lea r9, [lvitem]
     call [SendMessageA]
 
+    mov rcx, [hFormulaEdit]
+    lea rdx, [szTemp]
+    call [SetWindowTextA]
+
+    call SaveActiveSheetToBuffer
+    call UpdateStatusStats
     leave
     ret
 
@@ -4080,6 +4462,12 @@ ApplyRubleFormat:
     lea r9, [lvitem]
     call [SendMessageA]
 
+    mov rcx, [hFormulaEdit]
+    lea rdx, [szTemp]
+    call [SetWindowTextA]
+
+    call SaveActiveSheetToBuffer
+    call UpdateStatusStats
     leave
     ret
 
@@ -4124,6 +4512,12 @@ ApplyPercentFormat:
     lea r9, [lvitem]
     call [SendMessageA]
 
+    mov rcx, [hFormulaEdit]
+    lea rdx, [szTemp]
+    call [SetWindowTextA]
+
+    call SaveActiveSheetToBuffer
+    call UpdateStatusStats
     leave
     ret
 
@@ -4168,6 +4562,12 @@ ApplyCommaFormat:
     lea r9, [lvitem]
     call [SendMessageA]
 
+    mov rcx, [hFormulaEdit]
+    lea rdx, [szTemp]
+    call [SetWindowTextA]
+
+    call SaveActiveSheetToBuffer
+    call UpdateStatusStats
     leave
     ret
 
@@ -4472,6 +4872,7 @@ LoadDemoData:
     xor r9d, r9d
     call [MessageBoxA]
 
+    call SaveActiveSheetToBuffer
     leave
     ret
 
@@ -4490,15 +4891,170 @@ SetCellVal:
     leave
     ret
 
-LoadSheetData:
+; =============================================================================
+; Multi-Sheet Cell Persistence: Save & Load active sheet buffer
+; =============================================================================
+SaveActiveSheetToBuffer:
     push rbp
     mov rbp, rsp
-    sub rsp, 20h
-    ; Reload clean grid or sheet-specific rows
-    call RenumberGridRows
-    call UpdateStatusStats
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], r12
+    mov [rbp-24], r13
+    mov [rbp-32], r14
+    mov [rbp-40], r15
+
+    mov r12d, [cur_sheet]
+    cmp r12d, 15
+    ja .save_done
+
+    xor r13d, r13d          ; row = 0..29
+.save_row_loop:
+    cmp r13d, [total_rows]
+    jge .save_done
+    cmp r13d, 30
+    jge .save_done
+
+    mov r14d, 1             ; col = 1..10
+.save_col_loop:
+    cmp r14d, 10
+    jg .save_next_row
+
+    ; Get cell text from ListView
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov dword [lvitem+8], r14d
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 120
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    ; Compute offset: ((sheet * 30 + row) * 11 + col) * 128
+    mov eax, r12d
+    imul eax, 30
+    add eax, r13d
+    imul eax, 11
+    add eax, r14d
+    shl rax, 7
+    lea rdi, [sheet_cells + rax]
+    lea rsi, [szCellVal]
+    mov ecx, 127
+.copy_c:
+    lodsb
+    stosb
+    test al, al
+    jz .copy_end
+    dec ecx
+    jnz .copy_c
+    mov byte [rdi], 0
+.copy_end:
+
+    inc r14d
+    jmp .save_col_loop
+
+.save_next_row:
+    inc r13d
+    jmp .save_row_loop
+
+.save_done:
+    mov rbx, [rbp-8]
+    mov r12, [rbp-16]
+    mov r13, [rbp-24]
+    mov r14, [rbp-32]
+    mov r15, [rbp-40]
     leave
     ret
+
+LoadSheetFromBuffer:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], r12
+    mov [rbp-24], r13
+    mov [rbp-32], r14
+    mov [rbp-40], r15
+
+    mov r12d, [cur_sheet]
+    cmp r12d, 15
+    ja .load_done
+
+    xor r13d, r13d          ; row = 0..29
+.load_row_loop:
+    cmp r13d, [total_rows]
+    jge .load_finish
+    cmp r13d, 30
+    jge .load_finish
+
+    mov r14d, 1             ; col = 1..10
+.load_col_loop:
+    cmp r14d, 10
+    jg .load_next_row
+
+    ; Compute offset: ((sheet * 30 + row) * 11 + col) * 128
+    mov eax, r12d
+    imul eax, 30
+    add eax, r13d
+    imul eax, 11
+    add eax, r14d
+    shl rax, 7
+    lea rax, [sheet_cells + rax]
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov dword [lvitem+8], r14d
+    mov qword [lvitem+24], rax
+    mov rcx, [hGrid]
+    mov edx, LVM_SETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    inc r14d
+    jmp .load_col_loop
+
+.load_next_row:
+    inc r13d
+    jmp .load_row_loop
+
+.load_finish:
+    call RenumberGridRows
+    call UpdateStatusStats
+
+    ; Update Formula Bar with active cell content in this sheet
+    mov dword [lvitem], LVIF_TEXT
+    mov eax, [cur_row]
+    mov dword [lvitem+4], eax
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 1000
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, [cur_row]
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov rcx, [hFormulaEdit]
+    lea rdx, [szCellVal]
+    call [SetWindowTextA]
+
+.load_done:
+    mov rbx, [rbp-8]
+    mov r12, [rbp-16]
+    mov r13, [rbp-24]
+    mov r14, [rbp-32]
+    mov r15, [rbp-40]
+    leave
+    ret
+
+LoadSheetData:
+    jmp LoadSheetFromBuffer
 
 DoConditionalFormat:
     push rbp
@@ -5279,6 +5835,7 @@ DoFileOpen:
     call [fclose]
 
     mov [total_rows], r13d
+    call SaveActiveSheetToBuffer
     call UpdateStatusStats
 
     mov rcx, [hStatusBar]
@@ -5780,6 +6337,7 @@ DoClearCell:
     lea rdx, [empty_str]
     call [SetWindowTextA]
 
+    call SaveActiveSheetToBuffer
     call UpdateStatusStats
     leave
     ret
@@ -6284,6 +6842,8 @@ user32_table:
     SetWindowLongPtrA           dq RVA _SetWindowLongPtrA
     CallWindowProcA             dq RVA _CallWindowProcA
     SetFocus                    dq RVA _SetFocus
+    GetKeyState                 dq RVA _GetKeyState
+    InvalidateRect              dq RVA _InvalidateRect
                                 dq 0
 
 gdi32_table:
@@ -6393,6 +6953,10 @@ _CallWindowProcA dw 0
  db 'CallWindowProcA', 0
 _SetFocus dw 0
  db 'SetFocus', 0
+_GetKeyState dw 0
+ db 'GetKeyState', 0
+_InvalidateRect dw 0
+ db 'InvalidateRect', 0
 
 _CreateFontA dw 0
  db 'CreateFontA', 0
