@@ -32,7 +32,10 @@ MCP_TOOLS_SCHEMA: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "formula": {"type": "string", "description": "Excel formula string (e.g. '=SUM(A1:A3)*1.2')"},
+                "formula": {
+                    "type": "string",
+                    "description": "Excel formula string (e.g. '=SUM(A1:A3)*1.2')",
+                },
                 "context": {
                     "type": "object",
                     "description": "Optional dictionary mapping cell refs (e.g. 'A1', 'B2') to values",
@@ -59,8 +62,15 @@ MCP_TOOLS_SCHEMA: list[dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Path to the .xlsx file"},
-                "sheet": {"type": "string", "description": "Optional sheet name (defaults to active sheet)"},
-                "max_rows": {"type": "integer", "default": 100, "description": "Maximum rows to return"},
+                "sheet": {
+                    "type": "string",
+                    "description": "Optional sheet name (defaults to active sheet)",
+                },
+                "max_rows": {
+                    "type": "integer",
+                    "default": 100,
+                    "description": "Maximum rows to return",
+                },
             },
             "required": ["file_path"],
         },
@@ -75,7 +85,10 @@ MCP_TOOLS_SCHEMA: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "file_path": {"type": "string", "description": "Path to the .xlsx file to create or update"},
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to the .xlsx file to create or update",
+                },
                 "cells": {
                     "type": "object",
                     "description": "Mapping of Excel cell refs ('A1', 'B2') to numbers, strings, or '=FORMULA'",
@@ -173,7 +186,9 @@ class XlsxMCPServer:
                 return 0
             val = target_sheet.get_cell_value(r, c)
             if isinstance(val, str) and val.startswith("="):
-                eng = FormulaEngine(lambda rr, cc, ss=None: resolver(rr, cc, ss or target_sheet.name))
+                eng = FormulaEngine(
+                    lambda rr, cc, ss=None: resolver(rr, cc, ss or target_sheet.name)
+                )
                 return eng.evaluate(val)
             return 0 if (val is None or val == "") else val
 

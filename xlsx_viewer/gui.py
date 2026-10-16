@@ -51,9 +51,15 @@ try:
         ChartWizardDialog,
         CustomSortDialog,
         FindReplaceDialog,
+        FormatCellsDialog,
+        FormulaReferenceDialog,
         GoalSeekDialog,
         InsertFunctionDialog,
+        McpStatusDialog,
         RemoveDuplicatesDialog,
+        ShortcutsHelpDialog,
+        SimdBenchmarkDialog,
+        SimdInfoDialog,
         TextToColumnsDialog,
     )
     from .formatting import NumberFormatter
@@ -72,9 +78,15 @@ except ImportError:
         ChartWizardDialog,
         CustomSortDialog,
         FindReplaceDialog,
+        FormatCellsDialog,
+        FormulaReferenceDialog,
         GoalSeekDialog,
         InsertFunctionDialog,
+        McpStatusDialog,
         RemoveDuplicatesDialog,
+        ShortcutsHelpDialog,
+        SimdBenchmarkDialog,
+        SimdInfoDialog,
         TextToColumnsDialog,
     )
     from formatting import NumberFormatter
@@ -149,6 +161,11 @@ class ExcelViewerPro(ttk.Window):
         self._range_border = {}
         self._formula_bar_active = False
         self._merged_overlays: list[tk.Label] = []
+        self._show_formulas_mode = False
+        self._recent_files: list[str] = []
+        self._ribbon_visible = True
+        self._current_zoom_pct = 100
+        self._recent_menu: Menu | None = None
 
     def _init_window(self) -> None:
         """Configure main application window."""
@@ -270,20 +287,26 @@ class ExcelViewerPro(ttk.Window):
         self._status_bar.pack(fill=tk.X, side=tk.BOTTOM)
 
     def _create_menu(self) -> None:
-        """Create classic top menu bar."""
+        """Create complete, professional Excel Menu Bar with all features."""
         menubar = Menu(self)
         self.config(menu=menubar)
 
-        # File Menu
+        # 1. FILE MENU
         file_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
         file_menu.add_command(
             label="New Workbook", command=self._create_new_workbook, accelerator="Ctrl+N"
         )
         file_menu.add_command(label="Open...", command=self._open_file, accelerator="Ctrl+O")
+        file_menu.add_command(label="Open Financial Demo...", command=self._load_demo_data)
+
+        self._recent_menu = Menu(file_menu, tearoff=0)
+        file_menu.add_cascade(label="Open Recent", menu=self._recent_menu)
+        self._update_recent_files_menu()
+
+        file_menu.add_separator()
         file_menu.add_command(label="Save", command=self._quick_save, accelerator="Ctrl+S")
         file_menu.add_command(label="Save As...", command=self._save_as, accelerator="Ctrl+Shift+S")
-        file_menu.add_separator()
 
         export_menu = Menu(file_menu, tearoff=0)
         file_menu.add_cascade(label="Export", menu=export_menu)
@@ -296,11 +319,17 @@ class ExcelViewerPro(ttk.Window):
         export_menu.add_command(
             label="Export as HTML Table (.html)", command=lambda: self._export_file("html")
         )
+        export_menu.add_command(
+            label="Export as JSON (.json)", command=lambda: self._export_file("json")
+        )
 
         file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self._on_close)
+        file_menu.add_command(
+            label="Close Workbook", command=self._close_workbook, accelerator="Ctrl+W"
+        )
+        file_menu.add_command(label="Exit", command=self._on_close, accelerator="Alt+F4")
 
-        # Edit Menu
+        # 2. EDIT MENU
         edit_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Edit", menu=edit_menu)
         edit_menu.add_command(label="Undo", command=self._undo, accelerator="Ctrl+Z")
@@ -309,20 +338,343 @@ class ExcelViewerPro(ttk.Window):
         edit_menu.add_command(label="Cut", command=self._cut, accelerator="Ctrl+X")
         edit_menu.add_command(label="Copy", command=self._copy, accelerator="Ctrl+C")
         edit_menu.add_command(label="Paste", command=self._paste, accelerator="Ctrl+V")
+
+        ps_menu = Menu(edit_menu, tearoff=0)
+        edit_menu.add_cascade(label="Paste Special", menu=ps_menu)
+        ps_menu.add_command(
+            label="Paste Values Only", command=lambda: self._paste_special("values")
+        )
+        ps_menu.add_command(
+            label="Paste Formulas Only", command=lambda: self._paste_special("formulas")
+        )
+        ps_menu.add_command(
+            label="Paste Transposed", command=lambda: self._paste_special("transpose")
+        )
+        ps_menu.add_command(
+            label="Paste Formats Only", command=lambda: self._paste_special("formats")
+        )
+
+        edit_menu.add_separator()
+        fill_menu = Menu(edit_menu, tearoff=0)
+        edit_menu.add_cascade(label="Fill", menu=fill_menu)
+        fill_menu.add_command(label="Fill Down", command=self._fill_down, accelerator="Ctrl+D")
+        fill_menu.add_command(label="Fill Right", command=self._fill_right, accelerator="Ctrl+R")
+
+        clear_menu = Menu(edit_menu, tearoff=0)
+        edit_menu.add_cascade(label="Clear", menu=clear_menu)
+        clear_menu.add_command(label="Clear All", command=self._clear_range_all)
+        clear_menu.add_command(label="Clear Contents", command=self._delete_cell, accelerator="Del")
+        clear_menu.add_command(label="Clear Formats", command=self._clear_range_formats)
+        clear_menu.add_command(label="Clear Comments", command=self._clear_range_comments)
+
+        del_menu = Menu(edit_menu, tearoff=0)
+        edit_menu.add_cascade(label="Delete", menu=del_menu)
+        del_menu.add_command(label="Delete Row(s)", command=self._delete_row)
+        del_menu.add_command(label="Delete Column(s)", command=self._delete_column)
+        del_menu.add_command(label="Delete Cell Value", command=self._delete_cell)
+
         edit_menu.add_separator()
         edit_menu.add_command(label="Select All", command=self._select_all, accelerator="Ctrl+A")
-        edit_menu.add_command(label="Delete", command=self._delete_cell, accelerator="Del")
+        edit_menu.add_command(label="Select Entire Row", command=self._select_entire_row)
+        edit_menu.add_command(label="Select Entire Column", command=self._select_entire_column)
         edit_menu.add_separator()
         edit_menu.add_command(label="Find...", command=self._show_find_dialog, accelerator="Ctrl+F")
         edit_menu.add_command(
             label="Replace...", command=self._show_replace_dialog, accelerator="Ctrl+H"
         )
+        edit_menu.add_command(
+            label="Go To Cell...", command=self._show_goto_dialog, accelerator="Ctrl+G"
+        )
 
-        # View Menu
+        # 3. VIEW MENU
         view_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="View", menu=view_menu)
+        view_menu.add_command(label="Toggle Ribbon Bar", command=self._toggle_ribbon_visibility)
+        view_menu.add_command(label="Toggle Formula Bar", command=self._toggle_formula_bar)
+        view_menu.add_command(label="Toggle Status Bar", command=self._toggle_status_bar)
+        view_menu.add_separator()
+
+        freeze_menu = Menu(view_menu, tearoff=0)
+        view_menu.add_cascade(label="Freeze Panes", menu=freeze_menu)
+        freeze_menu.add_command(label="Freeze Top Row", command=self._freeze_top_row)
+        freeze_menu.add_command(label="Freeze First Column", command=self._freeze_first_col)
+        freeze_menu.add_command(label="Unfreeze All Panes", command=self._unfreeze_all)
+
         view_menu.add_command(label="Auto-fit All Columns", command=self._autofit_all_columns)
-        view_menu.add_command(label="Refresh (F5)", command=self._refresh, accelerator="F5")
+        view_menu.add_separator()
+
+        zoom_menu = Menu(view_menu, tearoff=0)
+        view_menu.add_cascade(label="Zoom", menu=zoom_menu)
+        zoom_menu.add_command(label="Zoom In", command=self._zoom_in, accelerator="Ctrl++")
+        zoom_menu.add_command(label="Zoom Out", command=self._zoom_out, accelerator="Ctrl+-")
+        zoom_menu.add_separator()
+        for pct in (50, 75, 100, 125, 150, 200):
+            zoom_menu.add_command(label=f"{pct}%", command=partial(self._set_zoom_level, pct))
+
+        themes_menu = Menu(view_menu, tearoff=0)
+        view_menu.add_cascade(label="Themes", menu=themes_menu)
+        themes = [
+            "cosmo",
+            "flatly",
+            "journal",
+            "litera",
+            "lumen",
+            "minty",
+            "pulse",
+            "sandstone",
+            "united",
+            "yeti",
+            "darkly",
+            "cyborg",
+            "superhero",
+            "solar",
+            "vapor",
+        ]
+        for th in themes:
+            themes_menu.add_command(label=th.capitalize(), command=partial(self._change_theme, th))
+
+        view_menu.add_separator()
+        view_menu.add_command(label="Refresh Grid", command=self._refresh, accelerator="F5")
+
+        # 4. INSERT MENU
+        insert_menu = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Insert", menu=insert_menu)
+        insert_menu.add_command(
+            label="Insert Row Above", command=self._insert_row_above, accelerator="Ctrl+Shift++"
+        )
+        insert_menu.add_command(label="Insert Row Below", command=self._insert_row_below)
+        insert_menu.add_command(label="Insert Column Left", command=self._insert_col_left)
+        insert_menu.add_command(label="Insert Column Right", command=self._insert_col_right)
+        insert_menu.add_separator()
+        insert_menu.add_command(
+            label="Insert Function (fx)...", command=self._show_fx_wizard, accelerator="Shift+F3"
+        )
+        insert_menu.add_command(
+            label="Chart Wizard...", command=self._show_chart_wizard, accelerator="F11"
+        )
+
+        qc_menu = Menu(insert_menu, tearoff=0)
+        insert_menu.add_cascade(label="Quick Charts", menu=qc_menu)
+        for c_type in ("bar", "line", "pie", "scatter", "area", "histogram"):
+            qc_menu.add_command(
+                label=f"{c_type.capitalize()} Chart",
+                command=partial(self._create_quick_chart, c_type),
+            )
+
+        insert_menu.add_separator()
+        insert_menu.add_command(
+            label="Cell Comment...", command=self._edit_cell_comment, accelerator="Shift+F2"
+        )
+        insert_menu.add_command(
+            label="Insert New Sheet", command=self._on_add_sheet, accelerator="Shift+F11"
+        )
+
+        # 5. FORMAT MENU
+        format_menu = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Format", menu=format_menu)
+        format_menu.add_command(
+            label="Format Cells...", command=self._show_format_cells_dialog, accelerator="Ctrl+1"
+        )
+        format_menu.add_separator()
+
+        font_menu = Menu(format_menu, tearoff=0)
+        format_menu.add_cascade(label="Font Styles", menu=font_menu)
+        font_menu.add_command(label="Bold", command=self._toggle_bold, accelerator="Ctrl+B")
+        font_menu.add_command(label="Italic", command=self._toggle_italic, accelerator="Ctrl+I")
+        font_menu.add_command(
+            label="Underline", command=self._toggle_underline, accelerator="Ctrl+U"
+        )
+        font_menu.add_command(
+            label="Strikethrough", command=self._toggle_strikethrough, accelerator="Ctrl+5"
+        )
+        font_menu.add_separator()
+        font_menu.add_command(label="Increase Font Size", command=self._increase_font_size)
+        font_menu.add_command(label="Decrease Font Size", command=self._decrease_font_size)
+        font_menu.add_command(label="Pick Text Color...", command=self._pick_fg_color)
+        font_menu.add_command(label="Pick Cell Fill Color...", command=self._pick_bg_color)
+
+        align_menu = Menu(format_menu, tearoff=0)
+        format_menu.add_cascade(label="Text Alignment", menu=align_menu)
+        align_menu.add_command(
+            label="Align Left", command=partial(self._set_halign, "left"), accelerator="Ctrl+L"
+        )
+        align_menu.add_command(
+            label="Center", command=partial(self._set_halign, "center"), accelerator="Ctrl+E"
+        )
+        align_menu.add_command(
+            label="Align Right", command=partial(self._set_halign, "right"), accelerator="Ctrl+R"
+        )
+        align_menu.add_separator()
+        align_menu.add_command(label="Align Top", command=partial(self._set_valign, "top"))
+        align_menu.add_command(label="Align Middle", command=partial(self._set_valign, "center"))
+        align_menu.add_command(label="Align Bottom", command=partial(self._set_valign, "bottom"))
+
+        format_menu.add_command(label="Wrap Text", command=self._toggle_wrap_text)
+        format_menu.add_command(label="Merge & Center Cells", command=self._toggle_merge_cells)
+        format_menu.add_separator()
+
+        num_menu = Menu(format_menu, tearoff=0)
+        format_menu.add_cascade(label="Number Formats", menu=num_menu)
+        num_menu.add_command(label="General", command=partial(self._set_number_format, "General"))
+        num_menu.add_command(
+            label="Number (1,234.56)", command=partial(self._set_number_format, "#,##0.00")
+        )
+        num_menu.add_command(
+            label="Currency Dollar ($)", command=partial(self._set_number_format, "$#,##0.00")
+        )
+        num_menu.add_command(
+            label="Currency Ruble (₽)", command=partial(self._set_number_format, "#,##0.00 ₽")
+        )
+        num_menu.add_command(
+            label="Currency Euro (€)", command=partial(self._set_number_format, "€#,##0.00")
+        )
+        num_menu.add_command(
+            label="Percentage (0.00%)", command=partial(self._set_number_format, "0.00%")
+        )
+        num_menu.add_command(
+            label="Scientific (0.00E+00)", command=partial(self._set_number_format, "0.00E+00")
+        )
+        num_menu.add_command(
+            label="Short Date (YYYY-MM-DD)", command=partial(self._set_number_format, "YYYY-MM-DD")
+        )
+        num_menu.add_separator()
+        num_menu.add_command(label="Increase Decimal (.0+)", command=self._increase_decimals)
+        num_menu.add_command(label="Decrease Decimal (.0-)", command=self._decrease_decimals)
+
+        cf_menu = Menu(format_menu, tearoff=0)
+        format_menu.add_cascade(label="Conditional Formatting", menu=cf_menu)
+        cf_menu.add_command(
+            label="Highlight: Greater Than...", command=partial(self._add_cf_rule, "greater_than")
+        )
+        cf_menu.add_command(
+            label="Highlight: Less Than...", command=partial(self._add_cf_rule, "less_than")
+        )
+        cf_menu.add_command(
+            label="Highlight: Equal To...", command=partial(self._add_cf_rule, "equal_to")
+        )
+        cf_menu.add_command(
+            label="Color Scales (Heatmap)...", command=partial(self._add_cf_rule, "color_scale")
+        )
+        cf_menu.add_separator()
+        cf_menu.add_command(label="Clear Conditional Formatting", command=self._clear_cf_rules)
+
+        # 6. FORMULAS MENU
+        formulas_menu = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Formulas", menu=formulas_menu)
+        formulas_menu.add_command(
+            label="Recalculate Workbook", command=self._recalculate_all, accelerator="F9"
+        )
+        formulas_menu.add_separator()
+
+        autosum_menu = Menu(formulas_menu, tearoff=0)
+        formulas_menu.add_cascade(label="AutoSum", menu=autosum_menu)
+        autosum_menu.add_command(
+            label="SUM", command=partial(self._apply_autosum, "SUM"), accelerator="Alt+="
+        )
+        autosum_menu.add_command(label="AVERAGE", command=partial(self._apply_autosum, "AVERAGE"))
+        autosum_menu.add_command(
+            label="COUNT NUMBERS", command=partial(self._apply_autosum, "COUNT")
+        )
+        autosum_menu.add_command(label="MAX", command=partial(self._apply_autosum, "MAX"))
+        autosum_menu.add_command(label="MIN", command=partial(self._apply_autosum, "MIN"))
+
+        fn_lib_menu = Menu(formulas_menu, tearoff=0)
+        formulas_menu.add_cascade(label="Function Library", menu=fn_lib_menu)
+
+        categories_funcs = [
+            ("Financial", ["PMT", "PV", "FV", "RATE", "NPER", "NPV", "IRR"]),
+            ("Logical", ["IF", "IFS", "AND", "OR", "NOT", "XOR", "IFERROR"]),
+            (
+                "Text",
+                ["CONCAT", "TEXTJOIN", "LEFT", "RIGHT", "MID", "UPPER", "LOWER", "TRIM", "LEN"],
+            ),
+            ("Date & Time", ["TODAY", "NOW", "DATE", "TIME", "YEAR", "MONTH", "DAY"]),
+            ("Lookup & Reference", ["VLOOKUP", "HLOOKUP", "XLOOKUP", "INDEX", "MATCH", "CHOOSE"]),
+            ("Math & Trig", ["SUM", "SUMIF", "SUMIFS", "PRODUCT", "ROUND", "ABS", "SQRT", "POWER"]),
+            (
+                "Statistical",
+                ["AVERAGE", "COUNT", "COUNTA", "COUNTIF", "MAX", "MIN", "MEDIAN", "STDEV"],
+            ),
+        ]
+        for cat_name, funcs in categories_funcs:
+            cat_sub = Menu(fn_lib_menu, tearoff=0)
+            fn_lib_menu.add_cascade(label=cat_name, menu=cat_sub)
+            for fn in funcs:
+                cat_sub.add_command(label=fn, command=partial(self._insert_formula_text, f"={fn}("))
+
+        formulas_menu.add_separator()
+        formulas_menu.add_command(
+            label="Insert Function (fx) Wizard...",
+            command=self._show_fx_wizard,
+            accelerator="Shift+F3",
+        )
+        formulas_menu.add_command(
+            label="Toggle Show Formulas", command=self._toggle_show_formulas, accelerator="Ctrl+`"
+        )
+        formulas_menu.add_separator()
+        formulas_menu.add_command(
+            label="SIMD Hardware Acceleration Status...", command=self._show_simd_info_dialog
+        )
+
+        # 7. DATA MENU
+        data_menu = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Data", menu=data_menu)
+        data_menu.add_command(
+            label="Sort Ascending (A to Z)", command=partial(self._quick_sort, False)
+        )
+        data_menu.add_command(
+            label="Sort Descending (Z to A)", command=partial(self._quick_sort, True)
+        )
+        data_menu.add_command(
+            label="Custom Multi-Level Sort...", command=self._show_custom_sort_dialog
+        )
+        data_menu.add_separator()
+        data_menu.add_command(
+            label="AutoFilter", command=self._toggle_autofilter, accelerator="Ctrl+Shift+L"
+        )
+        data_menu.add_command(label="Clear All Filters", command=self._clear_filters)
+        data_menu.add_separator()
+        data_menu.add_command(label="Text to Columns...", command=self._show_text_to_columns_dialog)
+        data_menu.add_command(
+            label="Remove Duplicates...", command=self._show_remove_duplicates_dialog
+        )
+        data_menu.add_command(
+            label="What-If Analysis: Goal Seek...", command=self._show_goal_seek_dialog
+        )
+        data_menu.add_separator()
+        data_menu.add_command(label="Refresh Data", command=self._refresh, accelerator="F5")
+
+        # 8. TOOLS MENU
+        tools_menu = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(
+            label="Run SIMD Hardware Benchmark...", command=self._show_simd_benchmark_dialog
+        )
+        tools_menu.add_command(
+            label="Formula Store & Dependency Auditor...", command=self._show_formula_auditor_dialog
+        )
+        tools_menu.add_command(
+            label="Model Context Protocol (MCP) Server Status...",
+            command=self._show_mcp_status_dialog,
+        )
+
+        # 9. HELP MENU
+        help_menu = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(
+            label="Keyboard Shortcuts Reference",
+            command=self._show_shortcuts_help_dialog,
+            accelerator="Ctrl+?",
+        )
+        help_menu.add_command(
+            label="Formula Functions Reference (129 Functions)...",
+            command=self._show_formula_reference_dialog,
+        )
+        help_menu.add_command(
+            label="SIMD Vector Hardware Architecture...", command=self._show_simd_info_dialog
+        )
+        help_menu.add_separator()
+        help_menu.add_command(label="About Excel Viewer Pro...", command=self._show_about_dialog)
 
     def _create_grid(self) -> None:
         """Create main spreadsheet grid."""
@@ -372,6 +724,7 @@ class ExcelViewerPro(ttk.Window):
             "<Control-o>": lambda e: self._open_file(),
             "<Control-s>": lambda e: self._quick_save(),
             "<Control-S>": lambda e: self._save_as(),
+            "<Control-w>": lambda e: self._close_workbook(),
             "<Control-z>": lambda e: self._undo(),
             "<Control-y>": lambda e: self._redo(),
             "<Control-x>": lambda e: self._cut(),
@@ -381,9 +734,22 @@ class ExcelViewerPro(ttk.Window):
             "<Control-f>": lambda e: self._show_find_dialog(),
             "<Control-h>": lambda e: self._show_replace_dialog(),
             "<Control-g>": lambda e: self._show_goto_dialog(),
+            "<Control-Key-1>": lambda e: self._show_format_cells_dialog(),
+            "<Control-b>": lambda e: self._toggle_bold(),
+            "<Control-i>": lambda e: self._toggle_italic(),
+            "<Control-u>": lambda e: self._toggle_underline(),
+            "<Control-d>": lambda e: self._fill_down(),
+            "<Control-r>": lambda e: self._fill_right(),
+            "<Control-grave>": lambda e: self._toggle_show_formulas(),
+            "<Control-slash>": lambda e: self._show_shortcuts_help_dialog(),
+            "<Control-question>": lambda e: self._show_shortcuts_help_dialog(),
             "<F5>": lambda e: self._refresh(),
             "<F2>": lambda e: self._start_inline_edit(),
             "<F9>": lambda e: self._recalculate_all(),
+            "<F11>": lambda e: self._show_chart_wizard(),
+            "<Shift-F3>": lambda e: self._show_fx_wizard(),
+            "<Shift-F2>": lambda e: self._edit_cell_comment(),
+            "<Shift-F11>": lambda e: self._on_add_sheet(),
             "<Delete>": lambda e: self._delete_cell(),
             "<Escape>": lambda e: self._cancel_edit(),
         }
@@ -802,6 +1168,16 @@ class ExcelViewerPro(ttk.Window):
                         + "</tr>\n"
                     )
                 f.write("</table></body></html>")
+        elif fmt == "json":
+            import json
+
+            with open(p, "w", encoding="utf-8") as f:
+                data = {
+                    "sheet": s_data.name,
+                    "headers": s_data.headers,
+                    "rows": s_data.rows,
+                }
+                json.dump(data, f, indent=2, ensure_ascii=False)
 
         messagebox.showinfo("Export", f"Exported successfully to {p.name}")
 
@@ -831,6 +1207,324 @@ class ExcelViewerPro(ttk.Window):
             except Exception:
                 pass
         self._merged_overlays.clear()
+
+    def _get_selected_bounds(self) -> tuple[int, int, int, int]:
+        """Return (min_row, max_row, min_col, max_col) of current selection."""
+        r1 = min(self._range_anchor.row, self._range_extent.row)
+        r2 = max(self._range_anchor.row, self._range_extent.row)
+        c1 = min(self._range_anchor.col, self._range_extent.col)
+        c2 = max(self._range_anchor.col, self._range_extent.col)
+        return r1, r2, c1, c2
+
+    def _update_recent_files_menu(self) -> None:
+        """Update Open Recent submenu items dynamically."""
+        if not hasattr(self, "_recent_menu") or self._recent_menu is None:
+            return
+        self._recent_menu.delete(0, tk.END)
+        if not self._recent_files:
+            self._recent_menu.add_command(label="(No recent files)", state="disabled")
+            return
+        for f_path in self._recent_files:
+            p = Path(f_path)
+            self._recent_menu.add_command(
+                label=p.name,
+                command=partial(self._load_file, p),
+            )
+
+    def _load_demo_data(self) -> None:
+        """Load a rich financial model demo sheet with live formulas and formats."""
+        self._create_new_workbook()
+        s_data = self._get_active_sheet_data()
+        s_name = s_data.name
+
+        demo = [
+            ["Category", "Q1 Actual", "Q2 Actual", "Q3 Actual", "Q4 Forecast", "Full Year"],
+            ["Enterprise Software", 125000, 142000, 158000, 175000, "=SUM(B2:E2)"],
+            ["SaaS Subscriptions", 45000, 52000, 61000, 72000, "=SUM(B3:E3)"],
+            ["Consulting Services", 35000, 38000, 42000, 45000, "=SUM(B4:E4)"],
+            [
+                "Total Revenue",
+                "=SUM(B2:B4)",
+                "=SUM(C2:C4)",
+                "=SUM(D2:D4)",
+                "=SUM(E2:E4)",
+                "=SUM(F2:F4)",
+            ],
+            ["COGS & Hosting", 32000, 35000, 38000, 41000, "=SUM(B6:E6)"],
+            ["Gross Profit", "=B5-B6", "=C5-C6", "=D5-D6", "=E5-E6", "=F5-F6"],
+            ["R&D Expenses", 42000, 45000, 48000, 50000, "=SUM(B8:E8)"],
+            ["Marketing & Sales", 38000, 42000, 46000, 49000, "=SUM(B9:E9)"],
+            ["Operating Expenses", "=B8+B9", "=C8+C9", "=D8+D9", "=E8+E9", "=F8+F9"],
+            ["Net Profit (EBITDA)", "=B7-B10", "=C7-C10", "=D7-D10", "=E7-E10", "=F7-F10"],
+            ["Profit Margin", "=B11/B5", "=C11/C5", "=D11/D5", "=E11/E5", "=F11/F5"],
+        ]
+
+        for r_idx, row in enumerate(demo):
+            for c_idx, val in enumerate(row):
+                val_str = str(val)
+                s_data.set_cell_value(r_idx, c_idx, val)
+                if val_str.startswith("="):
+                    self._formula_store.set(s_name, r_idx, c_idx, val_str)
+
+                # Styling
+                style = self._get_or_create_cell_style(r_idx, c_idx)
+                if r_idx == 0:
+                    style.bold = True
+                    style.bg_color = "#1f4e78"
+                    style.fg_color = "#ffffff"
+                    style.halign = "center"
+                elif r_idx in (4, 6, 9, 10):
+                    style.bold = True
+                    style.bg_color = "#e8eef5" if r_idx != 10 else "#c6efce"
+                    if c_idx >= 1:
+                        style.number_format = "$#,##0.00"
+                elif r_idx == 11:
+                    style.bold = True
+                    if c_idx >= 1:
+                        style.number_format = "0.00%"
+                elif c_idx >= 1 and isinstance(val, (int, float)):
+                    style.number_format = "$#,##0.00"
+
+        self._load_active_sheet()
+        self._recalculate_all()
+        messagebox.showinfo(
+            "Financial Demo", "Loaded financial model with live formula calculations!"
+        )
+
+    def _fill_down(self) -> None:
+        """Fill down values/formulas across selected range."""
+        r1, r2, c1, c2 = self._get_selected_bounds()
+        if r2 <= r1:
+            return
+        self._apply_autofill((r1, c1, r1, c2), (r1, c1, r2, c2))
+
+    def _fill_right(self) -> None:
+        """Fill right values/formulas across selected range."""
+        r1, r2, c1, c2 = self._get_selected_bounds()
+        if c2 <= c1:
+            return
+        self._apply_autofill((r1, c1, r2, c1), (r1, c1, r2, c2))
+
+    def _clear_range_all(self) -> None:
+        """Clear all contents, formatting, and comments in selection."""
+        r1, r2, c1, c2 = self._get_selected_bounds()
+        s_data = self._get_active_sheet_data()
+        s_name = s_data.name
+        for r in range(r1, r2 + 1):
+            for c in range(c1, c2 + 1):
+                self._apply_cell_value_change(r, c, "")
+                s_data.cell_styles.pop((r, c), None)
+                s_data.comments.pop((r, c), None)
+                self._formula_store.delete(s_name, r, c)
+        self._load_active_sheet()
+
+    def _clear_range_formats(self) -> None:
+        """Clear formatting styles in selection."""
+        r1, r2, c1, c2 = self._get_selected_bounds()
+        s_data = self._get_active_sheet_data()
+        for r in range(r1, r2 + 1):
+            for c in range(c1, c2 + 1):
+                s_data.cell_styles.pop((r, c), None)
+        self._load_active_sheet()
+
+    def _clear_range_comments(self) -> None:
+        """Clear comments in selection."""
+        r1, r2, c1, c2 = self._get_selected_bounds()
+        s_data = self._get_active_sheet_data()
+        for r in range(r1, r2 + 1):
+            for c in range(c1, c2 + 1):
+                s_data.comments.pop((r, c), None)
+        self._load_active_sheet()
+
+    def _select_entire_row(self) -> None:
+        """Select entire current row."""
+        s_data = self._get_active_sheet_data()
+        r = self._selected.row
+        self._range_anchor = CellPosition(r, 0)
+        self._range_extent = CellPosition(r, max(0, s_data.col_count - 1))
+        self._update_selection_highlight()
+
+    def _select_entire_column(self) -> None:
+        """Select entire current column."""
+        s_data = self._get_active_sheet_data()
+        c = self._selected.col
+        self._range_anchor = CellPosition(0, c)
+        self._range_extent = CellPosition(max(0, s_data.row_count - 1), c)
+        self._update_selection_highlight()
+
+    def _toggle_ribbon_visibility(self) -> None:
+        """Toggle Ribbon visibility."""
+        self._ribbon_visible = not self._ribbon_visible
+        if self._ribbon_visible:
+            self._ribbon.pack(fill=tk.X, before=self._formula_bar)
+        else:
+            self._ribbon.pack_forget()
+
+    def _set_zoom_level(self, pct: int) -> None:
+        """Set zoom scale factor (30% to 300%)."""
+        self._current_zoom_pct = max(30, min(300, pct))
+        self._on_zoom_change(self._current_zoom_pct)
+
+    def _zoom_in(self) -> None:
+        """Increase zoom by 15%."""
+        self._set_zoom_level(self._current_zoom_pct + 15)
+
+    def _zoom_out(self) -> None:
+        """Decrease zoom by 15%."""
+        self._set_zoom_level(self._current_zoom_pct - 15)
+
+    def _show_format_cells_dialog(self) -> None:
+        """Open comprehensive Excel Format Cells dialog."""
+        s_data = self._get_active_sheet_data()
+        cur_style = s_data.cell_styles.get((self._selected.row, self._selected.col))
+        fmt = cur_style.number_format if cur_style else "General"
+        font = cur_style.font_name if cur_style else "Segoe UI"
+        size = cur_style.font_size if cur_style else 10
+        bold = cur_style.bold if cur_style else False
+        italic = cur_style.italic if cur_style else False
+        underline = cur_style.underline if cur_style else False
+        halign = cur_style.halign if cur_style else "left"
+        valign = cur_style.valign if cur_style else "center"
+        bg = cur_style.bg_color if cur_style else None
+        fg = cur_style.fg_color if cur_style else None
+        wrap = cur_style.wrap_text if cur_style else False
+
+        FormatCellsDialog(
+            self,
+            current_format=fmt,
+            current_font=font,
+            current_size=size,
+            current_bold=bold,
+            current_italic=italic,
+            current_underline=underline,
+            current_halign=halign,
+            current_valign=valign,
+            current_bg=bg,
+            current_fg=fg,
+            current_wrap=wrap,
+            on_apply=self._apply_format_cells_dict,
+        )
+
+    def _apply_format_cells_dict(self, d: dict[str, Any]) -> None:
+        """Apply formatting dictionary from FormatCellsDialog to active selection."""
+
+        def update_style(st: CellStyle):
+            if "format" in d and d["format"]:
+                st.number_format = d["format"]
+            if "font_name" in d and d["font_name"]:
+                st.font_name = d["font_name"]
+            if "font_size" in d and d["font_size"]:
+                st.font_size = d["font_size"]
+            if "bold" in d:
+                st.bold = d["bold"]
+            if "italic" in d:
+                st.italic = d["italic"]
+            if "underline" in d:
+                st.underline = d["underline"]
+            if "strikethrough" in d:
+                st.strikethrough = d["strikethrough"]
+            if "halign" in d and d["halign"]:
+                st.halign = d["halign"]
+            if "valign" in d and d["valign"]:
+                st.valign = d["valign"]
+            if "wrap" in d:
+                st.wrap_text = d["wrap"]
+            if "bg_color" in d:
+                st.bg_color = d["bg_color"]
+            if "fg_color" in d:
+                st.fg_color = d["fg_color"]
+
+        self._apply_style_to_selected_range(update_style)
+
+    def _show_simd_benchmark_dialog(self) -> None:
+        """Open SIMD Hardware Vector Acceleration Benchmark Suite."""
+        SimdBenchmarkDialog(self)
+
+    def _show_shortcuts_help_dialog(self) -> None:
+        """Open Keyboard Shortcuts Reference Dialog."""
+        ShortcutsHelpDialog(self)
+
+    def _show_formula_reference_dialog(self) -> None:
+        """Open Formula Functions Documentation & Reference (129 functions)."""
+        FormulaReferenceDialog(self, on_insert_formula=self._insert_formula_text)
+
+    def _show_simd_info_dialog(self) -> None:
+        """Display hardware SIMD vector acceleration details."""
+        SimdInfoDialog(self)
+
+    def _show_mcp_status_dialog(self) -> None:
+        """Display native Model Context Protocol (MCP) server status."""
+        McpStatusDialog(self)
+
+    def _show_formula_auditor_dialog(self) -> None:
+        """Inspect all formulas and evaluated results on active worksheet."""
+        s_data = self._get_active_sheet_data()
+        s_name = s_data.name
+        formulas = self._formula_store.get_all(s_name)
+        if not formulas:
+            messagebox.showinfo("Formula Auditor", f"No formulas found in worksheet '{s_name}'.")
+            return
+
+        dlg = tk.Toplevel(self)
+        dlg.title(f"Formula Auditor — {s_name} ({len(formulas)} Formulas)")
+        dlg.geometry("640x440")
+        dlg.transient(self)
+
+        main = ttk.Frame(dlg, padding=12)
+        main.pack(fill=tk.BOTH, expand=True)
+
+        cols = ("cell", "formula", "value")
+        tree = ttk.Treeview(main, columns=cols, show="headings", height=12)
+        tree.heading("cell", text="Cell")
+        tree.heading("formula", text="Formula Expression")
+        tree.heading("value", text="Evaluated Result")
+        tree.column("cell", width=70, anchor=tk.CENTER)
+        tree.column("formula", width=340, anchor=tk.W)
+        tree.column("value", width=160, anchor=tk.W)
+
+        vsb = ttk.Scrollbar(main, orient=tk.VERTICAL, command=tree.yview)
+        tree.configure(yscrollcommand=vsb.set)
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        vsb.pack(side=tk.RIGHT, fill=tk.Y)
+
+        for (r, c), expr in sorted(formulas.items()):
+            pos_str = CellPosition(r, c).to_excel()
+            val = self._get_cell_value_for_formula(r, c, s_name)
+            tree.insert("", tk.END, values=(pos_str, expr, str(val)))
+
+    def _show_about_dialog(self) -> None:
+        """Display About Excel Viewer Pro dialog."""
+        try:
+            from . import __version__
+        except Exception:
+            __version__ = "1.1.1"
+
+        try:
+            from asm import asm_bridge
+        except ImportError:
+            try:
+                import asm_bridge
+            except ImportError:
+                asm_bridge = None
+        has_simd = asm_bridge is not None and asm_bridge.asm_is_available()
+
+        about_text = (
+            f"Excel Viewer Pro — Version {__version__}\n\n"
+            "Professional Spreadsheet Engine & Desktop Viewer\n"
+            f"• Hardware SIMD Acceleration: {'SSE2 Active (xlsx_math64.dll)' if has_simd else 'Python Engine'}\n"
+            "• Formula Functions: 129 Excel-compatible functions\n"
+            "• Multi-sheet caching, 2D clipboard, AutoFilter, Chart Wizard\n"
+            "• Standalone x64 Assembly Suite (xlsx_gui64.exe)\n"
+            "• Native Model Context Protocol (MCP) Server\n\n"
+            "Author: eminsk (M_N_Nik@yahoo.com)\n"
+            "Repository: https://github.com/eminsk/xlsx_vievers"
+        )
+        messagebox.showinfo("About Excel Viewer Pro", about_text)
+
+    def _toggle_show_formulas(self) -> None:
+        """Toggle Show Formulas Mode (Ctrl+`)."""
+        self._show_formulas_mode = not getattr(self, "_show_formulas_mode", False)
+        self._recalculate_all()
 
     def _on_switch_sheet(self, sheet_name: str) -> None:
         """Switch active worksheet."""
@@ -1907,9 +2601,12 @@ class ExcelViewerPro(ttk.Window):
                     result = self._get_cell_value_for_formula(r_idx, c_idx, s_name)
                     s_data.set_cell_value(r_idx, c_idx, result)
                     if c_idx + 1 < len(vals):
-                        style = s_data.cell_styles.get((r_idx, c_idx))
-                        fmt = style.number_format if style else None
-                        vals[c_idx + 1] = NumberFormatter.format_value(result, fmt)
+                        if getattr(self, "_show_formulas_mode", False):
+                            vals[c_idx + 1] = formula
+                        else:
+                            style = s_data.cell_styles.get((r_idx, c_idx))
+                            fmt = style.number_format if style else None
+                            vals[c_idx + 1] = NumberFormatter.format_value(result, fmt)
                         changed = True
             if changed:
                 self._tree.item(iid, values=vals)

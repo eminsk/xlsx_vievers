@@ -23,6 +23,14 @@ from typing import Any, Callable
 
 from openpyxl.utils import column_index_from_string, get_column_letter
 
+try:
+    from asm import asm_bridge
+except ImportError:
+    try:
+        import asm_bridge
+    except ImportError:
+        asm_bridge = None
+
 # =============================================================================
 # Cell and Range Reference Regexes
 # =============================================================================
@@ -1248,7 +1256,7 @@ class FormulaEngine:
         m: dict[str, Callable] = {}
 
         # Math
-        m["SUM"] = lambda args: sum(self._to_number(a) for a in args if a is not None and a != "")
+        m["SUM"] = self._fn_sum
         m["PRODUCT"] = lambda args: (
             math.prod(self._to_number(a) for a in args if a is not None and a != "") if args else 0
         )
@@ -1360,12 +1368,8 @@ class FormulaEngine:
             )
         )
         m["COUNTA"] = lambda args: sum(1 for a in args if a is not None and a != "")
-        m["MIN"] = lambda args: min(
-            [self._to_number(a) for a in args if a is not None and a != ""] or [0]
-        )
-        m["MAX"] = lambda args: max(
-            [self._to_number(a) for a in args if a is not None and a != ""] or [0]
-        )
+        m["MIN"] = self._fn_min
+        m["MAX"] = self._fn_max
         m["MEDIAN"] = self._fn_median
         m["MODE"] = self._fn_mode
         m["MODE.SNGL"] = self._fn_mode
@@ -1598,9 +1602,49 @@ class FormulaEngine:
     # Specialized Function Implementations
     # -------------------------------------------------------------------------
 
+    def _fn_sum(self, args: list) -> float:
+        nums = [self._to_number(a) for a in args if a is not None and a != ""]
+        if not nums:
+            return 0.0
+        if len(nums) >= 8 and asm_bridge is not None and asm_bridge.asm_is_available():
+            try:
+                return asm_bridge.asm_sum(nums)
+            except Exception:
+                pass
+        return sum(nums)
+
     def _fn_average(self, args: list) -> float:
         nums = [self._to_number(a) for a in args if a is not None and a != ""]
-        return sum(nums) / len(nums) if nums else 0.0
+        if not nums:
+            return 0.0
+        if len(nums) >= 8 and asm_bridge is not None and asm_bridge.asm_is_available():
+            try:
+                return asm_bridge.asm_avg(nums)
+            except Exception:
+                pass
+        return sum(nums) / len(nums)
+
+    def _fn_min(self, args: list) -> float:
+        nums = [self._to_number(a) for a in args if a is not None and a != ""]
+        if not nums:
+            return 0.0
+        if len(nums) >= 8 and asm_bridge is not None and asm_bridge.asm_is_available():
+            try:
+                return asm_bridge.asm_min(nums)
+            except Exception:
+                pass
+        return min(nums)
+
+    def _fn_max(self, args: list) -> float:
+        nums = [self._to_number(a) for a in args if a is not None and a != ""]
+        if not nums:
+            return 0.0
+        if len(nums) >= 8 and asm_bridge is not None and asm_bridge.asm_is_available():
+            try:
+                return asm_bridge.asm_max(nums)
+            except Exception:
+                pass
+        return max(nums)
 
     def _fn_median(self, args: list) -> float:
         nums = sorted(self._to_number(a) for a in args if a is not None and a != "")
@@ -1732,6 +1776,11 @@ class FormulaEngine:
         type_ = int(self._to_number(args[4])) if len(args) > 4 else 0
         if nper == 0:
             return "#DIV/0!"
+        if asm_bridge is not None and asm_bridge.asm_is_available():
+            try:
+                return asm_bridge.asm_pmt(rate, nper, pv, fv, type_)
+            except Exception:
+                pass
         if rate == 0:
             return -(pv + fv) / nper
         pvif = (1 + rate) ** nper
@@ -1748,6 +1797,11 @@ class FormulaEngine:
         pmt = self._to_number(args[2])
         fv = self._to_number(args[3]) if len(args) > 3 else 0.0
         type_ = int(self._to_number(args[4])) if len(args) > 4 else 0
+        if asm_bridge is not None and asm_bridge.asm_is_available():
+            try:
+                return asm_bridge.asm_pv(rate, nper, pmt, fv, type_)
+            except Exception:
+                pass
         if rate == 0:
             return -(pmt * nper + fv)
         pvif = (1 + rate) ** nper
@@ -1762,6 +1816,11 @@ class FormulaEngine:
         pmt = self._to_number(args[2])
         pv = self._to_number(args[3]) if len(args) > 3 else 0.0
         type_ = int(self._to_number(args[4])) if len(args) > 4 else 0
+        if asm_bridge is not None and asm_bridge.asm_is_available():
+            try:
+                return asm_bridge.asm_fv(rate, nper, pmt, pv, type_)
+            except Exception:
+                pass
         if rate == 0:
             return -(pv + pmt * nper)
         pvif = (1 + rate) ** nper

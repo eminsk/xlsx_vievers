@@ -103,6 +103,9 @@ def asm_is_available() -> bool:
     return _is_available
 
 
+is_asm_available = asm_is_available
+
+
 import array
 
 # =============================================================================

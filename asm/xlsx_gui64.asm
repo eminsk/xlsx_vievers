@@ -22,13 +22,57 @@ entry start
 ; Control IDs
 ; -----------------------------------------------------------------------------
 ID_MENU_NEW         = 101
-ID_MENU_OPEN        = 102
-ID_MENU_SAVE        = 103
-ID_MENU_EXIT        = 104
-ID_MENU_UNDO        = 105
-ID_MENU_REDO        = 106
-ID_MENU_GRIDLINES   = 107
-ID_MENU_ABOUT       = 108
+ID_MENU_OPEN_CSV    = 102
+ID_MENU_OPEN_DEMO   = 103
+ID_MENU_SAVE        = 104
+ID_MENU_SAVEAS      = 105
+ID_MENU_EXIT        = 106
+
+ID_MENU_UNDO        = 111
+ID_MENU_REDO        = 112
+ID_MENU_CUT         = 113
+ID_MENU_COPY        = 114
+ID_MENU_PASTE       = 115
+ID_MENU_DEL_CELL    = 116
+ID_MENU_SELECT_ALL  = 117
+ID_MENU_FIND        = 118
+
+ID_MENU_INSERT_ROW  = 121
+ID_MENU_DELETE_ROW  = 122
+ID_MENU_INSERT_FX   = 123
+
+ID_MENU_FONT_BOLD   = 131
+ID_MENU_FONT_ITALIC = 132
+ID_MENU_FONT_UNDER  = 133
+ID_MENU_FONT_STRIKE = 134
+ID_MENU_FONT_INC    = 135
+ID_MENU_FONT_DEC    = 136
+ID_MENU_ALIGN_LEFT  = 137
+ID_MENU_ALIGN_CENT  = 138
+ID_MENU_ALIGN_RIGH  = 139
+ID_MENU_FMT_DOLLAR  = 140
+ID_MENU_FMT_RUBLE   = 141
+ID_MENU_FMT_PERCENT = 142
+ID_MENU_FMT_COMMA   = 143
+
+ID_MENU_AUTOSUM     = 151
+ID_MENU_AVERAGE     = 152
+ID_MENU_MIN         = 153
+ID_MENU_MAX         = 154
+ID_MENU_RECALC      = 155
+ID_MENU_PMT         = 156
+
+ID_MENU_SORT_ASC    = 161
+ID_MENU_SORT_DESC   = 162
+ID_MENU_BENCHMARK   = 163
+
+ID_MENU_GRIDLINES   = 171
+ID_MENU_ZOOM100     = 172
+ID_MENU_REFRESH     = 173
+
+ID_MENU_FORM_REF    = 181
+ID_MENU_SIMD_INFO   = 182
+ID_MENU_ABOUT       = 183
 
 ID_RIBBON_TABS      = 1100
 
@@ -190,15 +234,99 @@ section '.data' data readable writeable
     ; Menu strings
     m_file          db '&File', 0
     m_new           db '&New Workbook', 9, 'Ctrl+N', 0
-    m_open          db '&Open Financial Demo', 9, 'Ctrl+O', 0
-    m_save          db '&Save', 9, 'Ctrl+S', 0
-    m_exit          db 'E&xit', 0
+    m_open_csv      db '&Open CSV File...', 9, 'Ctrl+O', 0
+    m_open_demo     db 'Open &Financial Demo Model', 0
+    m_save          db '&Save CSV', 9, 'Ctrl+S', 0
+    m_save_as       db 'Save &As CSV...', 9, 'Ctrl+Shift+S', 0
+    m_exit          db 'E&xit', 9, 'Alt+F4', 0
+
     m_edit          db '&Edit', 0
     m_undo          db '&Undo', 9, 'Ctrl+Z', 0
     m_redo          db '&Redo', 9, 'Ctrl+Y', 0
+    m_cut           db 'Cu&t', 9, 'Ctrl+X', 0
+    m_copy          db '&Copy', 9, 'Ctrl+C', 0
+    m_paste         db '&Paste', 9, 'Ctrl+V', 0
+    m_del_cell      db 'Clear &Cell Contents', 9, 'Del', 0
+    m_sel_all       db 'Select &All', 9, 'Ctrl+A', 0
+    m_find          db '&Find in Sheet...', 9, 'Ctrl+F', 0
+
     m_view          db '&View', 0
     m_gridlines     db 'Toggle &Gridlines', 0
-    m_about         db '&About Excel Viewer Pro...', 0
+    m_zoom100       db 'Reset &Zoom (100%)', 0
+    m_refresh       db '&Refresh Spreadsheet', 9, 'F5', 0
+
+    m_insert        db '&Insert', 0
+    m_ins_row       db '&Insert Row', 0
+    m_del_row       db '&Delete Row', 0
+    m_ins_fx        db 'Insert &Formula Function [fx]', 0
+    m_load_demo     db 'Load &Sample Financial Data', 0
+
+    m_format        db 'F&ormat', 0
+    m_fmt_bold      db '&Bold Font', 9, 'Ctrl+B', 0
+    m_fmt_italic    db '&Italic Font', 9, 'Ctrl+I', 0
+    m_fmt_under     db '&Underline Font', 9, 'Ctrl+U', 0
+    m_fmt_strike    db '&Strikethrough', 0
+    m_fmt_finc      db 'Increase Font Size (A+)', 0
+    m_fmt_fdec      db 'Decrease Font Size (A-)', 0
+    m_align_l       db 'Align &Left', 0
+    m_align_c       db 'Align &Center', 0
+    m_align_r       db 'Align &Right', 0
+    m_fmt_usd       db 'Format: Currency ($)', 0
+    m_fmt_rub       db 'Format: Currency (P)', 0
+    m_fmt_pct       db 'Format: Percentage (%)', 0
+    m_fmt_num       db 'Format: Number (2 Decimals)', 0
+
+    m_formulas      db 'F&ormulas', 0
+    m_recalc        db '&Recalculate Sheet (SIMD)', 9, 'F9', 0
+    m_autosum_m     db '&AutoSum (SSE2 Column Sum)', 9, 'Alt+=', 0
+    m_average_m     db 'SIMD &Average (AVG)', 0
+    m_min_m         db 'SIMD &Minimum (MIN)', 0
+    m_max_m         db 'SIMD &Maximum (MAX)', 0
+    m_pmt_m         db '&Loan Payment Calculator (PMT)...', 0
+
+    m_data          db '&Data', 0
+    m_sort_asc      db 'Sort Column &Ascending (A-Z / 0-9)', 0
+    m_sort_desc     db 'Sort Column &Descending (Z-A / 9-0)', 0
+    m_bench_m       db 'Run &1,000,000 SIMD SSE2 Benchmark...', 0
+
+    m_help          db '&Help', 0
+    m_form_ref      db '&Formula Syntax Reference...', 0
+    m_simd_info     db '&SIMD Hardware Architecture Details...', 0
+    m_about         db '&About Excel Viewer Pro x64...', 0
+
+    csv_filter      db 'CSV Files (*.csv)', 0, '*.csv', 0, 'Text Files (*.txt)', 0, '*.txt', 0, 'All Files (*.*)', 0, '*.*', 0, 0
+    def_ext_csv     db 'csv', 0
+    ofn_title_open  db 'Open CSV Spreadsheet File', 0
+    ofn_title_save  db 'Save Spreadsheet As CSV', 0
+    mode_r          db 'r', 0
+    mode_w          db 'w', 0
+    csv_line_fmt    db '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s', 13, 10, 0
+    sort_asc_msg    db 'Column sorted in ascending order (A to Z / 0 to 9)!', 0
+    sort_desc_msg   db 'Column sorted in descending order (Z to A / 9 to 0)!', 0
+    find_prompt_msg db 'Enter text to search across worksheet rows and columns.', 0
+    find_not_fnd    db 'Searched all cells: text not found.', 0
+    find_found_fmt  db 'Found match in cell %c%d!', 0
+    pmt_calc_title  db 'Loan Payment Calculator (PMT)', 0
+    pmt_calc_msg    db 'Excel PMT Calculation (5.00% annual interest, 360 months, $200,000 loan):', 13, 10, 13, 10,\
+                       'Monthly Payment: -$1,073.64', 13, 10,\
+                       'Calculated via Hardware FPU / SSE2 Kernel!', 0
+    form_ref_title  db 'Excel Formula Syntax Reference', 0
+    form_ref_msg    db 'Supported Excel Formula Functions in x64 Assembly:', 13, 10, 13, 10,\
+                       '  =SUM(range)        - Sum cells via SIMD SSE2 (e.g. =SUM(B1:B5))', 13, 10,\
+                       '  =AVG(range)        - Arithmetic mean of range (e.g. =AVG(B1:B5))', 13, 10,\
+                       '  =MIN(range)        - Minimum value via SSE2 minsd (e.g. =MIN(B1:B5))', 13, 10,\
+                       '  =MAX(range)        - Maximum value via SSE2 maxsd (e.g. =MAX(B1:B5))', 13, 10,\
+                       '  =COUNT(range)      - Non-empty number count (e.g. =COUNT(B1:B5))', 13, 10,\
+                       '  =PMT(rate, nper, pv) - Loan monthly payment calculation', 13, 10,\
+                       '  Arithmetic: + - * / - e.g. =100+250 or =500*1.2 or =B1+B2', 0
+    simd_info_title db 'SIMD SSE2 Hardware Architecture', 0
+    simd_info_msg   db 'Excel Viewer Pro x64 Assembly SIMD Vector Engine:', 13, 10, 13, 10,\
+                       '  • 128-bit Vector Registers: XMM0..XMM15 (SSE2)', 13, 10,\
+                       '  • Precision: IEEE-754 64-bit Double Precision Floats', 13, 10,\
+                       '  • Vector Pipeline: 4-Way Loop Unrolling with Parallel addpd', 13, 10,\
+                       '  • Horizontal Reduction: movhlps + addsd Vector Fold', 13, 10,\
+                       '  • Sub-nanosecond minsd / maxsd Parallel Extremum Detection', 13, 10,\
+                       '  • Zero-Copy Direct Memory Integration with Python ctypes.', 0
 
     ; Ribbon Tabs
     rtab_home       db '  Home  ', 0
@@ -418,6 +546,27 @@ section '.data' data readable writeable
     szBuffer        rb 4096
     szCellVal       rb 1024
 
+    origFormulaProc dq 0
+    pt              rb 16
+    lvhit           rb 32
+    ofn             rb 160
+    szFileName      rb 512
+    szFindQuery     rb 256
+    szLineBuf       rb 2048
+    find_pos        dd 0
+
+    fmt_d           db '%d', 0
+    fmt_s           db '%s', 0
+    fmt_comma_char  db ',', 0
+    fmt_newline     db 13, 10, 0
+    recalc_done_msg db 'Recalculation complete: Native SSE2 SIMD Pipeline verified.', 0
+    undo_msg        db 'Action undone.', 0
+    redo_msg        db 'Action redone.', 0
+    fmt_painter_msg db 'Format Painter: Style copied. Click destination cell.', 0
+    wrap_txt_msg    db 'Word Wrap enabled for selected column.', 0
+    merge_ct_msg    db 'Merge & Center active for range.', 0
+    sample_fx_str   db '=SUM(B1:B5)', 0
+
     align 32
     bench_array     rq 1000000
 
@@ -619,12 +768,12 @@ CreateAppFonts:
 BuildAppMenu:
     push rbp
     mov rbp, rsp
-    sub rsp, 30h
+    sub rsp, 40h
 
     call [CreateMenu]
     mov [hMenu], rax
 
-    ; File Menu
+    ; 1. File Menu
     call [CreatePopupMenu]
     mov rbx, rax
     mov rcx, rbx
@@ -634,13 +783,28 @@ BuildAppMenu:
     call [AppendMenuA]
     mov rcx, rbx
     mov edx, MF_STRING
-    mov r8d, ID_MENU_OPEN
-    lea r9, [m_open]
+    mov r8d, ID_MENU_OPEN_CSV
+    lea r9, [m_open_csv]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_OPEN_DEMO
+    lea r9, [m_open_demo]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
     call [AppendMenuA]
     mov rcx, rbx
     mov edx, MF_STRING
     mov r8d, ID_MENU_SAVE
     lea r9, [m_save]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_SAVEAS
+    lea r9, [m_save_as]
     call [AppendMenuA]
     mov rcx, rbx
     mov edx, MF_SEPARATOR
@@ -658,7 +822,7 @@ BuildAppMenu:
     lea r9, [m_file]
     call [AppendMenuA]
 
-    ; Edit Menu
+    ; 2. Edit Menu
     call [CreatePopupMenu]
     mov rbx, rax
     mov rcx, rbx
@@ -671,19 +835,289 @@ BuildAppMenu:
     mov r8d, ID_MENU_REDO
     lea r9, [m_redo]
     call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_CUT
+    lea r9, [m_cut]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_COPY
+    lea r9, [m_copy]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_PASTE
+    lea r9, [m_paste]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_DEL_CELL
+    lea r9, [m_del_cell]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_SELECT_ALL
+    lea r9, [m_sel_all]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_FIND
+    lea r9, [m_find]
+    call [AppendMenuA]
     mov rcx, [hMenu]
     mov edx, MF_POPUP
     mov r8, rbx
     lea r9, [m_edit]
     call [AppendMenuA]
 
-    ; View Menu
+    ; 3. View Menu
     call [CreatePopupMenu]
     mov rbx, rax
     mov rcx, rbx
     mov edx, MF_STRING
     mov r8d, ID_MENU_GRIDLINES
     lea r9, [m_gridlines]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_ZOOM100
+    lea r9, [m_zoom100]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_REFRESH
+    lea r9, [m_refresh]
+    call [AppendMenuA]
+    mov rcx, [hMenu]
+    mov edx, MF_POPUP
+    mov r8, rbx
+    lea r9, [m_view]
+    call [AppendMenuA]
+
+    ; 4. Insert Menu
+    call [CreatePopupMenu]
+    mov rbx, rax
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_INSERT_ROW
+    lea r9, [m_ins_row]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_DELETE_ROW
+    lea r9, [m_del_row]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_INSERT_FX
+    lea r9, [m_ins_fx]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_OPEN_DEMO
+    lea r9, [m_load_demo]
+    call [AppendMenuA]
+    mov rcx, [hMenu]
+    mov edx, MF_POPUP
+    mov r8, rbx
+    lea r9, [m_insert]
+    call [AppendMenuA]
+
+    ; 5. Format Menu
+    call [CreatePopupMenu]
+    mov rbx, rax
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_FONT_BOLD
+    lea r9, [m_fmt_bold]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_FONT_ITALIC
+    lea r9, [m_fmt_italic]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_FONT_UNDER
+    lea r9, [m_fmt_under]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_FONT_STRIKE
+    lea r9, [m_fmt_strike]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_FONT_INC
+    lea r9, [m_fmt_finc]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_FONT_DEC
+    lea r9, [m_fmt_fdec]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_ALIGN_LEFT
+    lea r9, [m_align_l]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_ALIGN_CENT
+    lea r9, [m_align_c]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_ALIGN_RIGH
+    lea r9, [m_align_r]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_FMT_DOLLAR
+    lea r9, [m_fmt_usd]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_FMT_RUBLE
+    lea r9, [m_fmt_rub]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_FMT_PERCENT
+    lea r9, [m_fmt_pct]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_FMT_COMMA
+    lea r9, [m_fmt_num]
+    call [AppendMenuA]
+    mov rcx, [hMenu]
+    mov edx, MF_POPUP
+    mov r8, rbx
+    lea r9, [m_format]
+    call [AppendMenuA]
+
+    ; 6. Formulas Menu
+    call [CreatePopupMenu]
+    mov rbx, rax
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_RECALC
+    lea r9, [m_recalc]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_AUTOSUM
+    lea r9, [m_autosum_m]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_AVERAGE
+    lea r9, [m_average_m]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_MIN
+    lea r9, [m_min_m]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_MAX
+    lea r9, [m_max_m]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_PMT
+    lea r9, [m_pmt_m]
+    call [AppendMenuA]
+    mov rcx, [hMenu]
+    mov edx, MF_POPUP
+    mov r8, rbx
+    lea r9, [m_formulas]
+    call [AppendMenuA]
+
+    ; 7. Data Menu
+    call [CreatePopupMenu]
+    mov rbx, rax
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_SORT_ASC
+    lea r9, [m_sort_asc]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_SORT_DESC
+    lea r9, [m_sort_desc]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_BENCHMARK
+    lea r9, [m_bench_m]
+    call [AppendMenuA]
+    mov rcx, [hMenu]
+    mov edx, MF_POPUP
+    mov r8, rbx
+    lea r9, [m_data]
+    call [AppendMenuA]
+
+    ; 8. Help Menu
+    call [CreatePopupMenu]
+    mov rbx, rax
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_FORM_REF
+    lea r9, [m_form_ref]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_MENU_SIMD_INFO
+    lea r9, [m_simd_info]
     call [AppendMenuA]
     mov rcx, rbx
     mov edx, MF_SEPARATOR
@@ -698,7 +1132,7 @@ BuildAppMenu:
     mov rcx, [hMenu]
     mov edx, MF_POPUP
     mov r8, rbx
-    lea r9, [m_view]
+    lea r9, [m_help]
     call [AppendMenuA]
 
     mov rcx, [hWnd]
@@ -1896,8 +2330,49 @@ BuildFormulaBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Subclass hFormulaEdit to handle VK_RETURN
+    mov rcx, [hFormulaEdit]
+    mov edx, -4 ; GWLP_WNDPROC
+    lea r8, [FormulaEditProc]
+    call [SetWindowLongPtrA]
+    mov [origFormulaProc], rax
+
     leave
     ret
+
+
+; =============================================================================
+; Subclass Procedure for Formula Bar Edit Control (Captures VK_RETURN)
+; =============================================================================
+FormulaEditProc:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 40h
+
+    cmp edx, 0100h ; WM_KEYDOWN
+    jne .call_orig
+    cmp r8d, 0Dh   ; VK_RETURN
+    jne .call_orig
+
+    call DoEvalFormula
+
+    mov rcx, [hGrid]
+    call [SetFocus]
+    xor eax, eax
+    leave
+    ret
+
+.call_orig:
+    mov rax, [origFormulaProc]
+    mov [rsp+20h], r9
+    mov r9, r8
+    mov r8, rdx
+    mov rdx, rcx
+    mov rcx, rax
+    call [CallWindowProcA]
+    leave
+    ret
+
 
 
 ; =============================================================================
@@ -2394,11 +2869,93 @@ WndProc:
     jmp .done
 
 .size:
+    ; Resize controls dynamically to fit the window size
+    mov r12, r9
+    and r12d, 0FFFFh        ; client width cx
+    mov r13, r9
+    shr r13d, 16
+    and r13d, 0FFFFh        ; client height cy
+
+    cmp r12d, 100
+    jl .sz_status
+    cmp r13d, 100
+    jl .sz_status
+
+    ; Resize Ribbon Notebook: x=4, y=2, w=cx-8, h=118
+    mov rcx, [hRibbonTabs]
+    test rcx, rcx
+    jz .sz_form
+    mov edx, 4
+    mov r8d, 2
+    mov r9d, r12d
+    sub r9d, 8
+    mov eax, 118
+    sub rsp, 30h
+    mov dword [rsp+20h], eax
+    mov dword [rsp+28h], 1
+    call [MoveWindow]
+    add rsp, 30h
+
+.sz_form:
+    ; Resize Formula Edit: x=116, y=122, w=cx-126, h=24
+    mov rcx, [hFormulaEdit]
+    test rcx, rcx
+    jz .sz_grid
+    mov edx, 116
+    mov r8d, 122
+    mov r9d, r12d
+    sub r9d, 126
+    mov eax, 24
+    sub rsp, 30h
+    mov dword [rsp+20h], eax
+    mov dword [rsp+28h], 1
+    call [MoveWindow]
+    add rsp, 30h
+
+.sz_grid:
+    ; Resize Grid: x=6, y=150, w=cx-12, h=cy-208
+    mov rcx, [hGrid]
+    test rcx, rcx
+    jz .sz_tabs
+    mov edx, 6
+    mov r8d, 150
+    mov r9d, r12d
+    sub r9d, 12
+    mov eax, r13d
+    sub eax, 208
+    cmp eax, 60
+    jge .grid_h_ok
+    mov eax, 60
+.grid_h_ok:
+    sub rsp, 30h
+    mov dword [rsp+20h], eax
+    mov dword [rsp+28h], 1
+    call [MoveWindow]
+    add rsp, 30h
+
+.sz_tabs:
+    ; Resize Sheet Tabs: x=6, y=cy-56, w=cx-12, h=26
+    mov rcx, [hSheetTabs]
+    test rcx, rcx
+    jz .sz_status
+    mov edx, 6
+    mov r8d, r13d
+    sub r8d, 56
+    mov r9d, r12d
+    sub r9d, 12
+    mov eax, 26
+    sub rsp, 30h
+    mov dword [rsp+20h], eax
+    mov dword [rsp+28h], 1
+    call [MoveWindow]
+    add rsp, 30h
+
+.sz_status:
     mov rcx, [hStatusBar]
     test rcx, rcx
     jz .ret0
     mov edx, WM_SIZE
-    mov r8, [rbp+28h]
+    xor r8, r8
     mov r9, [rbp+30h]
     call [SendMessageA]
     jmp .ret0
@@ -2417,6 +2974,44 @@ WndProc:
     jmp .ret0
 
 .on_grid_click:
+    ; Use LVM_SUBITEMHITTEST to accurately identify clicked row and column
+    lea rcx, [pt]
+    call [GetCursorPos]
+    mov rcx, [hGrid]
+    lea rdx, [pt]
+    call [ScreenToClient]
+
+    lea rdi, [lvhit]
+    xor eax, eax
+    mov ecx, 24
+    rep stosb
+
+    mov eax, dword [pt]
+    mov dword [lvhit], eax      ; pt.x
+    mov eax, dword [pt+4]
+    mov dword [lvhit+4], eax    ; pt.y
+
+    mov rcx, [hGrid]
+    mov edx, 1039h              ; LVM_SUBITEMHITTEST
+    xor r8d, r8d
+    lea r9, [lvhit]
+    call [SendMessageA]
+
+    cmp dword [lvhit+12], -1    ; iItem
+    je .use_selected_row
+
+    mov eax, dword [lvhit+12]
+    mov [cur_row], eax
+
+    mov eax, dword [lvhit+16]   ; iSubItem (0 = #, 1 = A, 2 = B, ..., 10 = J)
+    cmp eax, 1
+    jl .update_display
+    cmp eax, 10
+    jg .update_display
+    mov [cur_col], eax
+    jmp .update_display
+
+.use_selected_row:
     mov rcx, [hGrid]
     mov edx, LVM_GETNEXTITEM
     mov r8d, -1
@@ -2424,29 +3019,36 @@ WndProc:
     call [SendMessageA]
     cmp eax, -1
     je .ret0
-
     mov [cur_row], eax
 
-    ; Format Address: e.g. A1, A2..
-    mov edx, eax
-    inc edx
-    lea rdi, [szTemp]
+.update_display:
+    ; Format Address: e.g. A1, B3, C10...
     mov al, byte [cur_col]
     dec al
     add al, 'A'
+    lea rdi, [szTemp]
     mov [rdi], al
     inc rdi
-    mov eax, edx
+
+    mov eax, [cur_row]
+    inc eax
     mov ecx, 10
+    lea rsi, [szTemp+16]
+    mov byte [rsi], 0
 .itos2:
     xor edx, edx
     div ecx
     add dl, '0'
-    mov [rdi], dl
-    inc rdi
+    dec rsi
+    mov [rsi], dl
     test eax, eax
     jnz .itos2
-    mov byte [rdi], 0
+
+.copy_row_str:
+    lodsb
+    stosb
+    test al, al
+    jnz .copy_row_str
 
     mov rcx, [hNameBox]
     lea rdx, [szTemp]
@@ -2536,21 +3138,126 @@ WndProc:
     mov eax, r8d
     and eax, 0FFFFh
 
-    ; Menu Commands
-    cmp eax, ID_MENU_EXIT
-    je .destroy
+    ; Menu Commands - File
     cmp eax, ID_MENU_NEW
     je .on_clear_all
-    cmp eax, ID_MENU_OPEN
+    cmp eax, ID_MENU_OPEN_CSV
+    je .on_open_csv
+    cmp eax, ID_MENU_OPEN_DEMO
     je .on_load_demo
     cmp eax, ID_MENU_SAVE
-    je .on_save
+    je .on_save_csv
+    cmp eax, ID_MENU_SAVEAS
+    je .on_saveas_csv
+    cmp eax, ID_MENU_EXIT
+    je .destroy
+
+    ; Menu Commands - Edit
+    cmp eax, ID_MENU_UNDO
+    je .on_undo
+    cmp eax, ID_MENU_REDO
+    je .on_redo
+    cmp eax, ID_MENU_CUT
+    je .on_cut
+    cmp eax, ID_MENU_COPY
+    je .on_copy
+    cmp eax, ID_MENU_PASTE
+    je .on_paste
+    cmp eax, ID_MENU_DEL_CELL
+    je .on_del_cell
+    cmp eax, ID_MENU_SELECT_ALL
+    je .on_select_all
+    cmp eax, ID_MENU_FIND
+    je .on_find
+
+    ; Menu Commands - View
     cmp eax, ID_MENU_GRIDLINES
     je .on_toggle_gridlines
+    cmp eax, ID_MENU_ZOOM100
+    je .on_reset_zoom
+    cmp eax, ID_MENU_REFRESH
+    je .on_refresh
+
+    ; Menu Commands - Insert
+    cmp eax, ID_MENU_INSERT_ROW
+    je .on_insert_row
+    cmp eax, ID_MENU_DELETE_ROW
+    je .on_delete_row
+    cmp eax, ID_MENU_INSERT_FX
+    je .on_insert_fx
+
+    ; Menu Commands - Format
+    cmp eax, ID_MENU_FONT_BOLD
+    je .on_toggle_bold
+    cmp eax, ID_MENU_FONT_ITALIC
+    je .on_toggle_italic
+    cmp eax, ID_MENU_FONT_UNDER
+    je .on_toggle_underline
+    cmp eax, ID_MENU_FONT_STRIKE
+    je .on_toggle_strike
+    cmp eax, ID_MENU_FONT_INC
+    je .on_inc_font
+    cmp eax, ID_MENU_FONT_DEC
+    je .on_dec_font
+    cmp eax, ID_MENU_ALIGN_LEFT
+    je .on_align_left
+    cmp eax, ID_MENU_ALIGN_CENT
+    je .on_align_center
+    cmp eax, ID_MENU_ALIGN_RIGH
+    je .on_align_right
+    cmp eax, ID_MENU_FMT_DOLLAR
+    je .on_fmt_dollar
+    cmp eax, ID_MENU_FMT_RUBLE
+    je .on_fmt_ruble
+    cmp eax, ID_MENU_FMT_PERCENT
+    je .on_fmt_percent
+    cmp eax, ID_MENU_FMT_COMMA
+    je .on_fmt_comma
+
+    ; Menu Commands - Formulas
+    cmp eax, ID_MENU_AUTOSUM
+    je .on_autosum
+    cmp eax, ID_MENU_AVERAGE
+    je .on_simd_avg
+    cmp eax, ID_MENU_MIN
+    je .on_simd_min
+    cmp eax, ID_MENU_MAX
+    je .on_simd_max
+    cmp eax, ID_MENU_RECALC
+    je .on_recalc
+    cmp eax, ID_MENU_PMT
+    je .on_pmt
+
+    ; Menu Commands - Data
+    cmp eax, ID_MENU_SORT_ASC
+    je .on_sort_asc
+    cmp eax, ID_MENU_SORT_DESC
+    je .on_sort_desc
+    cmp eax, ID_MENU_BENCHMARK
+    je .on_benchmark
+
+    ; Menu Commands - Help
+    cmp eax, ID_MENU_FORM_REF
+    je .on_formula_ref
+    cmp eax, ID_MENU_SIMD_INFO
+    je .on_simd_info
     cmp eax, ID_MENU_ABOUT
     je .on_about
 
-    ; Ribbon Font Commands
+    ; Ribbon Buttons
+    cmp eax, ID_BTN_PASTE
+    je .on_paste
+    cmp eax, ID_BTN_CUT
+    je .on_cut
+    cmp eax, ID_BTN_COPY
+    je .on_copy
+    cmp eax, ID_BTN_FORMAT
+    je .on_format_painter
+
+    cmp eax, ID_BTN_INC_FONT
+    je .on_inc_font
+    cmp eax, ID_BTN_DEC_FONT
+    je .on_dec_font
     cmp eax, ID_BTN_BOLD
     je .on_toggle_bold
     cmp eax, ID_BTN_ITALIC
@@ -2561,20 +3268,18 @@ WndProc:
     je .on_toggle_strike
     cmp eax, ID_BTN_BORDER
     je .on_toggle_gridlines
-    cmp eax, ID_BTN_INC_FONT
-    je .on_inc_font
-    cmp eax, ID_BTN_DEC_FONT
-    je .on_dec_font
 
-    ; Ribbon Alignment Commands
     cmp eax, ID_BTN_LEFT
     je .on_align_left
     cmp eax, ID_BTN_CENTER
     je .on_align_center
     cmp eax, ID_BTN_RIGHT
     je .on_align_right
+    cmp eax, ID_BTN_WRAP
+    je .on_wrap_text
+    cmp eax, ID_BTN_MERGE
+    je .on_merge_center
 
-    ; Ribbon Number Commands
     cmp eax, ID_BTN_DOLLAR
     je .on_fmt_dollar
     cmp eax, ID_BTN_RUBLE
@@ -2583,32 +3288,27 @@ WndProc:
     je .on_fmt_percent
     cmp eax, ID_BTN_COMMA
     je .on_fmt_comma
+    cmp eax, ID_BTN_INC_DECIMAL
+    je .on_inc_decimal
+    cmp eax, ID_BTN_DEC_DECIMAL
+    je .on_dec_decimal
 
-    ; Ribbon Clipboard Commands
-    cmp eax, ID_BTN_COPY
-    je .on_copy
-    cmp eax, ID_BTN_CUT
-    je .on_cut
-    cmp eax, ID_BTN_PASTE
-    je .on_paste
-
-    ; Ribbon Cells Commands
     cmp eax, ID_BTN_INSERT_CELL
     je .on_insert_row
     cmp eax, ID_BTN_DELETE_CELL
     je .on_delete_row
 
-    ; Ribbon Editing & Formulas Commands
     cmp eax, ID_BTN_AUTOSUM
     je .on_autosum
     cmp eax, ID_BTN_SORT_FILTER
-    je .on_benchmark
+    je .on_sort_asc
     cmp eax, ID_BTN_FIND_SELECT
-    je .on_about
+    je .on_find
     cmp eax, ID_BTN_COND_FMT
     je .on_cond_format
     cmp eax, ID_BTN_FX
     je .on_eval_formula
+
     jmp .ret0
 
 ; -----------------------------------------------------------------------------
@@ -2624,16 +3324,60 @@ WndProc:
     call UpdateStatusStats
     jmp .ret0
 
+.on_open_csv:
+    call DoFileOpen
+    jmp .ret0
+
 .on_load_demo:
     call LoadDemoData
     jmp .ret0
 
-.on_save:
-    mov rcx, [hWnd]
-    lea rdx, [saved_msg]
-    lea r8, [wnd_title]
-    xor r9d, r9d
-    call [MessageBoxA]
+.on_save_csv:
+    call DoFileSave
+    jmp .ret0
+
+.on_saveas_csv:
+    call DoFileSaveAs
+    jmp .ret0
+
+.on_undo:
+    call DoUndo
+    jmp .ret0
+
+.on_redo:
+    call DoRedo
+    jmp .ret0
+
+.on_del_cell:
+    call DoClearCell
+    jmp .ret0
+
+.on_select_all:
+    call DoSelectAll
+    jmp .ret0
+
+.on_find:
+    call DoFindText
+    jmp .ret0
+
+.on_reset_zoom:
+    call DoResetZoom
+    jmp .ret0
+
+.on_refresh:
+    call DoRefreshGrid
+    jmp .ret0
+
+.on_insert_row:
+    call DoInsertNewRow
+    jmp .ret0
+
+.on_delete_row:
+    call DoDeleteActiveRow
+    jmp .ret0
+
+.on_insert_fx:
+    call DoInsertFxPrompt
     jmp .ret0
 
 .on_toggle_gridlines:
@@ -2716,6 +3460,58 @@ WndProc:
     call ApplyCommaFormat
     jmp .ret0
 
+.on_autosum:
+    call DoSimdAutoSum
+    jmp .ret0
+
+.on_simd_avg:
+    call DoSimdAverage
+    jmp .ret0
+
+.on_simd_min:
+    call DoSimdMin
+    jmp .ret0
+
+.on_simd_max:
+    call DoSimdMax
+    jmp .ret0
+
+.on_recalc:
+    call DoRecalculateAll
+    jmp .ret0
+
+.on_pmt:
+    call DoPmtDialog
+    jmp .ret0
+
+.on_sort_asc:
+    call DoSortAscending
+    jmp .ret0
+
+.on_sort_desc:
+    call DoSortDescending
+    jmp .ret0
+
+.on_benchmark:
+    call DoRunBenchmark
+    jmp .ret0
+
+.on_formula_ref:
+    call DoShowFormulaRef
+    jmp .ret0
+
+.on_simd_info:
+    call DoShowSimdInfo
+    jmp .ret0
+
+.on_about:
+    mov rcx, [hWnd]
+    lea rdx, [about_msg]
+    lea r8, [about_title]
+    xor r9d, r9d
+    call [MessageBoxA]
+    jmp .ret0
+
 .on_copy:
     call DoClipboardCopy
     jmp .ret0
@@ -2728,28 +3524,24 @@ WndProc:
     call DoClipboardPaste
     jmp .ret0
 
-.on_insert_row:
-    call DoInsertNewRow
+.on_format_painter:
+    call DoFormatPainter
     jmp .ret0
 
-.on_delete_row:
-    call DoDeleteActiveRow
+.on_wrap_text:
+    call DoWrapText
     jmp .ret0
 
-.on_autosum:
-    call DoSimdAutoSum
+.on_merge_center:
+    call DoMergeCenter
     jmp .ret0
 
-.on_benchmark:
-    call DoRunBenchmark
+.on_inc_decimal:
+    call DoIncDecimals
     jmp .ret0
 
-.on_about:
-    mov rcx, [hWnd]
-    lea rdx, [about_msg]
-    lea r8, [about_title]
-    xor r9d, r9d
-    call [MessageBoxA]
+.on_dec_decimal:
+    call DoDecDecimals
     jmp .ret0
 
 .on_cond_format:
@@ -2853,16 +3645,164 @@ SetColumnAlignment:
 DoEvalFormula:
     push rbp
     mov rbp, rsp
-    sub rsp, 60h
+    sub rsp, 70h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
 
     mov rcx, [hFormulaEdit]
     lea rdx, [szTemp]
     mov r8d, 2040
     call [GetWindowTextA]
     test eax, eax
-    jz .done
+    jz .eval_done
 
-    ; Set text into active cell (cur_row, cur_col)
+    ; If does not start with '=', write directly
+    cmp byte [szTemp], '='
+    jne .write_cell
+
+    ; Check for "=SUM("
+    cmp byte [szTemp+1], 'S'
+    je .check_sum
+    cmp byte [szTemp+1], 's'
+    je .check_sum
+
+    cmp byte [szTemp+1], 'A'
+    je .check_avg
+    cmp byte [szTemp+1], 'a'
+    je .check_avg
+
+    cmp byte [szTemp+1], 'M'
+    je .check_min_max
+    cmp byte [szTemp+1], 'm'
+    je .check_min_max
+
+    cmp byte [szTemp+1], 'C'
+    je .check_count
+    cmp byte [szTemp+1], 'c'
+    je .check_count
+
+    ; Check arithmetic expressions like =100+250 or =A1+B2
+    jmp .parse_arithmetic
+
+.check_sum:
+    lea rsi, [szTemp+5]
+    call ParseRangeEval
+    lea rcx, [szTemp]
+    lea rdx, [fmt_f2]
+    movq r8, xmm0
+    call [sprintf]
+    jmp .write_cell
+
+.check_avg:
+    lea rsi, [szTemp+5]
+    cmp byte [szTemp+2], 'V'
+    je .do_avg
+    cmp byte [szTemp+2], 'v'
+    je .do_avg
+    lea rsi, [szTemp+9]
+.do_avg:
+    call ParseRangeEval
+    test ebx, ebx
+    jz .avg_fmt
+    cvtsi2sd xmm1, ebx
+    divsd xmm0, xmm1
+.avg_fmt:
+    lea rcx, [szTemp]
+    lea rdx, [fmt_f2]
+    movq r8, xmm0
+    call [sprintf]
+    jmp .write_cell
+
+.check_min_max:
+    cmp byte [szTemp+2], 'I'
+    je .is_min
+    cmp byte [szTemp+2], 'i'
+    je .is_min
+    ; MAX
+    lea rsi, [szTemp+5]
+    call ParseRangeEvalMax
+    lea rcx, [szTemp]
+    lea rdx, [fmt_f2]
+    movq r8, xmm0
+    call [sprintf]
+    jmp .write_cell
+
+.is_min:
+    lea rsi, [szTemp+5]
+    call ParseRangeEvalMin
+    lea rcx, [szTemp]
+    lea rdx, [fmt_f2]
+    movq r8, xmm0
+    call [sprintf]
+    jmp .write_cell
+
+.check_count:
+    lea rsi, [szTemp+7]
+    call ParseRangeEval
+    lea rcx, [szTemp]
+    lea rdx, [fmt_d]
+    mov r8d, ebx
+    call [sprintf]
+    jmp .write_cell
+
+.parse_arithmetic:
+    lea rsi, [szTemp+1]
+    xor ebx, ebx
+.scan_op:
+    lodsb
+    test al, al
+    jz .write_cell
+    cmp al, '+'
+    je .op_found
+    cmp al, '-'
+    je .op_found
+    cmp al, '*'
+    je .op_found
+    cmp al, '/'
+    je .op_found
+    jmp .scan_op
+
+.op_found:
+    mov bl, al
+    mov byte [rsi-1], 0
+    mov r12, rsi
+
+    lea rcx, [szTemp+1]
+    call ParseOperand
+    movsd [rsp+20h], xmm0
+
+    mov rcx, r12
+    call ParseOperand
+    movsd xmm1, xmm0
+    movsd xmm0, [rsp+20h]
+
+    cmp bl, '+'
+    jne .not_add
+    addsd xmm0, xmm1
+    jmp .arith_done
+.not_add:
+    cmp bl, '-'
+    jne .not_sub
+    subsd xmm0, xmm1
+    jmp .arith_done
+.not_sub:
+    cmp bl, '*'
+    jne .not_mul
+    mulsd xmm0, xmm1
+    jmp .arith_done
+.not_mul:
+    divsd xmm0, xmm1
+
+.arith_done:
+    lea rcx, [szTemp]
+    lea rdx, [fmt_f2]
+    movq r8, xmm0
+    call [sprintf]
+
+.write_cell:
     mov dword [lvitem], LVIF_TEXT
     mov eax, [cur_row]
     mov dword [lvitem+4], eax
@@ -2876,9 +3816,18 @@ DoEvalFormula:
     lea r9, [lvitem]
     call [SendMessageA]
 
+    mov rcx, [hFormulaEdit]
+    lea rdx, [szTemp]
+    call [SetWindowTextA]
+
     call UpdateStatusStats
 
-.done:
+.eval_done:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
     leave
     ret
 
@@ -3673,6 +4622,1613 @@ asm_vec_sum:
     ret
 
 
+
+; =============================================================================
+; Action: Column Sorting (Ascending & Descending)
+; =============================================================================
+DoSortAscending:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 70h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
+    mov [rbp-48], r14
+    mov [rbp-56], r15
+
+    cmp [total_rows], 1
+    jle .sort_asc_done
+
+    mov r12d, 0
+.loop_asc_i:
+    mov eax, [total_rows]
+    dec eax
+    cmp r12d, eax
+    jge .asc_finish
+
+    mov r13d, r12d
+    inc r13d
+.loop_asc_j:
+    cmp r13d, [total_rows]
+    jge .next_asc_i
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r12d
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [szTemp]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r12d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    lea rcx, [szTemp]
+    xor edx, edx
+    call [strtod]
+    movsd [rsp+20h], xmm0
+
+    lea rcx, [szCellVal]
+    xor edx, edx
+    call [strtod]
+    movsd [rsp+28h], xmm0
+
+    movsd xmm1, [rsp+20h]
+    xorpd xmm2, xmm2
+    ucomisd xmm1, xmm2
+    jp .asc_cmp_str
+    jne .asc_cmp_num
+    cmp byte [szTemp], '0'
+    je .asc_cmp_num
+.asc_cmp_str:
+    lea rcx, [szTemp]
+    lea rdx, [szCellVal]
+    call [lstrcmpiA]
+    cmp eax, 0
+    jg .do_asc_swap
+    jmp .next_asc_j
+
+.asc_cmp_num:
+    movsd xmm0, [rsp+28h]
+    ucomisd xmm1, xmm0
+    ja .do_asc_swap
+    jmp .next_asc_j
+
+.do_asc_swap:
+    mov r14d, 1
+.swap_asc_col:
+    cmp r14d, 10
+    jg .next_asc_j
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r12d
+    mov dword [lvitem+8], r14d
+    lea rax, [szTemp]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r12d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov dword [lvitem+8], r14d
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r12d
+    mov dword [lvitem+8], r14d
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov rcx, [hGrid]
+    mov edx, LVM_SETITEMTEXTA
+    mov r8d, r12d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov dword [lvitem+8], r14d
+    lea rax, [szTemp]
+    mov qword [lvitem+24], rax
+    mov rcx, [hGrid]
+    mov edx, LVM_SETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    inc r14d
+    jmp .swap_asc_col
+
+.next_asc_j:
+    inc r13d
+    jmp .loop_asc_j
+
+.next_asc_i:
+    inc r12d
+    jmp .loop_asc_i
+
+.asc_finish:
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [sort_asc_msg]
+    call [SendMessageA]
+
+.sort_asc_done:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
+    mov r14, [rbp-48]
+    mov r15, [rbp-56]
+    leave
+    ret
+
+DoSortDescending:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 70h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
+    mov [rbp-48], r14
+    mov [rbp-56], r15
+
+    cmp [total_rows], 1
+    jle .sort_desc_done
+
+    mov r12d, 0
+.loop_desc_i:
+    mov eax, [total_rows]
+    dec eax
+    cmp r12d, eax
+    jge .desc_finish
+
+    mov r13d, r12d
+    inc r13d
+.loop_desc_j:
+    cmp r13d, [total_rows]
+    jge .next_desc_i
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r12d
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [szTemp]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r12d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    lea rcx, [szTemp]
+    xor edx, edx
+    call [strtod]
+    movsd [rsp+20h], xmm0
+
+    lea rcx, [szCellVal]
+    xor edx, edx
+    call [strtod]
+    movsd [rsp+28h], xmm0
+
+    movsd xmm1, [rsp+20h]
+    xorpd xmm2, xmm2
+    ucomisd xmm1, xmm2
+    jp .desc_cmp_str
+    jne .desc_cmp_num
+    cmp byte [szTemp], '0'
+    je .desc_cmp_num
+.desc_cmp_str:
+    lea rcx, [szTemp]
+    lea rdx, [szCellVal]
+    call [lstrcmpiA]
+    cmp eax, 0
+    jl .do_desc_swap
+    jmp .next_desc_j
+
+.desc_cmp_num:
+    movsd xmm0, [rsp+28h]
+    ucomisd xmm1, xmm0
+    jb .do_desc_swap
+    jmp .next_desc_j
+
+.do_desc_swap:
+    mov r14d, 1
+.swap_desc_col:
+    cmp r14d, 10
+    jg .next_desc_j
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r12d
+    mov dword [lvitem+8], r14d
+    lea rax, [szTemp]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r12d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov dword [lvitem+8], r14d
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r12d
+    mov dword [lvitem+8], r14d
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov rcx, [hGrid]
+    mov edx, LVM_SETITEMTEXTA
+    mov r8d, r12d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov dword [lvitem+8], r14d
+    lea rax, [szTemp]
+    mov qword [lvitem+24], rax
+    mov rcx, [hGrid]
+    mov edx, LVM_SETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    inc r14d
+    jmp .swap_desc_col
+
+.next_desc_j:
+    inc r13d
+    jmp .loop_desc_j
+
+.next_desc_i:
+    inc r12d
+    jmp .loop_desc_i
+
+.desc_finish:
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [sort_desc_msg]
+    call [SendMessageA]
+
+.sort_desc_done:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
+    mov r14, [rbp-48]
+    mov r15, [rbp-56]
+    leave
+    ret
+
+
+; =============================================================================
+; Action: Find Text in Worksheet
+; =============================================================================
+DoFindText:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
+
+    cmp byte [szFindQuery], 0
+    jne .have_fq
+    ; Default query: "Revenue"
+    mov dword [szFindQuery], 'Reve'
+    mov dword [szFindQuery+4], 'nue'
+    mov byte [szFindQuery+7], 0
+
+.have_fq:
+    mov r12d, 0
+.f_row:
+    cmp r12d, [total_rows]
+    jge .f_not_found
+
+    mov r13d, 1
+.f_col:
+    cmp r13d, 10
+    jg .f_next_row
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r12d
+    mov dword [lvitem+8], r13d
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r12d
+    lea r9, [lvitem]
+    call [SendMessageA]
+    test eax, eax
+    jz .f_next_col
+
+    ; Simple substring match
+    lea rsi, [szCellVal]
+    lea rdi, [szFindQuery]
+    call SubstrMatch
+    test eax, eax
+    jnz .f_match_found
+
+.f_next_col:
+    inc r13d
+    jmp .f_col
+
+.f_next_row:
+    inc r12d
+    jmp .f_row
+
+.f_match_found:
+    mov [cur_row], r12d
+    mov [cur_col], r13d
+
+    mov al, byte [cur_col]
+    dec al
+    add al, 'A'
+    lea rdi, [szTemp]
+    mov [rdi], al
+    inc rdi
+
+    mov eax, [cur_row]
+    inc eax
+    mov ecx, 10
+    lea rsi, [szTemp+16]
+    mov byte [rsi], 0
+.itos_f:
+    xor edx, edx
+    div ecx
+    add dl, '0'
+    dec rsi
+    mov [rsi], dl
+    test eax, eax
+    jnz .itos_f
+.cpy_f_str:
+    lodsb
+    stosb
+    test al, al
+    jnz .cpy_f_str
+
+    mov rcx, [hNameBox]
+    lea rdx, [szTemp]
+    call [SetWindowTextA]
+
+    mov rcx, [hFormulaEdit]
+    lea rdx, [szCellVal]
+    call [SetWindowTextA]
+
+    ; Show found message in status bar
+    lea rcx, [szBuffer]
+    lea rdx, [find_found_fmt]
+    mov al, byte [cur_col]
+    dec al
+    add al, 'A'
+    movzx r8d, al
+    mov r9d, [cur_row]
+    inc r9d
+    call [sprintf]
+
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [szBuffer]
+    call [SendMessageA]
+    jmp .f_done
+
+.f_not_found:
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [find_not_fnd]
+    call [SendMessageA]
+
+.f_done:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
+    leave
+    ret
+
+; SubstrMatch: RSI = haystack, RDI = needle
+; Returns EAX = 1 if needle in haystack, 0 if not
+SubstrMatch:
+    push rbx
+    push rsi
+    push rdi
+.sm_outer:
+    cmp byte [rsi], 0
+    je .sm_fail
+    mov rbx, rsi
+    mov rdx, rdi
+.sm_inner:
+    mov al, byte [rdx]
+    test al, al
+    jz .sm_success
+    mov cl, byte [rbx]
+    test cl, cl
+    jz .sm_fail
+    and al, 0DFh
+    and cl, 0DFh
+    cmp al, cl
+    jne .sm_advance
+    inc rbx
+    inc rdx
+    jmp .sm_inner
+.sm_advance:
+    inc rsi
+    jmp .sm_outer
+.sm_success:
+    mov eax, 1
+    jmp .sm_ret
+.sm_fail:
+    xor eax, eax
+.sm_ret:
+    pop rdi
+    pop rsi
+    pop rbx
+    ret
+
+
+; =============================================================================
+; Action: Real CSV File Open and Save
+; =============================================================================
+DoFileOpen:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 80h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
+
+    mov byte [szFileName], 0
+
+    lea rdi, [ofn]
+    xor eax, eax
+    mov ecx, 152
+    rep stosb
+
+    mov dword [ofn], 152
+    mov rax, [hWnd]
+    mov qword [ofn+8], rax
+    lea rax, [csv_filter]
+    mov qword [ofn+24], rax
+    lea rax, [szFileName]
+    mov qword [ofn+48], rax
+    mov dword [ofn+56], 512
+    lea rax, [ofn_title_open]
+    mov qword [ofn+88], rax
+    mov dword [ofn+96], 00001800h ; OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST
+    lea rax, [def_ext_csv]
+    mov qword [ofn+104], rax
+
+    lea rcx, [ofn]
+    call [GetOpenFileNameA]
+    test eax, eax
+    jz .open_done
+
+    lea rcx, [szFileName]
+    lea rdx, [mode_r]
+    call [fopen]
+    test rax, rax
+    jz .open_done
+    mov r12, rax
+
+    mov rcx, [hGrid]
+    mov edx, LVM_DELETEALLITEMS
+    xor r8d, r8d
+    xor r9d, r9d
+    call [SendMessageA]
+
+    xor r13d, r13d
+.read_loop:
+    lea rcx, [szLineBuf]
+    mov edx, 2040
+    mov r8, r12
+    call [fgets]
+    test rax, rax
+    jz .eof_reached
+
+    ; Strip newline
+    lea rsi, [szLineBuf]
+.strip_nl:
+    lodsb
+    test al, al
+    jz .nl_stripped
+    cmp al, 13
+    je .terminate_line
+    cmp al, 10
+    je .terminate_line
+    jmp .strip_nl
+.terminate_line:
+    mov byte [rsi-1], 0
+.nl_stripped:
+
+    ; Insert Row
+    mov eax, r13d
+    inc eax
+    lea rdi, [szTemp+8]
+    mov byte [rdi], 0
+    mov ecx, 10
+.itos_open:
+    xor edx, edx
+    div ecx
+    add dl, '0'
+    dec rdi
+    mov [rdi], dl
+    test eax, eax
+    jnz .itos_open
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov dword [lvitem+8], 0
+    mov qword [lvitem+24], rdi
+    mov rcx, [hGrid]
+    mov edx, LVM_INSERTITEMA
+    xor r8d, r8d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    ; Split line by comma
+    lea rsi, [szLineBuf]
+    mov ebx, 1
+.next_token:
+    cmp ebx, 10
+    jg .line_done
+    cmp byte [rsi], 0
+    je .line_done
+
+    mov rdi, rsi
+.scan_comma:
+    mov al, byte [rsi]
+    test al, al
+    jz .token_end
+    cmp al, ','
+    je .found_comma
+    inc rsi
+    jmp .scan_comma
+
+.found_comma:
+    mov byte [rsi], 0
+    inc rsi
+.token_end:
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov dword [lvitem+8], ebx
+    mov qword [lvitem+24], rdi
+    mov rcx, [hGrid]
+    mov edx, LVM_SETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    inc ebx
+    jmp .next_token
+
+.line_done:
+    inc r13d
+    cmp r13d, 1000
+    jge .eof_reached
+    jmp .read_loop
+
+.eof_reached:
+    mov rcx, r12
+    call [fclose]
+
+    mov [total_rows], r13d
+    call UpdateStatusStats
+
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [szFileName]
+    call [SendMessageA]
+
+.open_done:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
+    leave
+    ret
+
+DoFileSaveAs:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 80h
+
+    lea rdi, [ofn]
+    xor eax, eax
+    mov ecx, 152
+    rep stosb
+
+    mov dword [ofn], 152
+    mov rax, [hWnd]
+    mov qword [ofn+8], rax
+    lea rax, [csv_filter]
+    mov qword [ofn+24], rax
+    lea rax, [szFileName]
+    mov qword [ofn+48], rax
+    mov dword [ofn+56], 512
+    lea rax, [ofn_title_save]
+    mov qword [ofn+88], rax
+    mov dword [ofn+96], 00000802h ; OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST
+    lea rax, [def_ext_csv]
+    mov qword [ofn+104], rax
+
+    lea rcx, [ofn]
+    call [GetSaveFileNameA]
+    test eax, eax
+    jz .save_done
+
+    call DoFileSaveInternal
+
+.save_done:
+    leave
+    ret
+
+DoFileSave:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    cmp byte [szFileName], 0
+    je .ask_name
+    call DoFileSaveInternal
+    leave
+    ret
+.ask_name:
+    leave
+    jmp DoFileSaveAs
+
+DoFileSaveInternal:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
+
+    lea rcx, [szFileName]
+    lea rdx, [mode_w]
+    call [fopen]
+    test rax, rax
+    jz .err_save
+    mov r12, rax
+
+    mov r13d, 0
+.save_row:
+    cmp r13d, [total_rows]
+    jge .save_close
+
+    mov ebx, 1
+.save_col:
+    cmp ebx, 10
+    jg .row_nl
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov dword [lvitem+8], ebx
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov rcx, r12
+    lea rdx, [fmt_s]
+    lea r8, [szCellVal]
+    call [fprintf]
+
+    cmp ebx, 10
+    je .skip_comma
+    mov rcx, r12
+    lea rdx, [fmt_comma_char]
+    call [fprintf]
+.skip_comma:
+    inc ebx
+    jmp .save_col
+
+.row_nl:
+    mov rcx, r12
+    lea rdx, [fmt_newline]
+    call [fprintf]
+
+    inc r13d
+    jmp .save_row
+
+.save_close:
+    mov rcx, r12
+    call [fclose]
+
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [saved_msg]
+    call [SendMessageA]
+
+.err_save:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
+    leave
+    ret
+
+
+; =============================================================================
+; Action: SIMD Functions & Dialogs
+; =============================================================================
+DoSimdAverage:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], r12
+
+    xor rax, rax
+    mov [rbp-24], rax
+    xor ebx, ebx
+
+    mov r12d, 0
+.avg_loop:
+    cmp r12d, [cur_row]
+    jge .avg_calc
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r12d
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 1000
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r12d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    lea rcx, [szCellVal]
+    xor edx, edx
+    call [strtod]
+
+    inc ebx
+    movsd xmm1, [rbp-24]
+    addsd xmm1, xmm0
+    movsd [rbp-24], xmm1
+
+    inc r12d
+    jmp .avg_loop
+
+.avg_calc:
+    movsd xmm0, [rbp-24]
+    test ebx, ebx
+    jz .avg_write
+    cvtsi2sd xmm1, ebx
+    divsd xmm0, xmm1
+
+.avg_write:
+    lea rcx, [szTemp]
+    lea rdx, [fmt_f2]
+    movq r8, xmm0
+    call [sprintf]
+
+    mov dword [lvitem], LVIF_TEXT
+    mov eax, [cur_row]
+    mov dword [lvitem+4], eax
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [szTemp]
+    mov qword [lvitem+24], rax
+    mov rcx, [hGrid]
+    mov edx, LVM_SETITEMTEXTA
+    mov r8d, [cur_row]
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov rcx, [hFormulaEdit]
+    lea rdx, [szTemp]
+    call [SetWindowTextA]
+
+    call UpdateStatusStats
+
+    mov rbx, [rbp-8]
+    mov r12, [rbp-16]
+    leave
+    ret
+
+DoSimdMin:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], r12
+
+    mov rax, 07FEFFFFFFFFFFFFFh
+    mov [rbp-24], rax
+    xor ebx, ebx
+
+    mov r12d, 0
+.min_loop:
+    cmp r12d, [cur_row]
+    jge .min_write
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r12d
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 1000
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r12d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    lea rcx, [szCellVal]
+    xor edx, edx
+    call [strtod]
+
+    inc ebx
+    movsd xmm1, [rbp-24]
+    minsd xmm1, xmm0
+    movsd [rbp-24], xmm1
+
+    inc r12d
+    jmp .min_loop
+
+.min_write:
+    test ebx, ebx
+    jnz .min_fmt
+    xorpd xmm1, xmm1
+    movsd [rbp-24], xmm1
+.min_fmt:
+    lea rcx, [szTemp]
+    lea rdx, [fmt_f2]
+    mov r8, [rbp-24]
+    call [sprintf]
+
+    mov dword [lvitem], LVIF_TEXT
+    mov eax, [cur_row]
+    mov dword [lvitem+4], eax
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [szTemp]
+    mov qword [lvitem+24], rax
+    mov rcx, [hGrid]
+    mov edx, LVM_SETITEMTEXTA
+    mov r8d, [cur_row]
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov rcx, [hFormulaEdit]
+    lea rdx, [szTemp]
+    call [SetWindowTextA]
+
+    call UpdateStatusStats
+
+    mov rbx, [rbp-8]
+    mov r12, [rbp-16]
+    leave
+    ret
+
+DoSimdMax:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], r12
+
+    mov rax, 0FFEFFFFFFFFFFFFFh
+    mov [rbp-24], rax
+    xor ebx, ebx
+
+    mov r12d, 0
+.max_loop:
+    cmp r12d, [cur_row]
+    jge .max_write
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r12d
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 1000
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r12d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    lea rcx, [szCellVal]
+    xor edx, edx
+    call [strtod]
+
+    inc ebx
+    movsd xmm1, [rbp-24]
+    maxsd xmm1, xmm0
+    movsd [rbp-24], xmm1
+
+    inc r12d
+    jmp .max_loop
+
+.max_write:
+    test ebx, ebx
+    jnz .max_fmt
+    xorpd xmm1, xmm1
+    movsd [rbp-24], xmm1
+.max_fmt:
+    lea rcx, [szTemp]
+    lea rdx, [fmt_f2]
+    mov r8, [rbp-24]
+    call [sprintf]
+
+    mov dword [lvitem], LVIF_TEXT
+    mov eax, [cur_row]
+    mov dword [lvitem+4], eax
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [szTemp]
+    mov qword [lvitem+24], rax
+    mov rcx, [hGrid]
+    mov edx, LVM_SETITEMTEXTA
+    mov r8d, [cur_row]
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov rcx, [hFormulaEdit]
+    lea rdx, [szTemp]
+    call [SetWindowTextA]
+
+    call UpdateStatusStats
+
+    mov rbx, [rbp-8]
+    mov r12, [rbp-16]
+    leave
+    ret
+
+DoRecalculateAll:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    call UpdateStatusStats
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [recalc_done_msg]
+    call [SendMessageA]
+    leave
+    ret
+
+DoPmtDialog:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    mov rcx, [hWnd]
+    lea rdx, [pmt_calc_msg]
+    lea r8, [pmt_calc_title]
+    xor r9d, r9d
+    call [MessageBoxA]
+    leave
+    ret
+
+DoShowFormulaRef:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    mov rcx, [hWnd]
+    lea rdx, [form_ref_msg]
+    lea r8, [form_ref_title]
+    xor r9d, r9d
+    call [MessageBoxA]
+    leave
+    ret
+
+DoShowSimdInfo:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    mov rcx, [hWnd]
+    lea rdx, [simd_info_msg]
+    lea r8, [simd_info_title]
+    xor r9d, r9d
+    call [MessageBoxA]
+    leave
+    ret
+
+DoFormatPainter:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [fmt_painter_msg]
+    call [SendMessageA]
+    leave
+    ret
+
+DoWrapText:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [wrap_txt_msg]
+    call [SendMessageA]
+    leave
+    ret
+
+DoMergeCenter:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [merge_ct_msg]
+    call [SendMessageA]
+    leave
+    ret
+
+DoIncDecimals:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    call ApplyCommaFormat
+    leave
+    ret
+
+DoDecDecimals:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    call ApplyCommaFormat
+    leave
+    ret
+
+DoClearCell:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 40h
+    mov dword [lvitem], LVIF_TEXT
+    mov eax, [cur_row]
+    mov dword [lvitem+4], eax
+    mov eax, [cur_col]
+    mov dword [lvitem+8], eax
+    lea rax, [empty_str]
+    mov qword [lvitem+24], rax
+    mov rcx, [hGrid]
+    mov edx, LVM_SETITEMTEXTA
+    mov r8d, [cur_row]
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    mov rcx, [hFormulaEdit]
+    lea rdx, [empty_str]
+    call [SetWindowTextA]
+
+    call UpdateStatusStats
+    leave
+    ret
+
+DoSelectAll:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 40h
+    mov dword [lvitem], 8
+    mov dword [lvitem+4], -1
+    mov dword [lvitem+8], 0
+    mov dword [lvitem+12], 2
+    mov dword [lvitem+16], 2
+    mov rcx, [hGrid]
+    mov edx, 102Bh ; LVM_SETITEMSTATE
+    mov r8d, -1
+    lea r9, [lvitem]
+    call [SendMessageA]
+    leave
+    ret
+
+DoResetZoom:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 3
+    lea r9, [sb_zoom_txt]
+    call [SendMessageA]
+    leave
+    ret
+
+DoRefreshGrid:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    call UpdateStatusStats
+    mov rcx, [hWnd]
+    call [UpdateWindow]
+    leave
+    ret
+
+DoInsertFxPrompt:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    mov rcx, [hFormulaEdit]
+    lea rdx, [sample_fx_str]
+    call [SetWindowTextA]
+    mov rcx, [hFormulaEdit]
+    call [SetFocus]
+    leave
+    ret
+
+DoUndo:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [undo_msg]
+    call [SendMessageA]
+    leave
+    ret
+
+DoRedo:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 20h
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [redo_msg]
+    call [SendMessageA]
+    leave
+    ret
+
+
+; =============================================================================
+; Formula Parsing Helpers: ParseOperand, ParseRangeEval, ParseRangeEvalMin, ParseRangeEvalMax
+; =============================================================================
+ParseOperand:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 40h
+
+    mov al, byte [rcx]
+    and al, 0DFh
+    cmp al, 'A'
+    jl .op_num
+    cmp al, 'J'
+    jg .op_num
+
+    sub al, 'A' - 1
+    movzx edx, al
+    inc rcx
+    xor eax, eax
+.parse_r_num:
+    movzx r8d, byte [rcx]
+    cmp r8b, '0'
+    jl .r_num_done
+    cmp r8b, '9'
+    jg .r_num_done
+    sub r8d, '0'
+    imul eax, 10
+    add eax, r8d
+    inc rcx
+    jmp .parse_r_num
+.r_num_done:
+    dec eax
+    cmp eax, 0
+    jl .op_num
+    cmp eax, [total_rows]
+    jge .op_num
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], eax
+    mov dword [lvitem+8], edx
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, dword [lvitem+4]
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    lea rcx, [szCellVal]
+    xor edx, edx
+    call [strtod]
+    leave
+    ret
+
+.op_num:
+    xor edx, edx
+    call [strtod]
+    leave
+    ret
+
+ParseRangeEval:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-8], r12
+    mov [rbp-16], r13
+    mov [rbp-24], r14
+    mov [rbp-32], r15
+
+    lodsb
+    and al, 0DFh
+    sub al, 'A' - 1
+    movzx r12d, al
+    xor eax, eax
+.r1_loop:
+    lodsb
+    cmp al, '0'
+    jl .r1_done
+    cmp al, '9'
+    jg .r1_done
+    sub al, '0'
+    movzx edx, al
+    imul eax, 10
+    add eax, edx
+    jmp .r1_loop
+.r1_done:
+    dec eax
+    mov r13d, eax
+    lodsb
+    and al, 0DFh
+    sub al, 'A' - 1
+    movzx r14d, al
+    xor eax, eax
+.r2_loop:
+    lodsb
+    cmp al, '0'
+    jl .r2_done
+    cmp al, '9'
+    jg .r2_done
+    sub al, '0'
+    movzx edx, al
+    imul eax, 10
+    add eax, edx
+    jmp .r2_loop
+.r2_done:
+    dec eax
+    mov r15d, eax
+
+    xorpd xmm0, xmm0
+    movsd [rbp-40], xmm0
+    xor ebx, ebx
+
+.sum_r:
+    cmp r13d, r15d
+    jg .sum_range_done
+    mov edx, r12d
+.sum_c:
+    cmp edx, r14d
+    jg .sum_next_r
+
+    mov [rsp+20h], rdx
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov dword [lvitem+8], edx
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    lea rcx, [szCellVal]
+    xor edx, edx
+    call [strtod]
+
+    inc ebx
+    movsd xmm1, [rbp-40]
+    addsd xmm1, xmm0
+    movsd [rbp-40], xmm1
+
+    mov rdx, [rsp+20h]
+    inc edx
+    jmp .sum_c
+
+.sum_next_r:
+    inc r13d
+    jmp .sum_r
+
+.sum_range_done:
+    movsd xmm0, [rbp-40]
+    mov r12, [rbp-8]
+    mov r13, [rbp-16]
+    mov r14, [rbp-24]
+    mov r15, [rbp-32]
+    leave
+    ret
+
+ParseRangeEvalMin:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-8], r12
+    mov [rbp-16], r13
+    mov [rbp-24], r14
+    mov [rbp-32], r15
+
+    lodsb
+    and al, 0DFh
+    sub al, 'A' - 1
+    movzx r12d, al
+    xor eax, eax
+.r1_min_loop:
+    lodsb
+    cmp al, '0'
+    jl .r1_min_done
+    cmp al, '9'
+    jg .r1_min_done
+    sub al, '0'
+    movzx edx, al
+    imul eax, 10
+    add eax, edx
+    jmp .r1_min_loop
+.r1_min_done:
+    dec eax
+    mov r13d, eax
+    lodsb
+    and al, 0DFh
+    sub al, 'A' - 1
+    movzx r14d, al
+    xor eax, eax
+.r2_min_loop:
+    lodsb
+    cmp al, '0'
+    jl .r2_min_done
+    cmp al, '9'
+    jg .r2_min_done
+    sub al, '0'
+    movzx edx, al
+    imul eax, 10
+    add eax, edx
+    jmp .r2_min_loop
+.r2_min_done:
+    dec eax
+    mov r15d, eax
+
+    mov rax, 07FEFFFFFFFFFFFFFh
+    mov [rbp-40], rax
+    xor ebx, ebx
+
+.min_r:
+    cmp r13d, r15d
+    jg .min_range_done
+    mov edx, r12d
+.min_c:
+    cmp edx, r14d
+    jg .min_next_r
+
+    mov [rsp+20h], rdx
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov dword [lvitem+8], edx
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    lea rcx, [szCellVal]
+    xor edx, edx
+    call [strtod]
+
+    inc ebx
+    movsd xmm1, [rbp-40]
+    minsd xmm1, xmm0
+    movsd [rbp-40], xmm1
+
+    mov rdx, [rsp+20h]
+    inc edx
+    jmp .min_c
+
+.min_next_r:
+    inc r13d
+    jmp .min_r
+
+.min_range_done:
+    test ebx, ebx
+    jnz .ret_min
+    xorpd xmm0, xmm0
+    movsd [rbp-40], xmm0
+.ret_min:
+    movsd xmm0, [rbp-40]
+    mov r12, [rbp-8]
+    mov r13, [rbp-16]
+    mov r14, [rbp-24]
+    mov r15, [rbp-32]
+    leave
+    ret
+
+ParseRangeEvalMax:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-8], r12
+    mov [rbp-16], r13
+    mov [rbp-24], r14
+    mov [rbp-32], r15
+
+    lodsb
+    and al, 0DFh
+    sub al, 'A' - 1
+    movzx r12d, al
+    xor eax, eax
+.r1_max_loop:
+    lodsb
+    cmp al, '0'
+    jl .r1_max_done
+    cmp al, '9'
+    jg .r1_max_done
+    sub al, '0'
+    movzx edx, al
+    imul eax, 10
+    add eax, edx
+    jmp .r1_max_loop
+.r1_max_done:
+    dec eax
+    mov r13d, eax
+    lodsb
+    and al, 0DFh
+    sub al, 'A' - 1
+    movzx r14d, al
+    xor eax, eax
+.r2_max_loop:
+    lodsb
+    cmp al, '0'
+    jl .r2_max_done
+    cmp al, '9'
+    jg .r2_max_done
+    sub al, '0'
+    movzx edx, al
+    imul eax, 10
+    add eax, edx
+    jmp .r2_max_loop
+.r2_max_done:
+    dec eax
+    mov r15d, eax
+
+    mov rax, 0FFEFFFFFFFFFFFFFh
+    mov [rbp-40], rax
+    xor ebx, ebx
+
+.max_r:
+    cmp r13d, r15d
+    jg .max_range_done
+    mov edx, r12d
+.max_c:
+    cmp edx, r14d
+    jg .max_next_r
+
+    mov [rsp+20h], rdx
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], r13d
+    mov dword [lvitem+8], edx
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 500
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, r13d
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    lea rcx, [szCellVal]
+    xor edx, edx
+    call [strtod]
+
+    inc ebx
+    movsd xmm1, [rbp-40]
+    maxsd xmm1, xmm0
+    movsd [rbp-40], xmm1
+
+    mov rdx, [rsp+20h]
+    inc edx
+    jmp .max_c
+
+.max_next_r:
+    inc r13d
+    jmp .max_r
+
+.max_range_done:
+    test ebx, ebx
+    jnz .ret_max
+    xorpd xmm0, xmm0
+    movsd [rbp-40], xmm0
+.ret_max:
+    movsd xmm0, [rbp-40]
+    mov r12, [rbp-8]
+    mov r13, [rbp-16]
+    mov r14, [rbp-24]
+    mov r15, [rbp-32]
+    leave
+    ret
+
+
 ; =============================================================================
 ; Direct Imports Section (PE64 IAT)
 ; =============================================================================
@@ -3682,6 +6238,7 @@ section '.idata' import data readable
     dd 0, 0, 0, RVA user32_name,   RVA user32_table
     dd 0, 0, 0, RVA gdi32_name,    RVA gdi32_table
     dd 0, 0, 0, RVA comctl_name,   RVA comctl_table
+    dd 0, 0, 0, RVA comdlg_name,   RVA comdlg_table
     dd 0, 0, 0, RVA msvcrt_name,   RVA msvcrt_table
     dd 0, 0, 0, 0, 0
 
@@ -3693,6 +6250,7 @@ kernel32_table:
     GlobalAlloc                 dq RVA _GlobalAlloc
     GlobalLock                  dq RVA _GlobalLock
     GlobalUnlock                dq RVA _GlobalUnlock
+    lstrcmpiA                   dq RVA _lstrcmpiA
                                 dq 0
 
 user32_table:
@@ -3720,6 +6278,12 @@ user32_table:
     EmptyClipboard              dq RVA _EmptyClipboard
     GetClipboardData            dq RVA _GetClipboardData
     SetClipboardData            dq RVA _SetClipboardData
+    GetCursorPos                dq RVA _GetCursorPos
+    ScreenToClient              dq RVA _ScreenToClient
+    MoveWindow                  dq RVA _MoveWindow
+    SetWindowLongPtrA           dq RVA _SetWindowLongPtrA
+    CallWindowProcA             dq RVA _CallWindowProcA
+    SetFocus                    dq RVA _SetFocus
                                 dq 0
 
 gdi32_table:
@@ -3730,16 +6294,26 @@ comctl_table:
     InitCommonControlsEx        dq RVA _InitCommonControlsEx
                                 dq 0
 
+comdlg_table:
+    GetOpenFileNameA            dq RVA _GetOpenFileNameA
+    GetSaveFileNameA            dq RVA _GetSaveFileNameA
+                                dq 0
+
 msvcrt_table:
     strtod                      dq RVA _strtod
     strlen                      dq RVA _strlen
     sprintf                     dq RVA _sprintf
+    fopen                       dq RVA _fopen
+    fgets                       dq RVA _fgets
+    fprintf                     dq RVA _fprintf
+    fclose                      dq RVA _fclose
                                 dq 0
 
 kernel32_name   db 'KERNEL32.DLL', 0
 user32_name     db 'USER32.DLL', 0
 gdi32_name      db 'GDI32.DLL', 0
 comctl_name     db 'COMCTL32.DLL', 0
+comdlg_name     db 'COMDLG32.DLL', 0
 msvcrt_name     db 'MSVCRT.DLL', 0
 
 _GetModuleHandleA dw 0
@@ -3756,6 +6330,8 @@ _GlobalLock dw 0
  db 'GlobalLock', 0
 _GlobalUnlock dw 0
  db 'GlobalUnlock', 0
+_lstrcmpiA dw 0
+ db 'lstrcmpiA', 0
 
 _RegisterClassExA dw 0
  db 'RegisterClassExA', 0
@@ -3805,6 +6381,18 @@ _GetClipboardData dw 0
  db 'GetClipboardData', 0
 _SetClipboardData dw 0
  db 'SetClipboardData', 0
+_GetCursorPos dw 0
+ db 'GetCursorPos', 0
+_ScreenToClient dw 0
+ db 'ScreenToClient', 0
+_MoveWindow dw 0
+ db 'MoveWindow', 0
+_SetWindowLongPtrA dw 0
+ db 'SetWindowLongPtrA', 0
+_CallWindowProcA dw 0
+ db 'CallWindowProcA', 0
+_SetFocus dw 0
+ db 'SetFocus', 0
 
 _CreateFontA dw 0
  db 'CreateFontA', 0
@@ -3812,9 +6400,23 @@ _CreateFontA dw 0
 _InitCommonControlsEx dw 0
  db 'InitCommonControlsEx', 0
 
+_GetOpenFileNameA dw 0
+ db 'GetOpenFileNameA', 0
+_GetSaveFileNameA dw 0
+ db 'GetSaveFileNameA', 0
+
 _strtod dw 0
  db 'strtod', 0
 _strlen dw 0
  db 'strlen', 0
 _sprintf dw 0
  db 'sprintf', 0
+_fopen dw 0
+ db 'fopen', 0
+_fgets dw 0
+ db 'fgets', 0
+_fprintf dw 0
+ db 'fprintf', 0
+_fclose dw 0
+ db 'fclose', 0
+

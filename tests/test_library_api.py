@@ -99,7 +99,9 @@ class TestXlsxViewerLibrary(unittest.TestCase):
         try:
             import xlsx_viewer.gui  # noqa: F401
         except Exception:
-            self.skipTest("GUI dependencies (ttkbootstrap/tkinter/Pillow) not available in this runtime")
+            self.skipTest(
+                "GUI dependencies (ttkbootstrap/tkinter/Pillow) not available in this runtime"
+            )
 
         from unittest.mock import MagicMock, patch
 

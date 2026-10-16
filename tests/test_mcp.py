@@ -100,4 +100,3 @@ class TestXlsxMCPServer(unittest.TestCase):
     def test_mcp_lifecycle(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             test_xlsx_mcp_server_lifecycle(Path(tmpdir))
-
