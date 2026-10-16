@@ -241,6 +241,7 @@ section '.data' data readable writeable
 
     class_name      db 'ExcelViewerPro_ASM64', 0
     wnd_title       db 'Excel Viewer Pro - Untitled [x64 FASM Native Edition]', 0
+    fmt_title_opened db 'Excel Viewer Pro - [%s] [x64 FASM Native Edition]', 0
     listview_class  db 'SysListView32', 0
     tab_class       db 'SysTabControl32', 0
     statusbar_class db 'msctls_statusbar32', 0
@@ -780,6 +781,60 @@ start:
     call [ShowWindow]
     mov rcx, [hWnd]
     call [UpdateWindow]
+
+    ; Check command-line argument for spreadsheet file to open
+    call [GetCommandLineA]
+    test rax, rax
+    jz .msg_loop
+
+    mov rsi, rax
+    ; Skip executable name
+    cmp byte [rsi], '"'
+    jne .skip_exe_no_quotes
+    inc rsi
+.skip_exe_q:
+    lodsb
+    test al, al
+    jz .msg_loop
+    cmp al, '"'
+    jne .skip_exe_q
+    jmp .skip_exe_ws
+.skip_exe_no_quotes:
+    lodsb
+    test al, al
+    jz .msg_loop
+    cmp al, ' '
+    jne .skip_exe_no_quotes
+.skip_exe_ws:
+    lodsb
+    cmp al, ' '
+    je .skip_exe_ws
+    test al, al
+    jz .msg_loop
+
+    dec rsi
+    ; Strip leading quote if any
+    cmp byte [rsi], '"'
+    jne @f
+    inc rsi
+@@:
+    lea rdi, [szFileName]
+    mov ecx, 500
+.copy_cmd_arg:
+    lodsb
+    cmp al, '"'
+    je .done_cmd_arg
+    test al, al
+    jz .done_cmd_arg
+    stosb
+    dec ecx
+    jnz .copy_cmd_arg
+.done_cmd_arg:
+    mov byte [rdi], 0
+
+    cmp byte [szFileName], 0
+    je .msg_loop
+    call DoFileOpenDirect
 
 .msg_loop:
     lea rcx, [msgbuf]
@@ -2559,125 +2614,32 @@ BuildSpreadsheetGrid:
     lea r9, [lvcol]
     call [SendMessageA]
 
-    ; Column A
+    ; Insert Columns A..Z (1..26)
+    mov ebx, 1
+.loop_col_az:
+    cmp ebx, 26
+    jg .cols_az_done
+
+    mov al, bl
+    dec al
+    add al, 'A'
+    mov [szTemp], al
+    mov byte [szTemp+1], 0
+
     mov dword [lvcol+4], LVCFMT_LEFT
     mov dword [lvcol+8], 118
-    lea rax, [col_A_txt]
+    lea rax, [szTemp]
     mov qword [lvcol+16], rax
-    mov dword [lvcol+28], 1
+    mov dword [lvcol+28], ebx
     mov rcx, [hGrid]
     mov edx, LVM_INSERTCOLUMNA
-    mov r8d, 1
+    mov r8d, ebx
     lea r9, [lvcol]
     call [SendMessageA]
 
-    ; Column B
-    mov dword [lvcol+4], LVCFMT_LEFT
-    mov dword [lvcol+8], 118
-    lea rax, [col_B_txt]
-    mov qword [lvcol+16], rax
-    mov dword [lvcol+28], 2
-    mov rcx, [hGrid]
-    mov edx, LVM_INSERTCOLUMNA
-    mov r8d, 2
-    lea r9, [lvcol]
-    call [SendMessageA]
-
-    ; Column C
-    mov dword [lvcol+4], LVCFMT_LEFT
-    mov dword [lvcol+8], 118
-    lea rax, [col_C_txt]
-    mov qword [lvcol+16], rax
-    mov dword [lvcol+28], 3
-    mov rcx, [hGrid]
-    mov edx, LVM_INSERTCOLUMNA
-    mov r8d, 3
-    lea r9, [lvcol]
-    call [SendMessageA]
-
-    ; Column D
-    mov dword [lvcol+4], LVCFMT_LEFT
-    mov dword [lvcol+8], 118
-    lea rax, [col_D_txt]
-    mov qword [lvcol+16], rax
-    mov dword [lvcol+28], 4
-    mov rcx, [hGrid]
-    mov edx, LVM_INSERTCOLUMNA
-    mov r8d, 4
-    lea r9, [lvcol]
-    call [SendMessageA]
-
-    ; Column E
-    mov dword [lvcol+4], LVCFMT_LEFT
-    mov dword [lvcol+8], 118
-    lea rax, [col_E_txt]
-    mov qword [lvcol+16], rax
-    mov dword [lvcol+28], 5
-    mov rcx, [hGrid]
-    mov edx, LVM_INSERTCOLUMNA
-    mov r8d, 5
-    lea r9, [lvcol]
-    call [SendMessageA]
-
-    ; Column F
-    mov dword [lvcol+4], LVCFMT_LEFT
-    mov dword [lvcol+8], 118
-    lea rax, [col_F_txt]
-    mov qword [lvcol+16], rax
-    mov dword [lvcol+28], 6
-    mov rcx, [hGrid]
-    mov edx, LVM_INSERTCOLUMNA
-    mov r8d, 6
-    lea r9, [lvcol]
-    call [SendMessageA]
-
-    ; Column G
-    mov dword [lvcol+4], LVCFMT_LEFT
-    mov dword [lvcol+8], 118
-    lea rax, [col_G_txt]
-    mov qword [lvcol+16], rax
-    mov dword [lvcol+28], 7
-    mov rcx, [hGrid]
-    mov edx, LVM_INSERTCOLUMNA
-    mov r8d, 7
-    lea r9, [lvcol]
-    call [SendMessageA]
-
-    ; Column H
-    mov dword [lvcol+4], LVCFMT_LEFT
-    mov dword [lvcol+8], 118
-    lea rax, [col_H_txt]
-    mov qword [lvcol+16], rax
-    mov dword [lvcol+28], 8
-    mov rcx, [hGrid]
-    mov edx, LVM_INSERTCOLUMNA
-    mov r8d, 8
-    lea r9, [lvcol]
-    call [SendMessageA]
-
-    ; Column I
-    mov dword [lvcol+4], LVCFMT_LEFT
-    mov dword [lvcol+8], 118
-    lea rax, [col_I_txt]
-    mov qword [lvcol+16], rax
-    mov dword [lvcol+28], 9
-    mov rcx, [hGrid]
-    mov edx, LVM_INSERTCOLUMNA
-    mov r8d, 9
-    lea r9, [lvcol]
-    call [SendMessageA]
-
-    ; Column J
-    mov dword [lvcol+4], LVCFMT_LEFT
-    mov dword [lvcol+8], 118
-    lea rax, [col_J_txt]
-    mov qword [lvcol+16], rax
-    mov dword [lvcol+28], 10
-    mov rcx, [hGrid]
-    mov edx, LVM_INSERTCOLUMNA
-    mov r8d, 10
-    lea r9, [lvcol]
-    call [SendMessageA]
+    inc ebx
+    jmp .loop_col_az
+.cols_az_done:
 
     ; Populate 30 Empty Spreadsheet Rows (1..30)
     mov ebx, 0
@@ -5837,7 +5799,34 @@ DoFileOpen:
     lea rcx, [ofn]
     call [GetOpenFileNameA]
     test eax, eax
-    jz .open_done
+    jz .open_cancelled
+
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
+    leave
+    jmp DoFileOpenDirect
+
+.open_cancelled:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
+    leave
+    ret
+
+DoFileOpenDirect:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 80h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
 
     ; Check extension in szFileName for .xls / .xlsx
     lea rsi, [szFileName]
@@ -5872,7 +5861,7 @@ DoFileOpen:
     lea rdx, [mode_rb]
     call [fopen]
     test rax, rax
-    jz .open_done
+    jz .direct_done
     mov r12, rax
 
     ; Read first 4 bytes
@@ -5934,7 +5923,7 @@ DoFileOpen:
     lea rdx, [mode_r]
     call [fopen]
     test rax, rax
-    jz .open_done
+    jz .direct_done
     mov r12, rax
     mov byte [is_temp_file], 1
 
@@ -5994,11 +5983,11 @@ DoFileOpen:
     lea r9, [lvitem]
     call [SendMessageA]
 
-    ; Split line by comma, semicolon or tab
+    ; Split line by comma, semicolon or tab (columns 1..26)
     lea rsi, [szLineBuf]
     mov ebx, 1
 .next_token:
-    cmp ebx, 10
+    cmp ebx, 26
     jg .line_done
     cmp byte [rsi], 0
     je .line_done
@@ -6055,7 +6044,7 @@ DoFileOpen:
 
 .line_done:
     inc r13d
-    cmp r13d, 1000
+    cmp r13d, 10000
     jge .eof_reached
     jmp .read_loop
 
@@ -6072,11 +6061,101 @@ DoFileOpen:
     call SaveActiveSheetToBuffer
     call UpdateStatusStats
 
+    ; Auto-fit columns 0..26 with minimum 85px so cell text is never truncated
+    mov rcx, [hGrid]
+    mov edx, 101Eh ; LVM_SETCOLUMNWIDTH
+    mov r8d, 0
+    mov r9d, -2 ; LVSCW_AUTOSIZE_USEHEADER
+    call [SendMessageA]
+
+    mov ebx, 1
+.autosize_loop:
+    cmp ebx, 26
+    jg .autosize_done
+    mov rcx, [hGrid]
+    mov edx, 101Eh ; LVM_SETCOLUMNWIDTH
+    mov r8d, ebx
+    mov r9d, -1 ; LVSCW_AUTOSIZE
+    call [SendMessageA]
+
+    mov rcx, [hGrid]
+    mov edx, 101Dh ; LVM_GETCOLUMNWIDTH
+    mov r8d, ebx
+    xor r9d, r9d
+    call [SendMessageA]
+    cmp eax, 85
+    jge @f
+    mov rcx, [hGrid]
+    mov edx, 101Eh ; LVM_SETCOLUMNWIDTH
+    mov r8d, ebx
+    mov r9d, 85
+    call [SendMessageA]
+@@:
+    inc ebx
+    jmp .autosize_loop
+.autosize_done:
+
+    ; Find basename for Window Title and Sheet Tab
+    lea rsi, [szFileName]
+    mov r8, rsi
+.find_fn_base:
+    lodsb
+    test al, al
+    jz .got_fn_base
+    cmp al, '\'
+    cmove r8, rsi
+    cmp al, '/'
+    cmove r8, rsi
+    jmp .find_fn_base
+.got_fn_base:
+    ; Update first tab text to loaded filename
+    lea rdi, [tcitem]
+    xor eax, eax
+    mov ecx, 48
+    rep stosb
+    mov dword [tcitem], TCIF_TEXT
+    mov qword [tcitem+16], r8
+    mov rcx, [hSheetTabs]
+    mov edx, 1306h ; TCM_SETITEMA
+    xor r8d, r8d
+    lea r9, [tcitem]
+    call [SendMessageA]
+
+    ; Update Window Title to: "Excel Viewer Pro - [filename] [x64 FASM Native Edition]"
+    lea rsi, [szFileName]
+    mov r8, rsi
+.find_fn_base2:
+    lodsb
+    test al, al
+    jz .got_fn_base2
+    cmp al, '\'
+    cmove r8, rsi
+    cmp al, '/'
+    cmove r8, rsi
+    jmp .find_fn_base2
+.got_fn_base2:
+    lea rcx, [szTemp]
+    lea rdx, [fmt_title_opened]
+    call [sprintf]
+
+    mov rcx, [hWnd]
+    lea rdx, [szTemp]
+    call [SetWindowTextA]
+
     mov rcx, [hStatusBar]
     mov edx, SB_SETTEXTA
     mov r8d, 0
     lea r9, [szFileName]
     call [SendMessageA]
+
+.direct_done:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
+    leave
+    ret
 
 .open_done:
     mov rbx, [rbp-8]
@@ -6159,7 +6238,7 @@ DoFileSaveInternal:
 
     mov ebx, 1
 .save_col:
-    cmp ebx, 10
+    cmp ebx, 26
     jg .row_nl
 
     mov dword [lvitem], LVIF_TEXT
@@ -6179,7 +6258,7 @@ DoFileSaveInternal:
     lea r8, [szCellVal]
     call [fprintf]
 
-    cmp ebx, 10
+    cmp ebx, 26
     je .skip_comma
     mov rcx, r12
     lea rdx, [fmt_comma_char]
@@ -7486,6 +7565,7 @@ kernel32_table:
     GlobalUnlock                dq RVA _GlobalUnlock
     lstrcmpiA                   dq RVA _lstrcmpiA
     GetTempPathA                dq RVA _GetTempPathA
+    GetCommandLineA             dq RVA _GetCommandLineA
                                 dq 0
 
 user32_table:
@@ -7577,6 +7657,8 @@ _lstrcmpiA dw 0
  db 'lstrcmpiA', 0
 _GetTempPathA dw 0
  db 'GetTempPathA', 0
+_GetCommandLineA dw 0
+ db 'GetCommandLineA', 0
 
 _RegisterClassExA dw 0
  db 'RegisterClassExA', 0

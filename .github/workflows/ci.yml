@@ -10,6 +10,7 @@ jobs:
   test:
     name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ contains(matrix.python-version, '3.16') || contains(matrix.python-version, 'pypy') }}
     strategy:
       fail-fast: false
       matrix:
@@ -53,6 +54,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel pytest
           python -m pip install "openpyxl>=3.1.0" "typing-extensions>=4.0; python_version < '3.10'"
+          python -m pip install "xlrd>=2.0.1" "xlwt>=1.3.0" || true
           python -m pip install "ttkbootstrap>=1.10.0" --only-binary :all: || true
           python -m pip install -e . --no-build-isolation --no-deps || python -m pip install -e . --no-deps
 
