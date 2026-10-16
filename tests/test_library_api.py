@@ -250,6 +250,23 @@ class TestXlsxViewerLibrary(unittest.TestCase):
             self.assertIsNotNone(sh)
             self.assertGreater(sh.row_count, 10)
 
+    def test_downloads_financial_plan_xlsx_if_present(self):
+        plan_path = Path(r"D:\Downloads\ФИНАНСОВЫЙ ПЛАН И КАЛЬКУЛЯТОР ДОХОДНОСТИ НА 1 ГОД.xlsx")
+        if plan_path.exists():
+            wb = xv.load_workbook(plan_path)
+            self.assertGreater(len(wb.sheet_names), 0)
+            sh = wb.get_sheet()
+            self.assertIsNotNone(sh)
+            self.assertGreater(sh.row_count, 5)
+
+    def test_downloads_tablica_backup_if_present(self):
+        bkp_path = Path(r"D:\Downloads\Таблица_backup.xlsx")
+        if bkp_path.exists():
+            wb = xv.load_workbook(bkp_path)
+            self.assertGreater(len(wb.sheet_names), 0)
+            sh = wb.get_sheet()
+            self.assertIsNotNone(sh)
+
 
 if __name__ == "__main__":
     unittest.main()

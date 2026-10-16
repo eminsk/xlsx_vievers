@@ -601,7 +601,7 @@ section '.data' data readable writeable
     is_temp_file    db 0
     mode_rb         db 'rb', 0
     fmt_temp_csv    db '%sxlsx_view_tmp.csv', 0
-    fmt_convert_cmd db 'cmd.exe /c "uv --directory ""C:\proekts\xlsx_vievers"" run python -m xlsx_viewer.cli --to-csv ""%s"" ""%s"" || ""C:\proekts\xlsx_vievers\.venv\Scripts\python.exe"" -m xlsx_viewer.cli --to-csv ""%s"" ""%s"""', 0
+    fmt_convert_cmd db 'cmd.exe /c uv --directory "C:\proekts\xlsx_vievers" run python -m xlsx_viewer.cli --to-csv "%s" "%s" || "C:\proekts\xlsx_vievers\.venv\Scripts\python.exe" -m xlsx_viewer.cli --to-csv "%s" "%s"', 0
 
     hFxWizWnd       dq 0
     hWizList        dq 0
