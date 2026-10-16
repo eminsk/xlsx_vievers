@@ -24,7 +24,7 @@
 > - ⭐ **Find xlsx-viewer-pro useful?** Give it a star on GitHub — it helps more developers and analysts discover it!
 > - ☕ **Support development (USDT TRC-20):** `TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P` ([Verify on TronScan](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P))
 
-A high-performance Python spreadsheet library, headless formula engine (129+ functions), native x64 SIMD SSE2 math engine, Native MCP Server (`xlsx-mcp`), and modern Office Ribbon desktop application for `.xlsx`, `.xlsm`, `.csv`, and `.tsv` files. Compatible with **Python 3.8 to 3.16 (including Free-Threaded No-GIL 3.13t–3.16t and PyPy 3.8–3.12)**.
+A high-performance Python spreadsheet library, headless formula engine (129+ functions), native x64 SIMD SSE2 math engine, Native MCP Server (`xlsx-mcp`), and modern Office Ribbon desktop application for `.xlsx`, `.xlsm`, `.xls`, `.csv`, and `.tsv` files. Compatible with **Python 3.8 to 3.16 (including Free-Threaded No-GIL 3.13t–3.16t and PyPy 3.8–3.12)**.
 
 ---
 
