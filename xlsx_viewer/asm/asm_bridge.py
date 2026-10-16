@@ -21,7 +21,9 @@ _is_available = False
 
 if sys.maxsize > 2**32:
     try:
-        if sys.platform == "win32":
+        import platform
+
+        if sys.platform == "win32" and platform.python_implementation() != "PyPy":
             _h = ctypes.windll.kernel32.GetModuleHandleW("xlsx_math64.dll")
             if _h:
                 _dll = ctypes.CDLL("xlsx_math64.dll", handle=_h)
@@ -93,9 +95,17 @@ if sys.maxsize > 2**32:
             _dll.fast_count_nonblank.restype = ctypes.c_uint64
             _dll.fast_count_nonblank.argtypes = [ctypes.POINTER(ctypes.c_uint64), ctypes.c_uint64]
 
-            _is_available = True
+            # Smoke test call to verify execution doesn't raise AttributeError in PyPy
+            _test_arr = (ctypes.c_double * 1)(1.0)
+            _test_res = float(_dll.vec_sum_f64(_test_arr, 1))
+            if _test_res == 1.0:
+                _is_available = True
+            else:
+                _is_available = False
+                _dll = None
     except Exception:
         _is_available = False
+        _dll = None
 
 
 def asm_is_available() -> bool:
@@ -149,11 +159,14 @@ def _to_double_array(values: Sequence[Any]) -> tuple[Any, int]:
 
 def asm_sum(values: Sequence[Any]) -> float:
     """Ultra-fast SIMD SSE2 vector addition of numbers."""
-    if _dll is not None:
-        buf, n = _to_double_array(values)
-        if n == 0:
-            return 0.0
-        return float(_dll.vec_sum_f64(buf, n))
+    if _is_available and _dll is not None:
+        try:
+            buf, n = _to_double_array(values)
+            if n == 0:
+                return 0.0
+            return float(_dll.vec_sum_f64(buf, n))
+        except Exception:
+            pass
 
     # Pure Python fallback
     nums = [float(v) for v in values if v is not None and v != ""]
@@ -162,11 +175,14 @@ def asm_sum(values: Sequence[Any]) -> float:
 
 def asm_avg(values: Sequence[Any]) -> float:
     """Ultra-fast SIMD vector average calculation."""
-    if _dll is not None:
-        buf, n = _to_double_array(values)
-        if n == 0:
-            return 0.0
-        return float(_dll.vec_avg_f64(buf, n))
+    if _is_available and _dll is not None:
+        try:
+            buf, n = _to_double_array(values)
+            if n == 0:
+                return 0.0
+            return float(_dll.vec_avg_f64(buf, n))
+        except Exception:
+            pass
 
     nums = [float(v) for v in values if v is not None and v != ""]
     return sum(nums) / len(nums) if nums else 0.0
@@ -174,11 +190,14 @@ def asm_avg(values: Sequence[Any]) -> float:
 
 def asm_min(values: Sequence[Any]) -> float:
     """Ultra-fast SIMD vector minimum finding."""
-    if _dll is not None:
-        buf, n = _to_double_array(values)
-        if n == 0:
-            return 0.0
-        return float(_dll.vec_min_f64(buf, n))
+    if _is_available and _dll is not None:
+        try:
+            buf, n = _to_double_array(values)
+            if n == 0:
+                return 0.0
+            return float(_dll.vec_min_f64(buf, n))
+        except Exception:
+            pass
 
     nums = [float(v) for v in values if v is not None and v != ""]
     return min(nums) if nums else 0.0
@@ -186,11 +205,14 @@ def asm_min(values: Sequence[Any]) -> float:
 
 def asm_max(values: Sequence[Any]) -> float:
     """Ultra-fast SIMD vector maximum finding."""
-    if _dll is not None:
-        buf, n = _to_double_array(values)
-        if n == 0:
-            return 0.0
-        return float(_dll.vec_max_f64(buf, n))
+    if _is_available and _dll is not None:
+        try:
+            buf, n = _to_double_array(values)
+            if n == 0:
+                return 0.0
+            return float(_dll.vec_max_f64(buf, n))
+        except Exception:
+            pass
 
     nums = [float(v) for v in values if v is not None and v != ""]
     return max(nums) if nums else 0.0
@@ -198,13 +220,16 @@ def asm_max(values: Sequence[Any]) -> float:
 
 def asm_sumproduct(values_a: Sequence[Any], values_b: Sequence[Any]) -> float:
     """Ultra-fast SIMD dot product (SUMPRODUCT)."""
-    if _dll is not None:
-        buf_a, n_a = _to_double_array(values_a)
-        buf_b, n_b = _to_double_array(values_b)
-        n = min(n_a, n_b)
-        if n == 0:
-            return 0.0
-        return float(_dll.vec_sumproduct_f64(buf_a, buf_b, n))
+    if _is_available and _dll is not None:
+        try:
+            buf_a, n_a = _to_double_array(values_a)
+            buf_b, n_b = _to_double_array(values_b)
+            n = min(n_a, n_b)
+            if n == 0:
+                return 0.0
+            return float(_dll.vec_sumproduct_f64(buf_a, buf_b, n))
+        except Exception:
+            pass
 
     nums_a = [float(v) for v in values_a if v is not None and v != ""]
     nums_b = [float(v) for v in values_b if v is not None and v != ""]
@@ -219,8 +244,11 @@ def asm_sumproduct(values_a: Sequence[Any], values_b: Sequence[Any]) -> float:
 
 def asm_pmt(rate: float, nper: float, pv: float, fv: float = 0.0, type_: int = 0) -> float:
     """Ultra-fast Excel PMT calculation via native FPU/SIMD."""
-    if _dll is not None:
-        return float(_dll.fast_pmt_f64(rate, nper, pv, fv, type_))
+    if _is_available and _dll is not None:
+        try:
+            return float(_dll.fast_pmt_f64(rate, nper, pv, fv, type_))
+        except Exception:
+            pass
 
     if nper == 0:
         return 0.0
@@ -235,8 +263,11 @@ def asm_pmt(rate: float, nper: float, pv: float, fv: float = 0.0, type_: int = 0
 
 def asm_pv(rate: float, nper: float, pmt: float, fv: float = 0.0, type_: int = 0) -> float:
     """Ultra-fast Excel PV calculation via native FPU/SIMD."""
-    if _dll is not None:
-        return float(_dll.fast_pv_f64(rate, nper, pmt, fv, type_))
+    if _is_available and _dll is not None:
+        try:
+            return float(_dll.fast_pv_f64(rate, nper, pmt, fv, type_))
+        except Exception:
+            pass
 
     if rate == 0:
         return -(pmt * nper + fv)
@@ -247,8 +278,11 @@ def asm_pv(rate: float, nper: float, pmt: float, fv: float = 0.0, type_: int = 0
 
 def asm_fv(rate: float, nper: float, pmt: float, pv: float = 0.0, type_: int = 0) -> float:
     """Ultra-fast Excel FV calculation via native FPU/SIMD."""
-    if _dll is not None:
-        return float(_dll.fast_fv_f64(rate, nper, pmt, pv, type_))
+    if _is_available and _dll is not None:
+        try:
+            return float(_dll.fast_fv_f64(rate, nper, pmt, pv, type_))
+        except Exception:
+            pass
 
     if rate == 0:
         return -(pv + pmt * nper)
@@ -260,8 +294,11 @@ def asm_fv(rate: float, nper: float, pmt: float, pv: float = 0.0, type_: int = 0
 def asm_str_hash(text: str) -> int:
     """64-bit FNV-1a String Hashing for fast cache indexing."""
     raw = text.encode("utf-8")
-    if _dll is not None:
-        return int(_dll.fast_str_hash(raw, len(raw)))
+    if _is_available and _dll is not None:
+        try:
+            return int(_dll.fast_str_hash(raw, len(raw)))
+        except Exception:
+            pass
 
     # Pure Python FNV-1a 64-bit
     h = 14695981039346656037

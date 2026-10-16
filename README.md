@@ -1,7 +1,9 @@
 # xlsx-viewer-pro (Excel Viewer Pro)
 
 [![PyPI Version](https://img.shields.io/pypi/v/xlsx-viewer-pro.svg?style=flat&logo=pypi)](https://pypi.org/project/xlsx-viewer-pro/)
+[![GitHub Release](https://img.shields.io/github/v/release/eminsk/xlsx_vievers?style=flat&logo=github)](https://github.com/eminsk/xlsx_vievers/releases)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/xlsx-viewer-pro.svg?style=flat&logo=condaforge)](https://anaconda.org/conda-forge/xlsx-viewer-pro)
+[![Conda Platforms](https://img.shields.io/conda/pn/conda-forge/xlsx-viewer-pro.svg?style=flat&logo=anaconda)](https://anaconda.org/conda-forge/xlsx-viewer-pro)
 [![Debian / Ubuntu PPA](https://img.shields.io/badge/Debian%20%2F%20Ubuntu-APT%20PPA-E95420.svg?style=flat)](https://eminsk.github.io/ppa/)
 [![Downloads](https://static.pepy.tech/badge/xlsx-viewer-pro)](https://pepy.tech/project/xlsx-viewer-pro)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/xlsx_vievers/blob/master/notebooks/xlsx_viewer_quickstart.ipynb)
