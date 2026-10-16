@@ -88,6 +88,11 @@ class TestEnhancedFeatures(unittest.TestCase):
         self.assertEqual(NumberFormatter.format_value(1234000, "0.00E+00"), "1.23E+06")
 
     def test_dialog_classes_availability(self):
+        try:
+            import ttkbootstrap  # noqa: F401
+        except ImportError:
+            self.skipTest("ttkbootstrap is not installed (headless/PyPy environment)")
+
         from xlsx_viewer.dialogs import (
             ChartWizardDialog,
             CustomSortDialog,
@@ -163,6 +168,11 @@ class TestEnhancedFeatures(unittest.TestCase):
         self.assertIn("no-gil", content)
 
     def test_gui_menu_structure(self):
+        try:
+            import ttkbootstrap  # noqa: F401
+        except ImportError:
+            self.skipTest("ttkbootstrap is not installed (headless/PyPy environment)")
+
         import inspect
 
         from xlsx_viewer.gui import ExcelViewerPro
