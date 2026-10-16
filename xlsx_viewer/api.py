@@ -83,7 +83,7 @@ def load_workbook(path: str | Path, create_if_missing: bool = True) -> WorkbookD
         try:
             import xlrd
 
-            book = xlrd.open_workbook(str(path))
+            book = xlrd.open_workbook(str(path), ignore_workbook_corruption=True)
             for sheet_name in book.sheet_names():
                 sh = book.sheet_by_name(sheet_name)
                 sheet_data = wb_data.add_sheet(sheet_name)
@@ -98,9 +98,57 @@ def load_workbook(path: str | Path, create_if_missing: bool = True) -> WorkbookD
                                 )
                             except Exception:
                                 pass
+                        elif cell.ctype == xlrd.XL_CELL_BOOLEAN:
+                            val = bool(val)
+                        elif cell.ctype == xlrd.XL_CELL_ERROR:
+                            val = xlrd.error_text_from_code.get(val, "#ERROR!")
                         if val != "" and val is not None:
                             sheet_data.set_cell(r, c, val)
-            return wb_data
+            if wb_data.sheets:
+                wb_data.active_sheet_name = next(iter(wb_data.sheets.keys()))
+                return wb_data
+        except Exception:
+            pass
+
+        # Fallback for HTML-based, XML-based or CSV-based .xls files
+        try:
+            content = path.read_text(encoding="utf-8", errors="replace")
+            if "<tr" in content.lower() or "<table" in content.lower():
+                import re
+
+                rows = []
+                for tr in re.findall(
+                    r"<tr[^>]*>(.*?)</tr>", content, flags=re.IGNORECASE | re.DOTALL
+                ):
+                    cells = [
+                        re.sub(r"<[^>]+>", "", td).strip()
+                        for td in re.findall(
+                            r"<t[dh][^>]*>(.*?)</t[dh]>",
+                            tr,
+                            flags=re.IGNORECASE | re.DOTALL,
+                        )
+                    ]
+                    if cells:
+                        rows.append(cells)
+                if rows:
+                    sh_data = wb_data.add_sheet("Sheet1")
+                    for r_idx, row in enumerate(rows):
+                        for c_idx, val in enumerate(row):
+                            if val:
+                                sh_data.set_cell(r_idx, c_idx, val)
+                    return wb_data
+
+            import csv
+
+            delim = "\t" if "\t" in content else (";" if ";" in content else ",")
+            rows = list(csv.reader(content.splitlines(), delimiter=delim))
+            if rows:
+                sh_data = wb_data.add_sheet("Sheet1")
+                for r_idx, row in enumerate(rows):
+                    for c_idx, val in enumerate(row):
+                        if val != "" and val is not None:
+                            sh_data.set_cell(r_idx, c_idx, val)
+                return wb_data
         except Exception:
             pass
 
@@ -118,6 +166,11 @@ def load_workbook(path: str | Path, create_if_missing: bool = True) -> WorkbookD
                     if isinstance(val, str) and val.startswith("="):
                         formula = val
                     sheet_data.set_cell(row_idx, col_idx, val, formula=formula)
+
+    if pyxl_wb.active and pyxl_wb.active.title in wb_data.sheets:
+        wb_data.active_sheet_name = pyxl_wb.active.title
+    elif wb_data.sheets:
+        wb_data.active_sheet_name = next(iter(wb_data.sheets.keys()))
 
     return wb_data
 

@@ -1019,46 +1019,96 @@ class ExcelViewerPro(ttk.Window):
             self._status_bar.set_mode("Error")
 
     def _load_xls_file(self, path: Path) -> None:
-        """Load legacy Excel 97-2003 (.xls) file via xlrd."""
+        """Load legacy Excel 97-2003 (.xls) file via xlrd, with robust fallbacks for HTML/XML/CSV tables."""
         import xlrd
         from openpyxl import Workbook
         from openpyxl.utils import get_column_letter
 
-        book = xlrd.open_workbook(str(path))
         self._sheets_data = {}
-
         wb = Workbook()
         wb.remove(wb.active)  # remove default sheet
 
-        for s_name in book.sheet_names():
-            sh = book.sheet_by_name(s_name)
-            ws = wb.create_sheet(title=s_name)
-            rows = []
-            for r in range(sh.nrows):
-                row_vals = []
-                for c in range(sh.ncols):
-                    cell = sh.cell(r, c)
-                    val = cell.value
-                    if cell.ctype == xlrd.XL_CELL_DATE:
-                        try:
-                            val = xlrd.xldate_as_datetime(val, book.datemode).strftime("%Y-%m-%d")
-                        except Exception:
-                            pass
-                    row_vals.append(val)
-                    if val != "" and val is not None:
-                        ws.cell(row=r + 1, column=c + 1, value=val)
-                rows.append(row_vals)
+        try:
+            book = xlrd.open_workbook(str(path), ignore_workbook_corruption=True)
+            for s_name in book.sheet_names():
+                sh = book.sheet_by_name(s_name)
+                ws = wb.create_sheet(title=s_name)
+                rows = []
+                for r in range(sh.nrows):
+                    row_vals = []
+                    for c in range(sh.ncols):
+                        cell = sh.cell(r, c)
+                        val = cell.value
+                        if cell.ctype == xlrd.XL_CELL_DATE:
+                            try:
+                                val = xlrd.xldate_as_datetime(val, book.datemode).strftime("%Y-%m-%d")
+                            except Exception:
+                                pass
+                        elif cell.ctype == xlrd.XL_CELL_BOOLEAN:
+                            val = bool(val)
+                        elif cell.ctype == xlrd.XL_CELL_ERROR:
+                            val = xlrd.error_text_from_code.get(val, "#ERROR!")
+                        row_vals.append(val)
+                        if val != "" and val is not None:
+                            ws.cell(row=r + 1, column=c + 1, value=val)
+                    rows.append(row_vals)
 
-            max_c = max((len(r) for r in rows), default=sh.ncols or 10)
-            headers = [get_column_letter(i + 1) for i in range(max_c)]
-            s_data = SheetData(
-                name=s_name,
-                headers=headers,
-                rows=rows,
-                col_count=max_c,
-                row_count=len(rows),
-            )
-            self._sheets_data[s_name] = s_data
+                max_c = max((len(r) for r in rows), default=sh.ncols or 10)
+                headers = [get_column_letter(i + 1) for i in range(max_c)]
+                s_data = SheetData(
+                    name=s_name,
+                    headers=headers,
+                    rows=rows,
+                    col_count=max_c,
+                    row_count=len(rows),
+                )
+                self._sheets_data[s_name] = s_data
+        except Exception:
+            pass
+
+        if not self._sheets_data:
+            # Fallback for HTML-based, XML-based or delimited tables disguised as .xls
+            try:
+                content = path.read_text(encoding="utf-8", errors="replace")
+                fallback_rows: list[list[str]] = []
+                if "<tr" in content.lower() or "<table" in content.lower():
+                    import re
+
+                    for tr in re.findall(
+                        r"<tr[^>]*>(.*?)</tr>", content, flags=re.IGNORECASE | re.DOTALL
+                    ):
+                        cells = [
+                            re.sub(r"<[^>]+>", "", td).strip()
+                            for td in re.findall(
+                                r"<t[dh][^>]*>(.*?)</t[dh]>",
+                                tr,
+                                flags=re.IGNORECASE | re.DOTALL,
+                            )
+                        ]
+                        if cells:
+                            fallback_rows.append(cells)
+                else:
+                    delim = "\t" if "\t" in content else (";" if ";" in content else ",")
+                    fallback_rows = [list(r) for r in csv.reader(content.splitlines(), delimiter=delim)]
+
+                if fallback_rows:
+                    ws = wb.create_sheet(title="Sheet1")
+                    for r_idx, row in enumerate(fallback_rows):
+                        for c_idx, val in enumerate(row):
+                            if val:
+                                ws.cell(row=r_idx + 1, column=c_idx + 1, value=val)
+                    max_c = max((len(r) for r in fallback_rows), default=10)
+                    headers = [get_column_letter(i + 1) for i in range(max_c)]
+                    s_data = SheetData(
+                        name="Sheet1",
+                        headers=headers,
+                        rows=fallback_rows,
+                        col_count=max_c,
+                        row_count=len(fallback_rows),
+                    )
+                    self._sheets_data["Sheet1"] = s_data
+            except Exception:
+                pass
 
         if not self._sheets_data:
             self._load_delimited_file(path)

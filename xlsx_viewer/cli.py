@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from . import __version__
 from .api import evaluate_formula, launch_viewer
@@ -97,7 +98,15 @@ def main(argv: list[str] | None = None) -> int:
             if not s_data:
                 print(f"Error: No sheets found in {in_file}", file=sys.stderr)
                 return 1
-            with open(out_file, "w", newline="", encoding="utf-8") as f:
+            import locale
+
+            try:
+                enc = locale.getpreferredencoding(False) or "utf-8"
+            except Exception:
+                enc = "utf-8"
+
+            Path(out_file).parent.mkdir(parents=True, exist_ok=True)
+            with open(out_file, "w", newline="", encoding=enc, errors="replace") as f:
                 writer = csv.writer(f)
                 for row in s_data.rows:
                     writer.writerow([str(v) if v is not None else "" for v in row])

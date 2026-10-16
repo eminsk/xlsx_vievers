@@ -206,6 +206,40 @@ class TestXlsxViewerLibrary(unittest.TestCase):
             self.assertIn("Name,Score", content)
             self.assertIn("Alice,95", content)
 
+    def test_load_html_table_as_xls(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            html_xls = Path(tmpdir) / "export.xls"
+            html_xls.write_text(
+                "<table><tr><th>Col1</th><th>Col2</th></tr><tr><td>Alpha</td><td>100</td></tr></table>",
+                encoding="utf-8",
+            )
+            wb = xv.load_workbook(html_xls)
+            self.assertIn("Sheet1", wb.sheet_names)
+            sh = wb.get_sheet("Sheet1")
+            self.assertEqual(sh.get_cell_value(0, 0), "Col1")
+            self.assertEqual(sh.get_cell_value(1, 0), "Alpha")
+
+    def test_workbook_data_custom_sheet_name(self):
+        from xlsx_viewer.models import WorkbookData
+
+        wb = WorkbookData()
+        wb.add_sheet("FinanceReport")
+        self.assertEqual(wb.active_sheet_name, "FinanceReport")
+        sh = wb.get_sheet()
+        self.assertIsNotNone(sh)
+        self.assertEqual(sh.name, "FinanceReport")
+
+    def test_downloads_prais_xlsx_if_present(self):
+        prais_path = Path(r"D:\Downloads\prais.xlsx")
+        if prais_path.exists():
+            wb = xv.load_workbook(prais_path)
+            self.assertGreater(len(wb.sheet_names), 0)
+            sh = wb.get_sheet()
+            self.assertIsNotNone(sh)
+            self.assertGreater(sh.row_count, 10)
+
 
 if __name__ == "__main__":
     unittest.main()

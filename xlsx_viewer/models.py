@@ -313,7 +313,7 @@ class WorkbookData:
 
     file_path: str | None = None
     sheets: dict[str, SheetData] = field(default_factory=dict)
-    active_sheet_name: str = "Sheet1"
+    active_sheet_name: str | None = None
 
     def add_sheet(self, name: str) -> SheetData:
         sheet = SheetData(name=name)
@@ -325,7 +325,11 @@ class WorkbookData:
     def get_sheet(self, name: str | None = None) -> SheetData | None:
         if name is None:
             name = self.active_sheet_name
-        return self.sheets.get(name)
+        if name and name in self.sheets:
+            return self.sheets[name]
+        if self.sheets:
+            return next(iter(self.sheets.values()))
+        return None
 
     @property
     def sheet_names(self) -> list[str]:

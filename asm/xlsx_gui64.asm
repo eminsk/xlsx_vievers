@@ -600,7 +600,7 @@ section '.data' data readable writeable
     is_temp_file    db 0
     mode_rb         db 'rb', 0
     fmt_temp_csv    db '%sxlsx_view_tmp.csv', 0
-    fmt_convert_cmd db 'cmd.exe /c "uv run python -m xlsx_viewer.cli --to-csv ""%s"" ""%s"""', 0
+    fmt_convert_cmd db 'cmd.exe /c "uv --directory ""C:\proekts\xlsx_vievers"" run python -m xlsx_viewer.cli --to-csv ""%s"" ""%s"" || ""C:\proekts\xlsx_vievers\.venv\Scripts\python.exe"" -m xlsx_viewer.cli --to-csv ""%s"" ""%s"""', 0
 
     hFxWizWnd       dq 0
     hWizList        dq 0
@@ -609,12 +609,12 @@ section '.data' data readable writeable
     wiz_class_reg   dd 0
 
     fx_wiz_class_name db 'FxWizardClass', 0
-    fx_wiz_title      db 'Мастер функций (Insert Function Wizard)', 0
-    lbl_wiz_prompt    db 'Выберите функцию (Select Function):', 0
-    lbl_wiz_syntax_t  db 'Синтаксис (Syntax):', 0
-    lbl_wiz_desc_t    db 'Описание (Description):', 0
-    btn_wiz_ok_txt    db 'Вставить (OK)', 0
-    btn_wiz_can_txt   db 'Отмена (Cancel)', 0
+    fx_wiz_title      db 'Insert Function (fx)', 0
+    lbl_wiz_prompt    db 'Select a function:', 0
+    lbl_wiz_syntax_t  db 'Syntax:', 0
+    lbl_wiz_desc_t    db 'Description:', 0
+    btn_wiz_ok_txt    db 'Insert', 0
+    btn_wiz_can_txt   db 'Cancel', 0
     static_class_name db 'STATIC', 0
     listbox_class     db 'LISTBOX', 0
 
@@ -5830,7 +5830,7 @@ DoFileOpen:
     mov dword [ofn+56], 512
     lea rax, [ofn_title_open]
     mov qword [ofn+88], rax
-    mov dword [ofn+96], 00001800h ; OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST
+    mov dword [ofn+96], 00001808h ; OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR
     lea rax, [def_ext_csv]
     mov qword [ofn+104], rax
 
@@ -5839,6 +5839,34 @@ DoFileOpen:
     test eax, eax
     jz .open_done
 
+    ; Check extension in szFileName for .xls / .xlsx
+    lea rsi, [szFileName]
+    xor edx, edx
+.scan_ext:
+    lodsb
+    test al, al
+    jz .check_ext_done
+    cmp al, '.'
+    jne .scan_ext
+    mov rdx, rsi ; rdx points after '.'
+    jmp .scan_ext
+.check_ext_done:
+    test rdx, rdx
+    jz .check_magic
+    mov al, byte [rdx]
+    or al, 20h
+    cmp al, 'x'
+    jne .check_magic
+    mov al, byte [rdx+1]
+    or al, 20h
+    cmp al, 'l'
+    jne .check_magic
+    mov al, byte [rdx+2]
+    or al, 20h
+    cmp al, 's'
+    je .is_excel_convert_no_close
+
+.check_magic:
     ; Open in binary mode first to check magic
     lea rcx, [szFileName]
     lea rdx, [mode_rb]
@@ -5877,6 +5905,7 @@ DoFileOpen:
     mov rcx, r12
     call [fclose]
 
+.is_excel_convert_no_close:
     ; Get Temp Path
     mov ecx, 500
     lea rdx, [szTemp]
@@ -5889,11 +5918,12 @@ DoFileOpen:
     call [sprintf]
 
     ; Build shell command:
-    ; cmd.exe /c "uv run python -m xlsx_viewer.cli --to-csv ""%s"" ""%s"""
     lea rcx, [szCmdBuf]
     lea rdx, [fmt_convert_cmd]
     lea r8, [szFileName]
     lea r9, [szTempCsv]
+    mov [rsp+20h], r8
+    mov [rsp+28h], r9
     call [sprintf]
 
     lea rcx, [szCmdBuf]
@@ -5993,15 +6023,21 @@ DoFileOpen:
 .token_end:
     ; Trim leading quote if present
     cmp byte [rdi], '"'
-    jne @f
+    jne .check_trail
     inc rdi
-@@:
-    ; Trim trailing quote if present
-    cmp rsi, rdi
+.check_trail:
+    mov rax, rdi
+.find_tok_end:
+    cmp byte [rax], 0
+    je .found_tok_end
+    inc rax
+    jmp .find_tok_end
+.found_tok_end:
+    cmp rax, rdi
     jle .do_set_text
-    cmp byte [rsi-2], '"'
+    cmp byte [rax-1], '"'
     jne .do_set_text
-    mov byte [rsi-2], 0
+    mov byte [rax-1], 0
 
 .do_set_text:
     mov dword [lvitem], LVIF_TEXT
@@ -6071,7 +6107,7 @@ DoFileSaveAs:
     mov dword [ofn+56], 512
     lea rax, [ofn_title_save]
     mov qword [ofn+88], rax
-    mov dword [ofn+96], 00000802h ; OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST
+    mov dword [ofn+96], 0000080Ah ; OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR
     lea rax, [def_ext_csv]
     mov qword [ofn+104], rax
 
@@ -6848,15 +6884,15 @@ FxWizardWndProc:
     mov r9d, 1
     call [SendMessageA]
 
-    ; 7. Button OK [Вставить (OK)] (x=216, y=335, w=115, h=30)
+    ; 7. Button OK [Insert] (x=240, y=338, w=100, h=30)
     sub rsp, 60h
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_wiz_ok_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 216
-    mov dword [rsp+28h], 335
-    mov dword [rsp+30h], 115
+    mov dword [rsp+20h], 240
+    mov dword [rsp+28h], 338
+    mov dword [rsp+30h], 100
     mov dword [rsp+38h], 30
     mov qword [rsp+40h], r12
     mov qword [rsp+48h], ID_WIZ_OK
@@ -6871,15 +6907,15 @@ FxWizardWndProc:
     mov r9d, 1
     call [SendMessageA]
 
-    ; 8. Button Cancel [Отмена] (x=338, y=335, w=110, h=30)
+    ; 8. Button Cancel [Cancel] (x=350, y=338, w=98, h=30)
     sub rsp, 60h
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_wiz_can_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 338
-    mov dword [rsp+28h], 335
-    mov dword [rsp+30h], 110
+    mov dword [rsp+20h], 350
+    mov dword [rsp+28h], 338
+    mov dword [rsp+30h], 98
     mov dword [rsp+38h], 30
     mov qword [rsp+40h], r12
     mov qword [rsp+48h], ID_WIZ_CANCEL
@@ -6906,7 +6942,11 @@ FxWizardWndProc:
     je .cmd_wiz_list
     cmp eax, ID_WIZ_OK
     je .cmd_wiz_ok
+    cmp eax, 1 ; IDOK
+    je .cmd_wiz_ok
     cmp eax, ID_WIZ_CANCEL
+    je .cmd_wiz_cancel
+    cmp eax, 2 ; IDCANCEL
     je .cmd_wiz_cancel
     jmp .ret0_w
 
