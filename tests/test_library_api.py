@@ -216,6 +216,44 @@ class TestXlsxViewerLibrary(unittest.TestCase):
             self.assertIn("Name,Score", content)
             self.assertIn("Alice,95", content)
 
+    def test_cli_to_csv_with_evaluated_formulas_and_styles(self):
+        import tempfile
+
+        from openpyxl.styles import Font, PatternFill
+
+        from xlsx_viewer.cli import main
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            xlsx_path = Path(tmpdir) / "styled.xlsx"
+            csv_path = Path(tmpdir) / "styled.csv"
+
+            import openpyxl
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Summary"
+            ws["A1"] = "Price"
+            ws["B1"] = 10
+            ws["B1"].number_format = "$#,##0.00"
+            ws["B1"].font = Font(bold=True, color="001B365D")
+            ws["B1"].fill = PatternFill(start_color="00EDF2F7", end_color="00EDF2F7", fill_type="solid")
+            ws["A2"] = "Double"
+            ws["B2"] = "=B1*2"
+            ws["B2"].number_format = "$#,##0.00"
+            wb.save(xlsx_path)
+
+            ret = main(["--to-csv", str(xlsx_path), str(csv_path)])
+            self.assertEqual(ret, 0)
+            self.assertTrue(csv_path.exists())
+            content = csv_path.read_text(encoding="utf-8")
+            self.assertIn("$10.00", content)
+            self.assertIn("$20.00", content)
+
+            style_path = Path(f"{csv_path}.style")
+            self.assertTrue(style_path.exists())
+            with open(style_path, "rb") as sf:
+                header = sf.read(8)
+                self.assertEqual(header[:4], b"XLSS")
+
     def test_load_html_table_as_xls(self):
         import tempfile
 

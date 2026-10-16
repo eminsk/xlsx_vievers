@@ -597,10 +597,13 @@ section '.data' data readable writeable
 
     wc_wiz          rb 80
     szTempCsv       rb 512
+    szTempStyle     rb 512
     szCmdBuf        rb 2048
     is_temp_file    db 0
     mode_rb         db 'rb', 0
     fmt_temp_csv    db '%sxlsx_view_tmp.csv', 0
+    fmt_temp_style  db '%s.style', 0
+    pCellStyleTable dq 0
     fmt_convert_cmd db 'cmd.exe /c uv --directory "C:\proekts\xlsx_vievers" run python -m xlsx_viewer.cli --to-csv "%s" "%s" || "C:\proekts\xlsx_vievers\.venv\Scripts\python.exe" -m xlsx_viewer.cli --to-csv "%s" "%s"', 0
 
     hFxWizWnd       dq 0
@@ -747,6 +750,12 @@ start:
 
     ; Create Modern System Fonts
     call CreateAppFonts
+
+    ; Allocate Cell Style Table (10000 rows * 32 cols * 16 bytes = 5,120,000 bytes)
+    mov ecx, GMEM_ZEROINIT
+    mov edx, 10000 * 32 * 16
+    call [GlobalAlloc]
+    mov [pCellStyleTable], rax
 
     ; Create Main Window (1280 x 820)
     sub rsp, 60h
@@ -3056,6 +3065,8 @@ WndProc:
     test rax, rax
     jz .ret0
     mov edx, [rax+16]
+    cmp edx, -12 ; NM_CUSTOMDRAW
+    je .on_customdraw
     cmp edx, NM_CLICK
     je .on_grid_click
     cmp edx, NM_DBLCLK
@@ -3065,6 +3076,123 @@ WndProc:
     cmp edx, LVN_KEYDOWN
     je .on_lvn_keydown
     jmp .ret0
+
+.on_customdraw:
+    mov rsi, r9             ; rsi = pLVCD (preserved in WndProc)
+    mov rcx, [rsi]          ; hdr.hwndFrom
+    cmp rcx, [hGrid]
+    jne .ret0
+
+    mov edx, [rsi+24]       ; dwDrawStage
+    cmp edx, 1              ; CDDS_PREPAINT
+    je .cd_prepaint
+    cmp edx, 10001h         ; CDDS_ITEMPREPAINT
+    je .cd_item_prepaint
+    cmp edx, 30001h         ; CDDS_SUBITEMPREPAINT
+    je .cd_subitem_prepaint
+    jmp .ret0
+
+.cd_prepaint:
+    mov eax, 20h            ; CDRF_NOTIFYITEMSPEC
+    jmp .done
+
+.cd_item_prepaint:
+    mov eax, 20h            ; CDRF_NOTIFYSUBITEMDRAW
+    jmp .done
+
+.cd_subitem_prepaint:
+    mov r10d, [rsi+56]      ; dwItemSpec (row index: 0..N)
+    mov r11d, [rsi+88]      ; iSubItem (col index: 0..N)
+
+    ; If item is selected, let Windows draw standard selection highlight
+    test dword [rsi+64], 1  ; CDIS_SELECTED
+    jnz .skip_sel_override
+
+    ; If col == 0: Row number column styling
+    test r11d, r11d
+    jnz .check_style_table
+
+    mov dword [rsi+84], 00EAE6E2h ; clrTextBk (Soft light gray #E2E6EA)
+    mov dword [rsi+80], 0068554Ah ; clrText (Slate gray #4A5568)
+    mov rcx, [rsi+32]       ; hdc
+    mov rdx, [hFontSmall]
+    call [SelectObject]
+    mov eax, 2              ; CDRF_NEWFONT
+    jmp .done
+
+.check_style_table:
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .heuristic_style
+    cmp r10d, 10000
+    jae .heuristic_style
+    cmp r11d, 32
+    jae .heuristic_style
+
+    ; edx = (r10d * 32 + r11d) * 16
+    mov edx, r10d
+    shl edx, 5
+    add edx, r11d
+    shl rdx, 4
+    add rdx, rax            ; rdx = pointer to CellStyleRecord
+
+    mov eax, [rdx+8]        ; flags (bit0=bold, bit1=has_bk, bit2=has_fg)
+    test eax, eax
+    jz .heuristic_style
+
+    test eax, 2             ; bit 1: has_bk
+    jz @f
+    mov ecx, [rdx]
+    mov [rsi+84], ecx       ; set clrTextBk
+@@:
+    test eax, 4             ; bit 2: has_fg
+    jz @f
+    mov ecx, [rdx+4]
+    mov [rsi+80], ecx       ; set clrText
+@@:
+    test eax, 1             ; bit 0: bold
+    jz .font_normal
+
+.font_bold:
+    mov rcx, [rsi+32]       ; hdc
+    mov rdx, [hFontBold]
+    call [SelectObject]
+    mov eax, 2              ; CDRF_NEWFONT
+    jmp .done
+
+.font_normal:
+    mov rcx, [rsi+32]       ; hdc
+    mov rdx, [hFontUI]
+    call [SelectObject]
+    mov eax, 2              ; CDRF_NEWFONT
+    jmp .done
+
+.heuristic_style:
+    ; Row 0 default header
+    test r10d, r10d
+    jnz .zebra_check
+    mov dword [rsi+84], 005D361Bh ; clrTextBk: Navy (#1B365D)
+    mov dword [rsi+80], 00FFFFFFh ; clrText: White (#FFFFFF)
+    jmp .font_bold
+
+.zebra_check:
+    test r10d, 1
+    jz .zebra_even
+.zebra_odd:
+    mov dword [rsi+84], 00FCFAF7h ; clrTextBk: Soft tint (#F7FAFC)
+    mov dword [rsi+80], 002C201Ah ; clrText: Dark charcoal (#1A202C)
+    jmp .font_normal
+.zebra_even:
+    mov dword [rsi+84], 00FFFFFFh ; clrTextBk: White
+    mov dword [rsi+80], 002C201Ah ; clrText: Dark charcoal
+    jmp .font_normal
+
+.skip_sel_override:
+    mov rcx, [rsi+32]       ; hdc
+    mov rdx, [hFontUI]
+    call [SelectObject]
+    xor eax, eax            ; CDRF_DODEFAULT
+    jmp .done
 
 .on_lvn_keydown:
     movzx r8d, word [rax+24]
@@ -5821,12 +5949,14 @@ DoFileOpen:
 DoFileOpenDirect:
     push rbp
     mov rbp, rsp
-    sub rsp, 80h
+    sub rsp, 90h
     mov [rbp-8], rbx
     mov [rbp-16], rsi
     mov [rbp-24], rdi
     mov [rbp-32], r12
     mov [rbp-40], r13
+    mov [rbp-48], r14
+    mov [rbp-56], r15
 
     ; Check extension in szFileName for .xls / .xlsx
     lea rsi, [szFileName]
@@ -5928,6 +6058,97 @@ DoFileOpenDirect:
     mov byte [is_temp_file], 1
 
 .start_read_grid:
+    ; Clear existing styles table
+    mov rdi, [pCellStyleTable]
+    test rdi, rdi
+    jz .skip_clear_styles
+    mov rcx, 10000 * 32 * 2 ; (640,000 qwords)
+    xor eax, eax
+    rep stosq
+.skip_clear_styles:
+
+    ; If is_temp_file, load companion .style file
+    cmp byte [is_temp_file], 1
+    jne .skip_load_style
+
+    lea rcx, [szTempStyle]
+    lea rdx, [fmt_temp_style]
+    lea r8, [szTempCsv]
+    call [sprintf]
+
+    lea rcx, [szTempStyle]
+    lea rdx, [mode_rb]
+    call [fopen]
+    test rax, rax
+    jz .skip_load_style
+    mov r15, rax ; r15 = style file handle
+
+    ; Read header (8 bytes: 4 bytes magic 'XLSS', 4 bytes count)
+    sub rsp, 40h
+    lea rcx, [rsp+20h]
+    mov edx, 1
+    mov r8d, 8
+    mov r9, r15
+    call [fread]
+    cmp eax, 8
+    jne .close_style_hdr
+    cmp dword [rsp+20h], 53534C58h ; 'XLSS'
+    jne .close_style_hdr
+    mov r14d, dword [rsp+24h] ; r14d = record count
+    add rsp, 40h
+
+.read_record_loop:
+    test r14d, r14d
+    jz .close_style_done
+    sub rsp, 40h
+    lea rcx, [rsp+20h]
+    mov edx, 1
+    mov r8d, 12
+    mov r9, r15
+    call [fread]
+    cmp eax, 12
+    jne .close_style_err
+
+    movzx r8d, word [rsp+20h]    ; row
+    movzx r9d, byte [rsp+22h]   ; col
+    movzx r10d, byte [rsp+23h]  ; flags
+    mov eax, dword [rsp+24h]    ; clrBk
+    mov edx, dword [rsp+28h]    ; clrFg
+    add rsp, 40h
+
+    cmp r8d, 10000
+    jae .next_rec
+    cmp r9d, 32
+    jae .next_rec
+
+    ; edx = (row * 32 + col) * 16
+    mov ecx, r8d
+    shl ecx, 5
+    add ecx, r9d
+    shl rcx, 4
+    add rcx, [pCellStyleTable]
+
+    mov dword [rcx], eax    ; clrBk
+    mov dword [rcx+4], edx  ; clrFg
+    mov dword [rcx+8], r10d ; flags
+
+.next_rec:
+    dec r14d
+    jmp .read_record_loop
+
+.close_style_err:
+    add rsp, 40h
+    jmp .close_style_done
+
+.close_style_hdr:
+    add rsp, 40h
+.close_style_done:
+    mov rcx, r15
+    call [fclose]
+    lea rcx, [szTempStyle]
+    call [remove]
+
+.skip_load_style:
     mov rcx, [hGrid]
     mov edx, LVM_DELETEALLITEMS
     xor r8d, r8d
@@ -5993,16 +6214,26 @@ DoFileOpenDirect:
     je .line_done
 
     mov rdi, rsi
+    mov byte [rsp+10h], 0 ; in_quote = 0
 .scan_comma:
     mov al, byte [rsi]
     test al, al
     jz .token_end
+    cmp al, '"'
+    jne .not_quote
+    xor byte [rsp+10h], 1 ; toggle in_quote flag
+    inc rsi
+    jmp .scan_comma
+.not_quote:
+    cmp byte [rsp+10h], 1
+    je .char_in_quote
     cmp al, ','
     je .found_comma
     cmp al, ';'
     je .found_comma
     cmp al, 9
     je .found_comma
+.char_in_quote:
     inc rsi
     jmp .scan_comma
 
@@ -6055,6 +6286,8 @@ DoFileOpenDirect:
     cmp byte [is_temp_file], 1
     jne @f
     lea rcx, [szTempCsv]
+    call [remove]
+    lea rcx, [szTempStyle]
     call [remove]
 @@:
     mov [total_rows], r13d
@@ -6154,6 +6387,8 @@ DoFileOpenDirect:
     mov rdi, [rbp-24]
     mov r12, [rbp-32]
     mov r13, [rbp-40]
+    mov r14, [rbp-48]
+    mov r15, [rbp-56]
     leave
     ret
 
@@ -6163,6 +6398,8 @@ DoFileOpenDirect:
     mov rdi, [rbp-24]
     mov r12, [rbp-32]
     mov r13, [rbp-40]
+    mov r14, [rbp-48]
+    mov r15, [rbp-56]
     leave
     ret
 
@@ -7607,6 +7844,7 @@ user32_table:
 
 gdi32_table:
     CreateFontA                 dq RVA _CreateFontA
+    SelectObject                dq RVA _SelectObject
                                 dq 0
 
 comctl_table:
@@ -7731,6 +7969,9 @@ _DestroyWindow dw 0
 
 _CreateFontA dw 0
  db 'CreateFontA', 0
+
+_SelectObject dw 0
+ db 'SelectObject', 0
 
 _InitCommonControlsEx dw 0
  db 'InitCommonControlsEx', 0
