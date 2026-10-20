@@ -477,77 +477,77 @@ section '.data' data readable writeable
     btn_ins_c_txt   db '+ Insert', 0
     btn_del_c_txt   db '- Delete', 0
     btn_autosum_txt db 'AutoSum', 0
-    btn_sort_txt    db 'Sort & Filter', 0
-    btn_find_txt    db 'Find & Select', 0
+    btn_sort_txt    db 'Sort && Filter', 0
+    btn_find_txt    db 'Find && Select', 0
 
     ; Insert tab labels
     grp_ins_tab_txt   db 'Tables', 0
-    btn_ins_tab_txt   db 'Table', 0
-    btn_ins_piv_txt   db 'PivotTable', 0
+    btn_ins_tab_txt   db '[#] Table', 0
+    btn_ins_piv_txt   db '[+] PivotTable', 0
     grp_ins_ill_txt   db 'Illustrations', 0
-    btn_ins_pic_txt   db 'Pictures', 0
-    btn_ins_shp_txt   db 'Shapes', 0
-    btn_ins_ico_txt   db 'Icons', 0
+    btn_ins_pic_txt   db '[P] Pictures', 0
+    btn_ins_shp_txt   db '[/] Shapes', 0
+    btn_ins_ico_txt   db '[*] Icons', 0
     grp_ins_cht_txt   db 'Charts', 0
-    btn_ins_col_txt   db 'Column', 0
-    btn_ins_lin_txt   db 'Line', 0
-    btn_ins_pie_txt   db 'Pie', 0
-    btn_ins_bar_txt   db 'Bar', 0
-    grp_ins_lnk_txt   db 'Links & Text', 0
-    btn_ins_lnk_txt   db 'Link', 0
-    btn_ins_txb_txt   db 'Text Box', 0
-    btn_ins_sym_txt   db 'Symbol', 0
+    btn_ins_col_txt   db '||| Column', 0
+    btn_ins_lin_txt   db '/\ Line', 0
+    btn_ins_pie_txt   db '(O) Pie', 0
+    btn_ins_bar_txt   db '--- Bar', 0
+    grp_ins_lnk_txt   db 'Links && Text', 0
+    btn_ins_lnk_txt   db '[@] Link', 0
+    btn_ins_txb_txt   db '[T] Text Box', 0
+    btn_ins_sym_txt   db 'fx Symbol', 0
 
     ; Data tab labels
-    grp_data_get_txt  db 'Get & Transform', 0
-    btn_data_csv_txt  db 'From CSV', 0
-    btn_data_ref_txt  db 'Refresh All', 0
-    grp_data_srt_txt  db 'Sort & Filter', 0
-    btn_data_asc_txt  db 'Sort A-Z', 0
-    btn_data_dsc_txt  db 'Sort Z-A', 0
-    btn_data_flt_txt  db 'Filter', 0
-    btn_data_clr_txt  db 'Clear Filter', 0
+    grp_data_get_txt  db 'Get && Transform', 0
+    btn_data_csv_txt  db '[>] From CSV', 0
+    btn_data_ref_txt  db '[@] Refresh All', 0
+    grp_data_srt_txt  db 'Sort && Filter', 0
+    btn_data_asc_txt  db 'AZ Sort', 0
+    btn_data_dsc_txt  db 'ZA Sort', 0
+    btn_data_flt_txt  db '[v] Filter', 0
+    btn_data_clr_txt  db '[x] Clear Filter', 0
     grp_data_tls_txt  db 'Data Tools', 0
-    btn_data_spl_txt  db 'Text to Col', 0
-    btn_data_dup_txt  db 'Remove Dup', 0
-    btn_data_val_txt  db 'Validation', 0
-    grp_data_fcs_txt  db 'Forecast & Analysis', 0
-    btn_data_sim_txt  db 'SIMD Bench', 0
-    btn_data_wif_txt  db 'What-If', 0
+    btn_data_spl_txt  db '[->] Text to Col', 0
+    btn_data_dup_txt  db '[-2] Remove Dup', 0
+    btn_data_val_txt  db '[ok] Validation', 0
+    grp_data_fcs_txt  db 'Forecast && Analysis', 0
+    btn_data_sim_txt  db '[>>] SIMD Bench', 0
+    btn_data_wif_txt  db '[?] What-If', 0
 
     ; Formulas tab labels
     grp_form_lib_txt  db 'Function Library', 0
-    btn_form_fx_txt   db 'Insert fx', 0
-    btn_form_sum_txt  db 'AutoSum', 0
-    btn_form_fin_txt  db 'Financial', 0
-    btn_form_log_txt  db 'Logical', 0
-    btn_form_txt_txt  db 'Text', 0
-    btn_form_dat_txt  db 'Date/Time', 0
-    btn_form_luk_txt  db 'Lookup', 0
-    btn_form_mth_txt  db 'Math/Trig', 0
-    btn_form_mor_txt  db 'More fx...', 0
+    btn_form_fx_txt   db '[fx] Insert fx', 0
+    btn_form_sum_txt  db '[S] AutoSum', 0
+    btn_form_fin_txt  db '[$] Finance', 0
+    btn_form_log_txt  db '[?] Logic', 0
+    btn_form_txt_txt  db '["T"] Text', 0
+    btn_form_dat_txt  db '[D] Date', 0
+    btn_form_luk_txt  db '[L] Lookup', 0
+    btn_form_mth_txt  db '[M] Math', 0
+    btn_form_mor_txt  db '[...] More fx', 0
     grp_form_nam_txt  db 'Defined Names', 0
-    btn_form_nm_txt   db 'Name Mgr', 0
-    btn_form_df_txt   db 'Define Name', 0
+    btn_form_nm_txt   db '[#] Name Mgr', 0
+    btn_form_df_txt   db '[+] Define Name', 0
     grp_form_clc_txt  db 'Calculation', 0
-    btn_form_cal_txt  db 'Calculate', 0
-    btn_form_evl_txt  db 'Eval Formula', 0
+    btn_form_cal_txt  db '[=] Calculate', 0
+    btn_form_evl_txt  db '[fx] Eval Formula', 0
 
     ; View tab labels
     grp_view_vws_txt  db 'Workbook Views', 0
-    btn_view_nrm_txt  db 'Normal', 0
-    btn_view_lay_txt  db 'Page Layout', 0
-    grp_view_shw_txt  db 'Show / Hide', 0
-    btn_view_grd_txt  db 'Gridlines', 0
-    btn_view_bar_txt  db 'Formula Bar', 0
-    btn_view_hdg_txt  db 'Headings', 0
+    btn_view_nrm_txt  db '[=] Normal', 0
+    btn_view_lay_txt  db '[#] Page Layout', 0
+    grp_view_shw_txt  db 'Show && Hide', 0
+    btn_view_grd_txt  db '[x] Gridlines', 0
+    btn_view_bar_txt  db '[fx] Formula Bar', 0
+    btn_view_hdg_txt  db '[A1] Headings', 0
     grp_view_zom_txt  db 'Zoom', 0
     btn_view_z100_txt db '100%', 0
-    btn_view_zin_txt  db 'Zoom In (+)', 0
-    btn_view_zot_txt  db 'Zoom Out (-)', 0
+    btn_view_zin_txt  db '(+) Zoom In', 0
+    btn_view_zot_txt  db '(-) Zoom Out', 0
     grp_view_wnd_txt  db 'Window', 0
-    btn_view_frz_txt  db 'Freeze Panes', 0
-    btn_view_nw_txt   db 'New Window', 0
+    btn_view_frz_txt  db '[||] Freeze Panes', 0
+    btn_view_nw_txt   db '[+] New Window', 0
 
     ; Formula Snippets
     snip_sum          db '=SUM(', 0
@@ -738,6 +738,10 @@ section '.data' data readable writeable
     rcRibbonArea    dd 0, 24, 3000, 122
     cur_ribbon_tab  dd 0
 
+    hAppIcon        dq 0
+    szIconFile      db 'app_icon.ico', 0
+    szIconFileAsm   db 'asm\app_icon.ico', 0
+
     sb_parts        dd 160, 260, 720, 890, -1
 
     bench_freq      dq 0
@@ -914,9 +918,43 @@ start:
     mov rax, [hInst]
     mov qword [wc+24], rax
 
+    ; Load Application Icon (PE embedded resource 1 or app_icon.ico)
+    mov rcx, [hInst]
+    mov edx, 1
+    call [LoadIconA]
+    test rax, rax
+    jnz .icon_ready
+
+    xor ecx, ecx
+    lea rdx, [szIconFile]
+    mov r8d, 1 ; IMAGE_ICON
+    xor r9d, r9d
+    sub rsp, 30h
+    mov dword [rsp+20h], 0
+    mov dword [rsp+28h], 0050h ; LR_LOADFROMFILE or LR_DEFAULTSIZE
+    call [LoadImageA]
+    add rsp, 30h
+    test rax, rax
+    jnz .icon_ready
+
+    xor ecx, ecx
+    lea rdx, [szIconFileAsm]
+    mov r8d, 1
+    xor r9d, r9d
+    sub rsp, 30h
+    mov dword [rsp+20h], 0
+    mov dword [rsp+28h], 0050h
+    call [LoadImageA]
+    add rsp, 30h
+    test rax, rax
+    jnz .icon_ready
+
     xor ecx, ecx
     mov edx, 32512 ; IDI_APPLICATION
     call [LoadIconA]
+
+.icon_ready:
+    mov [hAppIcon], rax
     mov qword [wc+32], rax
     mov qword [wc+72], rax
 
@@ -962,6 +1000,19 @@ start:
     test rax, rax
     jz .exit
     mov [hWnd], rax
+
+    ; Set Titlebar and Taskbar icons
+    mov rcx, [hWnd]
+    mov edx, 0080h ; WM_SETICON
+    mov r8d, 1     ; ICON_BIG
+    mov r9, [hAppIcon]
+    call [SendMessageA]
+
+    mov rcx, [hWnd]
+    mov edx, 0080h ; WM_SETICON
+    xor r8d, r8d   ; ICON_SMALL
+    mov r9, [hAppIcon]
+    call [SendMessageA]
 
     ; Create Menu, Ribbon, Formula Bar, Grid & Status
     call BuildAppMenu
@@ -2677,14 +2728,14 @@ BuildInsertTabControls:
     mov rbp, rsp
     sub rsp, 60h
 
-    ; Group 1: Tables (x=10, y=26, w=150, h=88)
+    ; Group 1: Tables (x=10, y=26, w=115, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_ins_tab_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
     mov dword [rsp+20h], 10
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 150
+    mov dword [rsp+30h], 115
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -2699,15 +2750,15 @@ BuildInsertTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Table button (x=16, y=42, w=64, h=64)
+    ; Table button (x=16, y=42, w=103, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_tab_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
     mov dword [rsp+20h], 16
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 64
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 103
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_INS_TABLE
@@ -2717,19 +2768,19 @@ BuildInsertTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; PivotTable button (x=86, y=42, w=68, h=64)
+    ; PivotTable button (x=16, y=72, w=103, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_piv_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 86
-    mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 68
-    mov dword [rsp+38h], 64
+    mov dword [rsp+20h], 16
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 103
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_INS_PIVOT
@@ -2739,18 +2790,18 @@ BuildInsertTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Group 2: Illustrations (x=165, y=26, w=175, h=88)
+    ; Group 2: Illustrations (x=131, y=26, w=185, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_ins_ill_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
-    mov dword [rsp+20h], 165
+    mov dword [rsp+20h], 131
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 175
+    mov dword [rsp+30h], 185
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -2765,15 +2816,15 @@ BuildInsertTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Pictures (x=172, y=42, w=65, h=64)
+    ; Pictures (x=137, y=42, w=76, h=58)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_pic_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 172
+    mov dword [rsp+20h], 137
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 65
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 76
+    mov dword [rsp+38h], 58
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_INS_PICTURE
@@ -2787,12 +2838,12 @@ BuildInsertTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Shapes (x=243, y=42, w=90, h=28)
+    ; Shapes (x=219, y=42, w=90, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_shp_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 243
+    mov dword [rsp+20h], 219
     mov dword [rsp+28h], 42
     mov dword [rsp+30h], 90
     mov dword [rsp+38h], 28
@@ -2809,13 +2860,13 @@ BuildInsertTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Icons (x=243, y=74, w=90, h=28)
+    ; Icons (x=219, y=72, w=90, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_ico_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 243
-    mov dword [rsp+28h], 74
+    mov dword [rsp+20h], 219
+    mov dword [rsp+28h], 72
     mov dword [rsp+30h], 90
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
@@ -2831,14 +2882,14 @@ BuildInsertTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Group 3: Charts (x=345, y=26, w=290, h=88)
+    ; Group 3: Charts (x=322, y=26, w=185, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_ins_cht_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
-    mov dword [rsp+20h], 345
+    mov dword [rsp+20h], 322
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 290
+    mov dword [rsp+30h], 185
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -2853,15 +2904,15 @@ BuildInsertTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Column Chart (x=352, y=42, w=65, h=64)
+    ; Column Chart (x=328, y=42, w=85, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_col_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 352
+    mov dword [rsp+20h], 328
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 65
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 85
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_INS_COL_CHART
@@ -2871,19 +2922,19 @@ BuildInsertTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Line Chart (x=423, y=42, w=65, h=64)
+    ; Line Chart (x=417, y=42, w=84, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_lin_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 423
+    mov dword [rsp+20h], 417
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 65
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 84
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_INS_LINE_CHART
@@ -2893,19 +2944,19 @@ BuildInsertTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Pie Chart (x=494, y=42, w=65, h=64)
+    ; Pie Chart (x=328, y=72, w=85, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_pie_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 494
-    mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 65
-    mov dword [rsp+38h], 64
+    mov dword [rsp+20h], 328
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 85
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_INS_PIE_CHART
@@ -2915,19 +2966,19 @@ BuildInsertTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Bar Chart (x=565, y=42, w=65, h=64)
+    ; Bar Chart (x=417, y=72, w=84, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_bar_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 565
-    mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 65
-    mov dword [rsp+38h], 64
+    mov dword [rsp+20h], 417
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 84
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_INS_BAR_CHART
@@ -2937,18 +2988,18 @@ BuildInsertTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Group 4: Links & Text (x=640, y=26, w=185, h=88)
+    ; Group 4: Links && Text (x=513, y=26, w=175, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_ins_lnk_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
-    mov dword [rsp+20h], 640
+    mov dword [rsp+20h], 513
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 185
+    mov dword [rsp+30h], 175
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -2963,15 +3014,15 @@ BuildInsertTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Link (x=648, y=42, w=55, h=64)
+    ; Link (x=519, y=42, w=64, h=58)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_lnk_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 648
+    mov dword [rsp+20h], 519
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 55
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 64
+    mov dword [rsp+38h], 58
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_INS_LINK
@@ -2985,14 +3036,14 @@ BuildInsertTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Text Box (x=710, y=42, w=108, h=28)
+    ; Text Box (x=589, y=42, w=93, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_txb_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 710
+    mov dword [rsp+20h], 589
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 108
+    mov dword [rsp+30h], 93
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3007,14 +3058,14 @@ BuildInsertTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Symbol (x=710, y=74, w=108, h=28)
+    ; Symbol (x=589, y=72, w=93, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_sym_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 710
-    mov dword [rsp+28h], 74
-    mov dword [rsp+30h], 108
+    mov dword [rsp+20h], 589
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 93
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3041,14 +3092,14 @@ BuildDataTabControls:
     mov rbp, rsp
     sub rsp, 60h
 
-    ; Group 1: Get & Transform (x=10, y=26, w=190, h=88)
+    ; Group 1: Get && Transform (x=10, y=26, w=125, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_data_get_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
     mov dword [rsp+20h], 10
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 190
+    mov dword [rsp+30h], 125
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3063,15 +3114,15 @@ BuildDataTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; From CSV (x=16, y=42, w=85, h=64)
+    ; From CSV (x=16, y=42, w=113, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_data_csv_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
     mov dword [rsp+20h], 16
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 85
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 113
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_DATA_CSV
@@ -3081,19 +3132,19 @@ BuildDataTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Refresh All (x=106, y=42, w=88, h=64)
+    ; Refresh All (x=16, y=72, w=113, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_data_ref_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 106
-    mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 88
-    mov dword [rsp+38h], 64
+    mov dword [rsp+20h], 16
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 113
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_DATA_REFRESH
@@ -3103,18 +3154,18 @@ BuildDataTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Group 2: Sort & Filter (x=205, y=26, w=265, h=88)
+    ; Group 2: Sort && Filter (x=141, y=26, w=215, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_data_srt_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
-    mov dword [rsp+20h], 205
+    mov dword [rsp+20h], 141
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 265
+    mov dword [rsp+30h], 215
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3129,15 +3180,15 @@ BuildDataTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Sort A-Z (x=212, y=42, w=75, h=64)
+    ; Sort A-Z (x=147, y=42, w=90, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_data_asc_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 212
+    mov dword [rsp+20h], 147
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 75
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 90
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_DATA_SORT_ASC
@@ -3147,19 +3198,19 @@ BuildDataTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Sort Z-A (x=292, y=42, w=75, h=64)
+    ; Sort Z-A (x=147, y=72, w=90, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_data_dsc_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 292
-    mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 75
-    mov dword [rsp+38h], 64
+    mov dword [rsp+20h], 147
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 90
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_DATA_SORT_DESC
@@ -3169,18 +3220,18 @@ BuildDataTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Filter (x=373, y=42, w=90, h=28)
+    ; Filter (x=243, y=42, w=107, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_data_flt_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 373
+    mov dword [rsp+20h], 243
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 90
+    mov dword [rsp+30h], 107
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3195,14 +3246,14 @@ BuildDataTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Clear Filter (x=373, y=74, w=90, h=28)
+    ; Clear Filter (x=243, y=72, w=107, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_data_clr_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 373
-    mov dword [rsp+28h], 74
-    mov dword [rsp+30h], 90
+    mov dword [rsp+20h], 243
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 107
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3217,14 +3268,14 @@ BuildDataTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Group 3: Data Tools (x=475, y=26, w=215, h=88)
+    ; Group 3: Data Tools (x=362, y=26, w=220, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_data_tls_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
-    mov dword [rsp+20h], 475
+    mov dword [rsp+20h], 362
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 215
+    mov dword [rsp+30h], 220
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3239,15 +3290,15 @@ BuildDataTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Text to Columns (x=482, y=42, w=90, h=64)
+    ; Text to Columns (x=368, y=42, w=95, h=58)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_data_spl_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 482
+    mov dword [rsp+20h], 368
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 90
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 95
+    mov dword [rsp+38h], 58
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_DATA_SPLIT
@@ -3261,14 +3312,14 @@ BuildDataTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Remove Duplicates (x=578, y=42, w=105, h=28)
+    ; Remove Duplicates (x=469, y=42, w=107, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_data_dup_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 578
+    mov dword [rsp+20h], 469
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 105
+    mov dword [rsp+30h], 107
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3283,14 +3334,14 @@ BuildDataTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Data Validation (x=578, y=74, w=105, h=28)
+    ; Data Validation (x=469, y=72, w=107, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_data_val_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 578
-    mov dword [rsp+28h], 74
-    mov dword [rsp+30h], 105
+    mov dword [rsp+20h], 469
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 107
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3305,14 +3356,14 @@ BuildDataTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Group 4: Forecast & Analysis (x=695, y=26, w=200, h=88)
+    ; Group 4: Forecast && Analysis (x=588, y=26, w=155, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_data_fcs_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
-    mov dword [rsp+20h], 695
+    mov dword [rsp+20h], 588
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 200
+    mov dword [rsp+30h], 155
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3327,15 +3378,15 @@ BuildDataTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; SIMD Benchmark (x=702, y=42, w=90, h=64)
+    ; SIMD Benchmark (x=594, y=42, w=143, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_data_sim_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 702
+    mov dword [rsp+20h], 594
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 90
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 143
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_DATA_BENCH
@@ -3345,19 +3396,19 @@ BuildDataTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; What-If (x=798, y=42, w=90, h=64)
+    ; What-If (x=594, y=72, w=143, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_data_wif_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 798
-    mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 90
-    mov dword [rsp+38h], 64
+    mov dword [rsp+20h], 594
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 143
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_DATA_WHATIF
@@ -3367,7 +3418,7 @@ BuildDataTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
@@ -3383,14 +3434,14 @@ BuildFormulasTabControls:
     mov rbp, rsp
     sub rsp, 60h
 
-    ; Group 1: Function Library (x=10, y=26, w=595, h=88)
+    ; Group 1: Function Library (x=10, y=26, w=530, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_form_lib_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
     mov dword [rsp+20h], 10
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 595
+    mov dword [rsp+30h], 530
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3405,15 +3456,15 @@ BuildFormulasTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Insert Function [fx] (x=16, y=42, w=80, h=64)
+    ; Insert Function [fx] (x=16, y=42, w=76, h=58)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_fx_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
     mov dword [rsp+20h], 16
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 80
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 76
+    mov dword [rsp+38h], 58
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_FORM_FX
@@ -3427,15 +3478,15 @@ BuildFormulasTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; AutoSum (x=102, y=42, w=75, h=64)
+    ; AutoSum (x=98, y=42, w=76, h=58)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_sum_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 102
+    mov dword [rsp+20h], 98
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 75
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 76
+    mov dword [rsp+38h], 58
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_FORM_AUTOSUM
@@ -3449,14 +3500,14 @@ BuildFormulasTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Financial (x=183, y=42, w=80, h=28)
+    ; Financial (x=180, y=42, w=76, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_fin_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 183
+    mov dword [rsp+20h], 180
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 80
+    mov dword [rsp+30h], 76
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3471,14 +3522,14 @@ BuildFormulasTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Logical (x=183, y=74, w=80, h=28)
+    ; Logical (x=180, y=72, w=76, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_log_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 183
-    mov dword [rsp+28h], 74
-    mov dword [rsp+30h], 80
+    mov dword [rsp+20h], 180
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 76
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3493,14 +3544,14 @@ BuildFormulasTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Text (x=269, y=42, w=80, h=28)
+    ; Text (x=262, y=42, w=76, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_txt_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 269
+    mov dword [rsp+20h], 262
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 80
+    mov dword [rsp+30h], 76
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3515,14 +3566,14 @@ BuildFormulasTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Date/Time (x=269, y=74, w=80, h=28)
+    ; Date/Time (x=262, y=72, w=76, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_dat_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 269
-    mov dword [rsp+28h], 74
-    mov dword [rsp+30h], 80
+    mov dword [rsp+20h], 262
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 76
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3537,14 +3588,14 @@ BuildFormulasTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Lookup (x=355, y=42, w=80, h=28)
+    ; Lookup (x=344, y=42, w=76, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_luk_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 355
+    mov dword [rsp+20h], 344
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 80
+    mov dword [rsp+30h], 76
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3559,14 +3610,14 @@ BuildFormulasTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Math/Trig (x=355, y=74, w=80, h=28)
+    ; Math/Trig (x=344, y=72, w=76, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_mth_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 355
-    mov dword [rsp+28h], 74
-    mov dword [rsp+30h], 80
+    mov dword [rsp+20h], 344
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 76
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3581,15 +3632,15 @@ BuildFormulasTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; More fx (x=442, y=42, w=80, h=64)
+    ; More fx (x=426, y=42, w=108, h=58)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_mor_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 442
+    mov dword [rsp+20h], 426
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 80
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 108
+    mov dword [rsp+38h], 58
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_FORM_MORE
@@ -3599,18 +3650,18 @@ BuildFormulasTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontSmall]
+    mov r8, [hFontBold]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Group 2: Defined Names (x=530, y=26, w=160, h=88)
+    ; Group 2: Defined Names (x=546, y=26, w=125, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_form_nam_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
-    mov dword [rsp+20h], 530
+    mov dword [rsp+20h], 546
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 160
+    mov dword [rsp+30h], 125
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3625,15 +3676,15 @@ BuildFormulasTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Name Mgr (x=538, y=42, w=70, h=64)
+    ; Name Mgr (x=552, y=42, w=113, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_nm_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 538
+    mov dword [rsp+20h], 552
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 70
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 113
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_FORM_NAME_MGR
@@ -3643,19 +3694,19 @@ BuildFormulasTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Define Name (x=614, y=42, w=70, h=64)
+    ; Define Name (x=552, y=72, w=113, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_df_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 614
-    mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 70
-    mov dword [rsp+38h], 64
+    mov dword [rsp+20h], 552
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 113
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_FORM_DEF_NAME
@@ -3665,18 +3716,18 @@ BuildFormulasTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Group 3: Calculation (x=698, y=26, w=195, h=88)
+    ; Group 3: Calculation (x=677, y=26, w=130, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_form_clc_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
-    mov dword [rsp+20h], 698
+    mov dword [rsp+20h], 677
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 195
+    mov dword [rsp+30h], 130
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3691,15 +3742,15 @@ BuildFormulasTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Calculate (x=706, y=42, w=85, h=64)
+    ; Calculate (x=683, y=42, w=118, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_cal_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 706
+    mov dword [rsp+20h], 683
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 85
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 118
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_FORM_CALC_NOW
@@ -3709,19 +3760,19 @@ BuildFormulasTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Eval Formula (x=798, y=42, w=88, h=64)
+    ; Eval Formula (x=683, y=72, w=118, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_form_evl_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 798
-    mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 88
-    mov dword [rsp+38h], 64
+    mov dword [rsp+20h], 683
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 118
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_FORM_EVAL
@@ -3731,7 +3782,7 @@ BuildFormulasTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
@@ -3747,14 +3798,14 @@ BuildViewTabControls:
     mov rbp, rsp
     sub rsp, 60h
 
-    ; Group 1: Workbook Views (x=10, y=26, w=160, h=88)
+    ; Group 1: Workbook Views (x=10, y=26, w=125, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_view_vws_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
     mov dword [rsp+20h], 10
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 160
+    mov dword [rsp+30h], 125
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3769,15 +3820,15 @@ BuildViewTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Normal (x=16, y=42, w=70, h=64)
+    ; Normal (x=16, y=42, w=113, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_view_nrm_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
     mov dword [rsp+20h], 16
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 70
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 113
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_VIEW_NORMAL
@@ -3787,19 +3838,19 @@ BuildViewTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Page Layout (x=92, y=42, w=72, h=64)
+    ; Page Layout (x=16, y=72, w=113, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_view_lay_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 92
-    mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 72
-    mov dword [rsp+38h], 64
+    mov dword [rsp+20h], 16
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 113
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_VIEW_PAGELAY
@@ -3809,18 +3860,18 @@ BuildViewTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; Group 2: Show (x=175, y=26, w=200, h=88)
+    ; Group 2: Show && Hide (x=141, y=26, w=220, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_view_shw_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
-    mov dword [rsp+20h], 175
+    mov dword [rsp+20h], 141
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 200
+    mov dword [rsp+30h], 220
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3835,15 +3886,15 @@ BuildViewTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Gridlines (x=182, y=42, w=90, h=64)
+    ; Gridlines (x=147, y=42, w=92, h=58)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_view_grd_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 182
+    mov dword [rsp+20h], 147
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 90
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 92
+    mov dword [rsp+38h], 58
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_VIEW_GRIDLINES
@@ -3857,14 +3908,14 @@ BuildViewTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Formula Bar (x=278, y=42, w=90, h=28)
+    ; Formula Bar (x=245, y=42, w=110, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_view_bar_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 278
+    mov dword [rsp+20h], 245
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 90
+    mov dword [rsp+30h], 110
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3879,14 +3930,14 @@ BuildViewTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Headings (x=278, y=74, w=90, h=28)
+    ; Headings (x=245, y=72, w=110, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_view_hdg_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 278
-    mov dword [rsp+28h], 74
-    mov dword [rsp+30h], 90
+    mov dword [rsp+20h], 245
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 110
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3901,14 +3952,14 @@ BuildViewTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Group 3: Zoom (x=380, y=26, w=200, h=88)
+    ; Group 3: Zoom (x=367, y=26, w=185, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_view_zom_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
-    mov dword [rsp+20h], 380
+    mov dword [rsp+20h], 367
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 200
+    mov dword [rsp+30h], 185
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3923,15 +3974,15 @@ BuildViewTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; 100% (x=388, y=42, w=60, h=64)
+    ; 100% (x=373, y=42, w=60, h=58)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_view_z100_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 388
+    mov dword [rsp+20h], 373
     mov dword [rsp+28h], 42
     mov dword [rsp+30h], 60
-    mov dword [rsp+38h], 64
+    mov dword [rsp+38h], 58
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_VIEW_ZOOM100
@@ -3945,14 +3996,14 @@ BuildViewTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Zoom In (+) (x=454, y=42, w=120, h=28)
+    ; Zoom In (+) (x=439, y=42, w=107, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_view_zin_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 454
+    mov dword [rsp+20h], 439
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 120
+    mov dword [rsp+30h], 107
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3967,14 +4018,14 @@ BuildViewTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Zoom Out (-) (x=454, y=74, w=120, h=28)
+    ; Zoom Out (-) (x=439, y=72, w=107, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_view_zot_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 454
-    mov dword [rsp+28h], 74
-    mov dword [rsp+30h], 120
+    mov dword [rsp+20h], 439
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 107
     mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -3989,14 +4040,14 @@ BuildViewTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Group 4: Window (x=585, y=26, w=170, h=88)
+    ; Group 4: Window (x=558, y=26, w=125, h=88)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_view_wnd_txt]
     mov r9d, WS_CHILD or BS_GROUPBOX
-    mov dword [rsp+20h], 585
+    mov dword [rsp+20h], 558
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 170
+    mov dword [rsp+30h], 125
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -4011,15 +4062,15 @@ BuildViewTabControls:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Freeze Panes (x=592, y=42, w=75, h=64)
+    ; Freeze Panes (x=564, y=42, w=113, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_view_frz_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 592
+    mov dword [rsp+20h], 564
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 75
-    mov dword [rsp+38h], 64
+    mov dword [rsp+30h], 113
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_VIEW_FREEZE
@@ -4029,19 +4080,19 @@ BuildViewTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
-    ; New Window (x=673, y=42, w=75, h=64)
+    ; New Window (x=564, y=72, w=113, h=28)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_view_nw_txt]
     mov r9d, WS_CHILD or BS_PUSHBUTTON
-    mov dword [rsp+20h], 673
-    mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 75
-    mov dword [rsp+38h], 64
+    mov dword [rsp+20h], 564
+    mov dword [rsp+28h], 72
+    mov dword [rsp+30h], 113
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_VIEW_NEW_WND
@@ -4051,7 +4102,7 @@ BuildViewTabControls:
     call [CreateWindowExA]
     mov rcx, rax
     mov edx, WM_SETFONT
-    mov r8, [hFontBold]
+    mov r8, [hFontSmall]
     mov r9d, 1
     call [SendMessageA]
 
@@ -10949,6 +11000,10 @@ DoShowFxWizard:
     mov rax, [hInst]
     mov qword [wc_wiz+24], rax
 
+    mov rax, [hAppIcon]
+    mov qword [wc_wiz+32], rax
+    mov qword [wc_wiz+72], rax
+
     xor ecx, ecx
     mov edx, 32512 ; IDC_ARROW
     call [LoadCursorA]
@@ -10987,7 +11042,20 @@ DoShowFxWizard:
     add rsp, 60h
     mov [hFxWizWnd], rax
 
-    mov rcx, rax
+    ; Set wizard window icons
+    mov rcx, [hFxWizWnd]
+    mov edx, 0080h ; WM_SETICON
+    mov r8d, 1     ; ICON_BIG
+    mov r9, [hAppIcon]
+    call [SendMessageA]
+
+    mov rcx, [hFxWizWnd]
+    mov edx, 0080h ; WM_SETICON
+    xor r8d, r8d   ; ICON_SMALL
+    mov r9, [hAppIcon]
+    call [SendMessageA]
+
+    mov rcx, [hFxWizWnd]
     mov edx, 1 ; SW_SHOWNORMAL
     call [ShowWindow]
     mov rcx, [hFxWizWnd]
@@ -11836,6 +11904,7 @@ user32_table:
     ReleaseCapture              dq RVA _ReleaseCapture
     GetAsyncKeyState             dq RVA _GetAsyncKeyState
     SetWindowPos                dq RVA _SetWindowPos
+    LoadImageA                  dq RVA _LoadImageA
                                 dq 0
 
 gdi32_table:
@@ -11979,6 +12048,8 @@ _GetAsyncKeyState dw 0
  db 'GetAsyncKeyState', 0
 _SetWindowPos dw 0
  db 'SetWindowPos', 0
+_LoadImageA dw 0
+ db 'LoadImageA', 0
 
 _CreateFontA dw 0
  db 'CreateFontA', 0
@@ -12018,4 +12089,13 @@ _system dw 0
  db 'system', 0
 _remove dw 0
  db 'remove', 0
+
+include 'C:\asm\hdd\INCLUDE\MACRO\RESOURCE.INC'
+
+section '.rsrc' resource data readable
+  directory 3, icons, 14, group_icons
+  resource icons, 1, 0409h, icon_data
+  resource group_icons, 1, 0409h, main_icon
+  icon main_icon, icon_data, 'app_icon.ico'
+
 

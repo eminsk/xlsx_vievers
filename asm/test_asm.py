@@ -269,6 +269,123 @@ class TestAsmEngine(unittest.TestCase):
             if proc.poll() is None:
                 proc.kill()
 
+    def test_gui_icon_embedded_in_pe_and_taskbar(self):
+        import ctypes
+        from ctypes import wintypes
+        import subprocess
+
+        shell32 = ctypes.windll.shell32
+        user32 = ctypes.windll.user32
+        exe_path = Path(__file__).parent / "xlsx_gui64.exe"
+
+        # 1. Verify PE Embedded Resource Icon
+        h_icon_large = wintypes.HICON()
+        h_icon_small = wintypes.HICON()
+        num = shell32.ExtractIconExW(str(exe_path), 0, ctypes.byref(h_icon_large), ctypes.byref(h_icon_small), 1)
+        self.assertGreater(num, 0, "xlsx_gui64.exe must have embedded PE icon")
+        self.assertNotEqual(h_icon_large.value, 0, "Large icon handle must not be null")
+        self.assertNotEqual(h_icon_small.value, 0, "Small icon handle must not be null")
+
+        # 2. Verify Window Icon at Runtime
+        proc = subprocess.Popen([str(exe_path)])
+        time.sleep(1.0)
+        hwnd_main = 0
+        try:
+            def cb_m(h, _):
+                nonlocal hwnd_main
+                cls = ctypes.create_unicode_buffer(256)
+                user32.GetClassNameW(h, cls, 256)
+                if "ExcelViewerPro_ASM64" in cls.value:
+                    hwnd_main = h
+                    return False
+                return True
+
+            user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)(cb_m), 0)
+            self.assertTrue(hwnd_main, "Main window must be found")
+
+            # Check WM_GETICON or class icons
+            WM_GETICON = 0x007F
+            ICON_BIG = 1
+            ICON_SMALL = 0
+            GCLP_HICON = -14
+            GCLP_HICONSM = -34
+
+            h_big = user32.SendMessageW(hwnd_main, WM_GETICON, ICON_BIG, 0)
+            if not h_big:
+                GetClassLongPtr = getattr(user32, "GetClassLongPtrW", user32.GetClassLongW)
+                h_big = GetClassLongPtr(hwnd_main, GCLP_HICON)
+
+            self.assertNotEqual(h_big, 0, "Window must have big icon for taskbar / Alt+Tab")
+        finally:
+            if hwnd_main:
+                user32.PostMessageW(hwnd_main, 0x0010, 0, 0)
+            time.sleep(0.2)
+            if proc.poll() is None:
+                proc.kill()
+
+    def test_ribbon_tab_styling_and_buttons(self):
+        import ctypes
+        import subprocess
+
+        user32 = ctypes.windll.user32
+        exe_path = Path(__file__).parent / "xlsx_gui64.exe"
+        proc = subprocess.Popen([str(exe_path)])
+        time.sleep(1.0)
+        hwnd_main = 0
+        try:
+            def cb_m(h, _):
+                nonlocal hwnd_main
+                cls = ctypes.create_unicode_buffer(256)
+                user32.GetClassNameW(h, cls, 256)
+                if "ExcelViewerPro_ASM64" in cls.value:
+                    hwnd_main = h
+                    return False
+                return True
+
+            user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)(cb_m), 0)
+            self.assertTrue(hwnd_main, "Main window must be found")
+
+            ctrls = {}
+            def cb_c(h, _):
+                cid = user32.GetWindowLongW(h, -12)
+                buf = ctypes.create_unicode_buffer(256)
+                user32.GetWindowTextW(h, buf, 256)
+                ctrls[cid] = buf.value
+                return True
+
+            user32.EnumChildWindows(hwnd_main, ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)(cb_c), 0)
+
+            # Check Insert Tab buttons exist and have polished labels
+            self.assertIn(1401, ctrls) # ID_BTN_INS_TABLE
+            self.assertEqual(ctrls[1401], "[#] Table")
+            self.assertIn(1402, ctrls) # ID_BTN_INS_PIVOT
+            self.assertEqual(ctrls[1402], "[+] PivotTable")
+
+            # Check Data Tab buttons
+            self.assertIn(1421, ctrls) # ID_BTN_DATA_CSV
+            self.assertEqual(ctrls[1421], "[>] From CSV")
+            self.assertIn(1424, ctrls) # ID_BTN_DATA_SORT_ASC
+            self.assertEqual(ctrls[1424], "AZ Sort")
+
+            # Check Formulas Tab buttons
+            self.assertIn(1441, ctrls) # ID_BTN_FORM_FX
+            self.assertEqual(ctrls[1441], "[fx] Insert fx")
+            self.assertIn(1442, ctrls) # ID_BTN_FORM_AUTOSUM
+            self.assertEqual(ctrls[1442], "[S] AutoSum")
+
+            # Check View Tab buttons
+            self.assertIn(1461, ctrls) # ID_BTN_VIEW_NORMAL
+            self.assertEqual(ctrls[1461], "[=] Normal")
+            self.assertIn(1464, ctrls) # ID_BTN_VIEW_GRIDLINES
+            self.assertEqual(ctrls[1464], "[x] Gridlines")
+        finally:
+            if hwnd_main:
+                user32.PostMessageW(hwnd_main, 0x0010, 0, 0)
+            time.sleep(0.2)
+            if proc.poll() is None:
+                proc.kill()
+
+
 
 def run_benchmark():
     print("=" * 70)
