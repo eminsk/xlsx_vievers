@@ -1,0 +1,381 @@
+; ============================================================================
+; Excel Viewer Pro — Constants, IDs, and Win32 Definitions
+; ============================================================================
+
+; -----------------------------------------------------------------------------
+; Control IDs
+; -----------------------------------------------------------------------------
+ID_MENU_NEW         = 101
+ID_MENU_OPEN_CSV    = 102
+ID_MENU_OPEN_DEMO   = 103
+ID_MENU_SAVE        = 104
+ID_MENU_SAVEAS      = 105
+ID_MENU_EXIT        = 106
+
+ID_MENU_UNDO        = 111
+ID_MENU_REDO        = 112
+ID_MENU_CUT         = 113
+ID_MENU_COPY        = 114
+ID_MENU_PASTE       = 115
+ID_MENU_DEL_CELL    = 116
+ID_MENU_SELECT_ALL  = 117
+ID_MENU_FIND        = 118
+
+ID_MENU_INSERT_ROW  = 121
+ID_MENU_DELETE_ROW  = 122
+ID_MENU_INSERT_FX   = 123
+
+ID_MENU_FONT_BOLD   = 131
+ID_MENU_FONT_ITALIC = 132
+ID_MENU_FONT_UNDER  = 133
+ID_MENU_FONT_STRIKE = 134
+ID_MENU_FONT_INC    = 135
+ID_MENU_FONT_DEC    = 136
+ID_MENU_ALIGN_LEFT  = 137
+ID_MENU_ALIGN_CENT  = 138
+ID_MENU_ALIGN_RIGH  = 139
+ID_MENU_FMT_DOLLAR  = 140
+ID_MENU_FMT_RUBLE   = 141
+ID_MENU_FMT_PERCENT = 142
+ID_MENU_FMT_COMMA   = 143
+
+ID_MENU_AUTOSUM     = 151
+ID_MENU_AVERAGE     = 152
+ID_MENU_MIN         = 153
+ID_MENU_MAX         = 154
+ID_MENU_RECALC      = 155
+ID_MENU_PMT         = 156
+
+ID_MENU_SORT_ASC    = 161
+ID_MENU_SORT_DESC   = 162
+ID_MENU_BENCHMARK   = 163
+
+ID_MENU_GRIDLINES   = 171
+ID_MENU_ZOOM100     = 172
+ID_MENU_REFRESH     = 173
+
+ID_MENU_FORM_REF    = 181
+ID_MENU_SIMD_INFO   = 182
+ID_MENU_ABOUT       = 183
+
+; Menu Icon Types
+ICO_BOLD        = 1
+ICO_ITALIC      = 2
+ICO_UNDER       = 3
+ICO_STRIKE      = 4
+ICO_FINC        = 5
+ICO_FDEC        = 6
+ICO_ALIGN_L     = 7
+ICO_ALIGN_C     = 8
+ICO_ALIGN_R     = 9
+ICO_USD         = 10
+ICO_RUB         = 11
+ICO_PCT         = 12
+ICO_NUM         = 13
+ICO_NEW         = 14
+ICO_OPEN        = 15
+ICO_OPEN_DEMO   = 16
+ICO_SAVE        = 17
+ICO_SAVEAS      = 18
+ICO_EXIT        = 19
+ICO_UNDO        = 20
+ICO_REDO        = 21
+ICO_CUT         = 22
+ICO_COPY        = 23
+ICO_PASTE       = 24
+ICO_DEL_CELL    = 25
+ICO_SELECT_ALL  = 26
+ICO_FIND        = 27
+ICO_GRIDLINES   = 28
+ICO_ZOOM100     = 29
+ICO_REFRESH     = 30
+ICO_INS_ROW     = 31
+ICO_DEL_ROW     = 32
+ICO_FX          = 33
+ICO_RECALC      = 34
+ICO_AUTOSUM     = 35
+ICO_AVERAGE     = 36
+ICO_MIN         = 37
+ICO_MAX         = 38
+ICO_PMT         = 39
+ICO_SORT_ASC    = 40
+ICO_SORT_DESC   = 41
+ICO_BENCHMARK   = 42
+ICO_FORM_REF    = 43
+ICO_SIMD_INFO   = 44
+ICO_ABOUT       = 45
+
+ID_RIBBON_TABS      = 1100
+
+; Ribbon Home Controls
+ID_GRP_UNDO         = 1105
+ID_BTN_UNDO         = 1106
+ID_BTN_REDO         = 1107
+
+ID_GRP_CLIPBOARD    = 1110
+ID_BTN_PASTE        = 1111
+ID_BTN_CUT          = 1112
+ID_BTN_COPY         = 1113
+ID_BTN_FORMAT       = 1114
+
+ID_GRP_FONT         = 1120
+ID_COMBO_FONT       = 1121
+ID_COMBO_SIZE       = 1122
+ID_BTN_INC_FONT     = 1123
+ID_BTN_DEC_FONT     = 1124
+ID_BTN_BOLD         = 1125
+ID_BTN_ITALIC       = 1126
+ID_BTN_UNDERLINE    = 1127
+ID_BTN_STRIKE       = 1128
+ID_BTN_BORDER       = 1129
+ID_BTN_FILL_COLOR   = 1130
+ID_BTN_TEXT_COLOR   = 1131
+
+ID_GRP_ALIGN        = 1140
+ID_BTN_TOP          = 1141
+ID_BTN_MID          = 1142
+ID_BTN_BOT          = 1143
+ID_BTN_LEFT         = 1144
+ID_BTN_CENTER       = 1145
+ID_BTN_RIGHT        = 1146
+ID_BTN_WRAP         = 1147
+ID_BTN_MERGE        = 1148
+
+ID_GRP_NUMBER       = 1150
+ID_COMBO_NUM_FMT    = 1151
+ID_BTN_RUBLE        = 1152
+ID_BTN_DOLLAR       = 1153
+ID_BTN_PERCENT      = 1154
+ID_BTN_COMMA        = 1155
+ID_BTN_INC_DECIMAL  = 1156
+ID_BTN_DEC_DECIMAL  = 1157
+
+ID_GRP_STYLES       = 1160
+ID_BTN_COND_FMT     = 1161
+
+ID_GRP_CELLS        = 1170
+ID_BTN_INSERT_CELL  = 1171
+ID_BTN_DELETE_CELL  = 1172
+
+ID_GRP_EDITING      = 1180
+ID_BTN_AUTOSUM      = 1181
+ID_BTN_SORT_FILTER  = 1182
+ID_BTN_FIND_SELECT  = 1183
+
+; Formula Bar
+ID_EDIT_NAME_BOX    = 1201
+ID_BTN_FX           = 1202
+ID_EDIT_FORMULA     = 1203
+
+; Grid & Bottom Bar
+ID_GRID_VIEW        = 1301
+ID_SHEET_TABS       = 1302
+ID_STATUSBAR        = 1303
+
+; Ribbon Insert Controls
+ID_GRP_INS_TABLES    = 1400
+ID_BTN_INS_TABLE     = 1401
+ID_BTN_INS_PIVOT     = 1402
+ID_GRP_INS_ILLUST    = 1403
+ID_BTN_INS_PICTURE   = 1404
+ID_BTN_INS_SHAPES    = 1405
+ID_BTN_INS_ICONS     = 1406
+ID_GRP_INS_CHARTS    = 1407
+ID_BTN_INS_COL_CHART = 1408
+ID_BTN_INS_LINE_CHART= 1409
+ID_BTN_INS_PIE_CHART = 1410
+ID_BTN_INS_BAR_CHART = 1411
+ID_GRP_INS_LINKS     = 1412
+ID_BTN_INS_LINK      = 1413
+ID_BTN_INS_TEXTBOX   = 1414
+ID_BTN_INS_SYMBOL    = 1415
+
+; Ribbon Data Controls
+ID_GRP_DATA_GET      = 1420
+ID_BTN_DATA_CSV      = 1421
+ID_BTN_DATA_REFRESH  = 1422
+ID_GRP_DATA_SORT     = 1423
+ID_BTN_DATA_SORT_ASC = 1424
+ID_BTN_DATA_SORT_DESC= 1425
+ID_BTN_DATA_FILTER   = 1426
+ID_BTN_DATA_CLEAR    = 1427
+ID_GRP_DATA_TOOLS    = 1428
+ID_BTN_DATA_SPLIT    = 1429
+ID_BTN_DATA_REMDUP   = 1430
+ID_BTN_DATA_VALID    = 1431
+ID_GRP_DATA_ANALYSIS = 1432
+ID_BTN_DATA_BENCH    = 1433
+ID_BTN_DATA_WHATIF   = 1434
+
+; Ribbon Formulas Controls
+ID_GRP_FORM_LIB      = 1440
+ID_BTN_FORM_FX       = 1441
+ID_BTN_FORM_AUTOSUM  = 1442
+ID_BTN_FORM_FIN      = 1443
+ID_BTN_FORM_LOGIC    = 1444
+ID_BTN_FORM_TEXT     = 1445
+ID_BTN_FORM_DATE     = 1446
+ID_BTN_FORM_LOOKUP   = 1447
+ID_BTN_FORM_MATH     = 1448
+ID_BTN_FORM_MORE     = 1449
+ID_GRP_FORM_NAMES    = 1450
+ID_BTN_FORM_NAME_MGR = 1451
+ID_BTN_FORM_DEF_NAME = 1452
+ID_GRP_FORM_CALC     = 1453
+ID_BTN_FORM_CALC_NOW = 1454
+ID_BTN_FORM_EVAL     = 1455
+
+; Ribbon View Controls
+ID_GRP_VIEW_VIEWS    = 1460
+ID_BTN_VIEW_NORMAL   = 1461
+ID_BTN_VIEW_PAGELAY  = 1462
+ID_GRP_VIEW_SHOW     = 1463
+ID_BTN_VIEW_GRIDLINES= 1464
+ID_BTN_VIEW_FORMBAR  = 1465
+ID_BTN_VIEW_HEADINGS = 1466
+ID_GRP_VIEW_ZOOM     = 1467
+ID_BTN_VIEW_ZOOM100  = 1468
+ID_BTN_VIEW_ZOOM_IN  = 1469
+ID_BTN_VIEW_ZOOM_OUT = 1470
+ID_GRP_VIEW_WINDOW   = 1471
+ID_BTN_VIEW_FREEZE   = 1472
+ID_BTN_VIEW_NEW_WND  = 1473
+
+; -----------------------------------------------------------------------------
+; Windows Constants
+; -----------------------------------------------------------------------------
+WS_OVERLAPPEDWINDOW = 00CF0000h
+WS_POPUP            = 80000000h
+WS_CAPTION          = 00C00000h
+WS_SYSMENU          = 00080000h
+WS_VISIBLE          = 10000000h
+WS_CHILD            = 40000000h
+WS_BORDER           = 00800000h
+WS_VSCROLL          = 00200000h
+WS_HSCROLL          = 00100000h
+WS_EX_CLIENTEDGE    = 00000200h
+ES_LEFT             = 0
+ES_AUTOHSCROLL      = 0080h
+ES_READONLY         = 0800h
+BS_PUSHBUTTON       = 0000h
+BS_OWNERDRAW        = 000Bh
+BS_GROUPBOX         = 0007h
+CBS_DROPDOWNLIST    = 0003h
+COLOR_BTNFACE       = 15
+COLOR_WINDOW        = 5
+CS_HREDRAW          = 0002h
+CS_VREDRAW          = 0001h
+WM_CREATE           = 0001h
+WM_DESTROY          = 0002h
+WM_CLOSE            = 0010h
+WM_SIZE             = 0005h
+WM_SETFONT          = 0030h
+WM_COMMAND          = 0111h
+WM_NOTIFY           = 004Eh
+WM_DRAWITEM         = 002Bh
+MF_STRING           = 0000h
+MF_POPUP            = 0010h
+MF_SEPARATOR        = 0800h
+CF_TEXT             = 1
+GMEM_MOVEABLE       = 0002h
+GMEM_ZEROINIT       = 0040h
+
+CB_ADDSTRING        = 0143h
+CB_SETCURSEL        = 014Eh
+CB_GETCURSEL        = 0147h
+CBN_SELCHANGE       = 1
+
+; Common Controls (ListView & Tab & Status)
+LVS_REPORT          = 0001h
+LVS_SINGLESEL       = 0004h
+LVS_SHOWSELALWAYS   = 0008h
+LVM_FIRST           = 1000h
+LVM_INSERTCOLUMNA   = LVM_FIRST + 27
+LVM_INSERTITEMA     = LVM_FIRST + 7
+LVM_SETITEMTEXTA    = LVM_FIRST + 46
+LVM_DELETEITEM      = LVM_FIRST + 8
+LVM_DELETEALLITEMS  = LVM_FIRST + 9
+LVM_GETITEMCOUNTA   = LVM_FIRST + 4
+LVM_SETEXTENDEDLISTVIEWSTYLE = LVM_FIRST + 54
+LVM_GETEXTENDEDLISTVIEWSTYLE = LVM_FIRST + 55
+LVM_GETNEXTITEM     = LVM_FIRST + 12
+LVM_GETITEMTEXTA    = LVM_FIRST + 45
+LVM_SETCOLUMNA      = LVM_FIRST + 26
+LVM_GETCOLUMNA      = LVM_FIRST + 25
+LVS_EX_GRIDLINES    = 0001h
+LVS_EX_FULLROWSELECT = 0020h
+LVS_EX_DOUBLEBUFFER = 00010000h
+LVCF_FMT            = 0001h
+LVCF_WIDTH          = 0002h
+LVCF_TEXT           = 0004h
+LVCF_SUBITEM        = 0008h
+LVCFMT_LEFT         = 0000h
+LVCFMT_RIGHT        = 0001h
+LVCFMT_CENTER       = 0002h
+LVIF_TEXT           = 0001h
+LVNI_SELECTED       = 0002h
+NM_CLICK            = -2
+NM_DBLCLK           = -3
+
+WM_SETFOCUS         = 0007h
+WM_KEYDOWN          = 0100h
+EM_SETSEL           = 00B1h
+VK_RETURN           = 0Dh
+VK_TAB              = 09h
+VK_CONTROL          = 11h
+VK_SHIFT            = 10h
+VK_DELETE           = 2Eh
+VK_F2               = 71h
+VK_F3               = 72h
+VK_F5               = 74h
+VK_F9               = 78h
+ID_WIZ_LIST         = 2001
+ID_WIZ_OK           = 2002
+ID_WIZ_CANCEL       = 2003
+ID_WIZ_SEARCH       = 2004
+ID_WIZ_GO           = 2005
+ID_WIZ_CAT          = 2006
+NUM_WIZ_FUNCS       = 129
+LVN_KEYDOWN         = -155
+
+LB_ADDSTRING        = 0180h
+LB_RESETCONTENT     = 0184h
+LB_SETCURSEL        = 0186h
+LB_GETCURSEL        = 0188h
+LB_GETCOUNT         = 018Bh
+LBN_SELCHANGE       = 1
+LBN_DBLCLK          = 2
+LBS_NOTIFY          = 0001h
+EN_CHANGE           = 0300h
+
+TCM_FIRST           = 1300h
+TCM_INSERTITEMA     = TCM_FIRST + 7
+TCM_GETCURSEL       = TCM_FIRST + 11
+TCM_SETCURSEL       = TCM_FIRST + 12
+TCM_GETITEMCOUNT    = TCM_FIRST + 4
+TCN_SELCHANGE       = -551
+TCIF_TEXT           = 0001h
+
+SB_SETPARTS         = 0404h
+SB_SETTEXTA         = 0401h
+
+LVM_GETSUBITEMRECT  = 1038h
+LVIR_BOUNDS         = 0
+LVIR_LABEL          = 2
+IDC_CELL_EDIT       = 3500
+
+WM_CONTEXTMENU      = 007Bh
+
+ALIGN_NONE          = 0
+ALIGN_LEFT          = 1
+ALIGN_CENTER        = 2
+ALIGN_RIGHT         = 3
+
+DT_LEFT             = 0000h
+DT_CENTER           = 0001h
+DT_RIGHT            = 0002h
+DT_VCENTER          = 0004h
+DT_SINGLELINE       = 0020h
+DT_NOPREFIX         = 0800h
+
+

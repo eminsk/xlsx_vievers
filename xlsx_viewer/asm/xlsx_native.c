@@ -36,10 +36,18 @@ typedef struct {
 
 typedef struct {
     char val[256];
+    char formula[256];
     uint32_t clrBk;
     uint32_t clrFg;
     uint8_t flags; // bit 0: bold, bit 1: has_bk, bit 2: has_fg
 } CellData;
+
+typedef struct {
+    uint16_t row;
+    uint8_t col;
+    uint8_t reserved;
+    char formula[256];
+} __attribute__((packed)) FormulaRecord;
 
 typedef struct {
     uint16_t row;
@@ -76,7 +84,18 @@ typedef struct {
 static SheetCell g_sheet2[500][16];
 static SheetCell g_sheet3[500][16];
 
+static double g_fin_deposit = 10.0;
+static double g_fin_lot_step = 100.0;
+static double g_fin_pips = 60.0;
+static double g_fin_pip_val = 10.0;
+static double g_fin_max_lot = 100.0;
+static int g_is_fin_plan = 0;
+
 static void evaluate_financial_plan(void);
+static void precalculate_financial_simulation(void);
+static void evaluate_forex_sheet(void);
+static void evaluate_crypto_sheet(void);
+static int resolve_local_cell_ref(const char* formula, int* out_r, int* out_c);
 
 // Helper: Convert hex char to int
 static int hex2int(char c) {
@@ -137,6 +156,33 @@ static int extract_attr(const char* tag_start, const char* attr_name, char* out,
     memcpy(out, p, len);
     out[len] = 0;
     return 1;
+}
+
+static void unescape_xml_entities(char* s) {
+    if (!s) return;
+    char* src = s;
+    char* dst = s;
+    while (*src) {
+        if (strncmp(src, "&lt;", 4) == 0) {
+            *dst++ = '<';
+            src += 4;
+        } else if (strncmp(src, "&gt;", 4) == 0) {
+            *dst++ = '>';
+            src += 4;
+        } else if (strncmp(src, "&amp;", 5) == 0) {
+            *dst++ = '&';
+            src += 5;
+        } else if (strncmp(src, "&quot;", 6) == 0) {
+            *dst++ = '"';
+            src += 6;
+        } else if (strncmp(src, "&apos;", 6) == 0) {
+            *dst++ = '\'';
+            src += 6;
+        } else {
+            *dst++ = *src++;
+        }
+    }
+    *dst = 0;
 }
 
 // Convert UTF-8 string to ANSI CP_ACP (CP1251 on Russian systems), replacing special Unicode symbols
@@ -362,9 +408,24 @@ static void prescan_sheet(const char* path, SheetCell cache[500][16]) {
 
     char* p = buf;
     while ((p = strstr(p, "<c ")) != NULL) {
-        char* end_c = strstr(p, "</c>");
-        char* next_c = strstr(p + 3, "<c ");
-        char* limit = end_c ? end_c + 4 : (next_c ? next_c : p + 200);
+        char* tag_close = strchr(p, '>');
+        if (!tag_close) break;
+        int is_self_closing = (tag_close > p && *(tag_close - 1) == '/');
+
+        char* limit = NULL;
+        if (is_self_closing) {
+            limit = tag_close + 1;
+        } else {
+            char* end_c = strstr(p, "</c>");
+            char* next_c = strstr(p + 3, "<c ");
+            if (end_c && (!next_c || end_c < next_c)) {
+                limit = end_c + 4;
+            } else if (next_c) {
+                limit = next_c;
+            } else {
+                limit = tag_close + 200;
+            }
+        }
 
         char r_attr[32] = {0};
         if (!extract_attr(p, "r", r_attr, sizeof(r_attr))) {
@@ -396,6 +457,31 @@ static void prescan_sheet(const char* path, SheetCell cache[500][16]) {
     free(buf);
 }
 
+// Helper: Resolve simple cell references like "H6", "=$C$5", "=+D6", "=D6"
+static int resolve_local_cell_ref(const char* formula, int* out_r, int* out_c) {
+    if (!formula) return 0;
+    const char* p = formula;
+    while (*p == ' ' || *p == '=' || *p == '+') p++;
+    if (*p == '$') p++;
+    if (!(*p >= 'A' && *p <= 'Z') && !(*p >= 'a' && *p <= 'z')) return 0;
+    int col = 0;
+    while ((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z')) {
+        char ch = *p;
+        if (ch >= 'a' && ch <= 'z') ch -= 32;
+        col = col * 26 + (ch - 'A' + 1);
+        p++;
+    }
+    if (*p == '$') p++;
+    if (!(*p >= '0' && *p <= '9')) return 0;
+    int row = atoi(p);
+    while (*p >= '0' && *p <= '9') p++;
+    while (*p == ' ') p++;
+    if (*p != 0) return 0;
+    if (out_r) *out_r = row - 1; // 0-based
+    if (out_c) *out_c = col;     // 1-based
+    return 1;
+}
+
 // Parse sheet1.xml into g_grid
 static void parse_sheet_xml(const char* path) {
     size_t len = 0;
@@ -408,9 +494,24 @@ static void parse_sheet_xml(const char* path) {
 
     char* p = buf;
     while ((p = strstr(p, "<c ")) != NULL) {
-        char* end_c = strstr(p, "</c>");
-        char* next_c = strstr(p + 3, "<c ");
-        char* limit = end_c ? end_c + 4 : (next_c ? next_c : p + 400);
+        char* tag_close = strchr(p, '>');
+        if (!tag_close) break;
+        int is_self_closing = (tag_close > p && *(tag_close - 1) == '/');
+
+        char* limit = NULL;
+        if (is_self_closing) {
+            limit = tag_close + 1;
+        } else {
+            char* end_c = strstr(p, "</c>");
+            char* next_c = strstr(p + 3, "<c ");
+            if (end_c && (!next_c || end_c < next_c)) {
+                limit = end_c + 4;
+            } else if (next_c) {
+                limit = next_c;
+            } else {
+                limit = tag_close + 400;
+            }
+        }
 
         char r_attr[32] = {0};
         char s_attr[16] = {0};
@@ -486,19 +587,31 @@ static void parse_sheet_xml(const char* path) {
             } else {
                 // Formula or numeric value
                 char* f_tag = strstr(p, "<f");
-                char formula[128] = {0};
+                char formula[256] = {0};
                 if (f_tag && f_tag < limit) {
-                    char* f_val = strchr(f_tag, '>');
-                    if (f_val && f_val < limit) {
-                        f_val++;
+                    char* f_close = strstr(f_tag, "/>");
+                    char* f_gt = strchr(f_tag, '>');
+                    if (f_gt && f_gt < limit && (!f_close || f_gt < f_close)) {
+                        char* f_val = f_gt + 1;
                         char* f_end = strstr(f_val, "</f>");
                         if (f_end && f_end < limit) {
                             int f_len = (int)(f_end - f_val);
-                            if (f_len < (int)sizeof(formula) - 1) {
+                            if (f_len > 0 && f_len < (int)sizeof(formula) - 1) {
                                 memcpy(formula, f_val, f_len);
                                 formula[f_len] = 0;
                             }
                         }
+                    }
+                }
+
+                if (formula[0]) {
+                    unescape_xml_entities(formula);
+                    char ansi_formula[256] = {0};
+                    utf8_to_acp(formula, ansi_formula, sizeof(ansi_formula) - 2);
+                    if (ansi_formula[0] == '=') {
+                        strncpy(g_grid[r][c].formula, ansi_formula, sizeof(g_grid[r][c].formula) - 1);
+                    } else {
+                        snprintf(g_grid[r][c].formula, sizeof(g_grid[r][c].formula), "=%s", ansi_formula);
                     }
                 }
 
@@ -552,6 +665,15 @@ static void parse_sheet_xml(const char* path) {
                         }
                     }
                     if (!has_val) {
+                        int lr = 0, lc = 0;
+                        if (resolve_local_cell_ref(formula, &lr, &lc) && lr >= 0 && lr < MAX_GRID_ROWS && lc >= 1 && lc < MAX_GRID_COLS) {
+                            if (g_grid[lr][lc].val[0] && g_grid[lr][lc].val[0] != '=') {
+                                strncpy(g_grid[r][c].val, g_grid[lr][lc].val, sizeof(g_grid[r][c].val) - 1);
+                                has_val = 1;
+                            }
+                        }
+                    }
+                    if (!has_val) {
                         char ansi_formula[256] = {0};
                         utf8_to_acp(formula, ansi_formula, sizeof(ansi_formula));
                         snprintf(g_grid[r][c].val, sizeof(g_grid[r][c].val), "=%s", ansi_formula);
@@ -599,6 +721,105 @@ static void parse_sheet_xml(const char* path) {
 
     // Run high-precision simulation engine for financial calculation spreadsheets
     evaluate_financial_plan();
+    evaluate_forex_sheet();
+    evaluate_crypto_sheet();
+}
+
+static void precalculate_financial_simulation(void) {
+    int f_days[12] = {22, 20, 22, 21, 22, 21, 22, 22, 21, 22, 21, 22};
+    int c_days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+    double deposit = g_fin_deposit > 0 ? g_fin_deposit : 10.0;
+    double lot_step = g_fin_lot_step > 0 ? g_fin_lot_step : 100.0;
+    double pips = g_fin_pips > 0 ? g_fin_pips : 60.0;
+    double pip_val = g_fin_pip_val > 0 ? g_fin_pip_val : 10.0;
+    double max_lot = g_fin_max_lot > 0 ? g_fin_max_lot : 100.0;
+
+    // Simulate Forex into g_sheet2
+    double cur = deposit;
+    int r_cur = 6; // 1-based row for day 1
+    for (int m = 0; m < 12; m++) {
+        int days = f_days[m];
+        int r_start = r_cur;
+        int r_end = r_cur + days - 1;
+        int r_sum = r_end + 1;
+
+        double m_start = cur;
+        double m_max_l = 0.0;
+        double m_tot_p = 0.0;
+
+        for (int d = 0; d < days; d++) {
+            int row = r_start + d;
+            double s_bal = cur;
+            double lot = fmin(max_lot, ceil(s_bal / lot_step) * 0.01);
+            if (lot > m_max_l) m_max_l = lot;
+            double dp = lot * pips * pip_val;
+            m_tot_p += dp;
+            double e_bal = s_bal + dp;
+            cur = e_bal;
+
+            if (row < 500) {
+                g_sheet2[row][4].num = s_bal; g_sheet2[row][4].has_num = 1;
+                g_sheet2[row][5].num = lot;   g_sheet2[row][5].has_num = 1;
+                g_sheet2[row][6].num = pips;  g_sheet2[row][6].has_num = 1;
+                g_sheet2[row][7].num = dp;    g_sheet2[row][7].has_num = 1;
+                g_sheet2[row][8].num = e_bal; g_sheet2[row][8].has_num = 1;
+            }
+        }
+
+        if (r_sum < 500) {
+            g_sheet2[r_sum][4].num = m_start; g_sheet2[r_sum][4].has_num = 1;
+            g_sheet2[r_sum][5].num = m_max_l; g_sheet2[r_sum][5].has_num = 1;
+            g_sheet2[r_sum][6].has_num = 0;
+            g_sheet2[r_sum][7].num = m_tot_p; g_sheet2[r_sum][7].has_num = 1;
+            g_sheet2[r_sum][8].num = cur;     g_sheet2[r_sum][8].has_num = 1;
+        }
+
+        r_cur = r_sum + 4;
+    }
+
+    // Simulate Crypto into g_sheet3
+    cur = deposit;
+    r_cur = 6;
+    for (int m = 0; m < 12; m++) {
+        int days = c_days[m];
+        int r_start = r_cur;
+        int r_end = r_cur + days - 1;
+        int r_sum = r_end + 1;
+
+        double m_start = cur;
+        double m_max_l = 0.0;
+        double m_tot_p = 0.0;
+
+        for (int d = 0; d < days; d++) {
+            int row = r_start + d;
+            double s_bal = cur;
+            double lot = fmin(max_lot, ceil(s_bal / lot_step) * 0.01);
+            if (lot > m_max_l) m_max_l = lot;
+            double dp = lot * pips * pip_val;
+            m_tot_p += dp;
+            double e_bal = s_bal + dp;
+            cur = e_bal;
+
+            if (row < 500) {
+                g_sheet3[row][4].num = s_bal; g_sheet3[row][4].has_num = 1;
+                g_sheet3[row][5].num = lot;   g_sheet3[row][5].has_num = 1;
+                g_sheet3[row][6].num = pips;  g_sheet3[row][6].has_num = 1;
+                g_sheet3[row][7].num = dp;    g_sheet3[row][7].has_num = 1;
+                g_sheet3[row][8].num = e_bal; g_sheet3[row][8].has_num = 1;
+            }
+        }
+
+        if (r_sum < 500) {
+            g_sheet3[r_sum][4].num = m_start; g_sheet3[r_sum][4].has_num = 1;
+            g_sheet3[r_sum][5].num = m_max_l; g_sheet3[r_sum][5].has_num = 1;
+            g_sheet3[r_sum][6].has_num = 0;
+            g_sheet3[r_sum][7].num = m_tot_p; g_sheet3[r_sum][7].has_num = 1;
+            g_sheet3[r_sum][8].num = cur;     g_sheet3[r_sum][8].has_num = 1;
+        }
+
+        r_cur = r_sum + 4;
+    }
 }
 
 // Financial plan calculator for investment simulator spreadsheets
@@ -635,6 +856,15 @@ static void evaluate_financial_plan(void) {
         double v = atof(g_grid[8][3].val);
         if (v > 0) max_lot = v;
     }
+
+    g_fin_deposit = deposit;
+    g_fin_lot_step = lot_step;
+    g_fin_pips = pips;
+    g_fin_pip_val = pip_val;
+    g_fin_max_lot = max_lot;
+    g_is_fin_plan = 1;
+
+    precalculate_financial_simulation();
 
     // Format C5..C10
     format_number(deposit, 164, g_grid[4][3].val, sizeof(g_grid[4][3].val)); // $10.00
@@ -794,13 +1024,69 @@ static void evaluate_financial_plan(void) {
     if (g_max_col < 14) g_max_col = 14;
 }
 
+static void evaluate_forex_sheet(void) {
+    int is_forex = 0;
+    if (strstr(g_grid[0][1].val, "Forex") || strstr(g_grid[0][1].val, "\xd4\xce\xd0\xc5\xca\xd1") || strstr(g_grid[0][1].val, "\xf4\xee\xf0\xe5\xea\xf1")) {
+        is_forex = 1;
+    } else if (strstr(g_grid[3][1].val, "(22") && strstr(g_grid[3][1].val, "\xdf\xed\xe2\xe0\xf0\xfc")) {
+        is_forex = 1;
+    }
+    if (!is_forex) return;
+
+    for (int r = 5; r <= 307; r++) {
+        int row_1 = r + 1;
+        if (row_1 < 500 && g_sheet2[row_1][4].has_num) {
+            format_number(g_sheet2[row_1][4].num, 164, g_grid[r][4].val, sizeof(g_grid[r][4].val));
+            format_number(g_sheet2[row_1][5].num, 2,   g_grid[r][5].val, sizeof(g_grid[r][5].val));
+            if (g_sheet2[row_1][6].has_num) {
+                format_number(g_sheet2[row_1][6].num, 1, g_grid[r][6].val, sizeof(g_grid[r][6].val));
+            } else {
+                g_grid[r][6].val[0] = 0;
+            }
+            format_number(g_sheet2[row_1][7].num, 164, g_grid[r][7].val, sizeof(g_grid[r][7].val));
+            format_number(g_sheet2[row_1][8].num, 164, g_grid[r][8].val, sizeof(g_grid[r][8].val));
+        }
+    }
+
+    if (g_max_row < 307) g_max_row = 307;
+    if (g_max_col < 8) g_max_col = 8;
+}
+
+static void evaluate_crypto_sheet(void) {
+    int is_crypto = 0;
+    if (strstr(g_grid[0][1].val, "Crypto") || strstr(g_grid[0][1].val, "\xca\xd0\xc8\xcf\xd2\xce") || strstr(g_grid[0][1].val, "\xea\xf0\xe8\xef\xf2\xee")) {
+        is_crypto = 1;
+    } else if (strstr(g_grid[3][1].val, "(31") && strstr(g_grid[3][1].val, "\xdf\xed\xe2\xe0\xf0\xfc")) {
+        is_crypto = 1;
+    }
+    if (!is_crypto) return;
+
+    for (int r = 5; r <= 414; r++) {
+        int row_1 = r + 1;
+        if (row_1 < 500 && g_sheet3[row_1][4].has_num) {
+            format_number(g_sheet3[row_1][4].num, 164, g_grid[r][4].val, sizeof(g_grid[r][4].val));
+            format_number(g_sheet3[row_1][5].num, 2,   g_grid[r][5].val, sizeof(g_grid[r][5].val));
+            if (g_sheet3[row_1][6].has_num) {
+                format_number(g_sheet3[row_1][6].num, 1, g_grid[r][6].val, sizeof(g_grid[r][6].val));
+            } else {
+                g_grid[r][6].val[0] = 0;
+            }
+            format_number(g_sheet3[row_1][7].num, 164, g_grid[r][7].val, sizeof(g_grid[r][7].val));
+            format_number(g_sheet3[row_1][8].num, 164, g_grid[r][8].val, sizeof(g_grid[r][8].val));
+        }
+    }
+
+    if (g_max_row < 414) g_max_row = 414;
+    if (g_max_col < 8) g_max_col = 8;
+}
+
 // Convert extracted sheet to CSV and binary .style file
 static int write_csv_and_style(const char* szCsvPath, const char* szStylePath) {
     FILE* fcsv = fopen(szCsvPath, "w");
     if (!fcsv) return -1;
 
     // Collect style records
-    StyleRecord records[10000];
+    static StyleRecord records[20000];
     int rec_count = 0;
 
     int max_c = g_max_col > 0 ? g_max_col : 10;
@@ -831,7 +1117,7 @@ static int write_csv_and_style(const char* szCsvPath, const char* szStylePath) {
             if (c < max_c) fputc(',', fcsv);
 
             // Record style
-            if (cd->flags != 0 && rec_count < 10000) {
+            if (cd->flags != 0 && rec_count < 20000) {
                 records[rec_count].row = (uint16_t)r;
                 records[rec_count].col = (uint8_t)c;
                 records[rec_count].flags = cd->flags;
@@ -856,7 +1142,139 @@ static int write_csv_and_style(const char* szCsvPath, const char* szStylePath) {
     }
     fclose(fstyle);
 
+    // Write binary .formula companion file
+    char szFormulaPath[MAX_PATH];
+    snprintf(szFormulaPath, sizeof(szFormulaPath), "%s.formula", szCsvPath);
+    FILE* fformula = fopen(szFormulaPath, "wb");
+    if (fformula) {
+        uint32_t f_count = 0;
+        for (int r = 0; r <= g_max_row; r++) {
+            for (int c = 1; c <= max_c; c++) {
+                if (g_grid[r][c].formula[0]) f_count++;
+            }
+        }
+        uint32_t magic_f = 0x46534C58; // 'XLSF'
+        fwrite(&magic_f, 4, 1, fformula);
+        fwrite(&f_count, 4, 1, fformula);
+        FormulaRecord frec;
+        memset(&frec, 0, sizeof(frec));
+        for (int r = 0; r <= g_max_row; r++) {
+            for (int c = 1; c <= max_c; c++) {
+                if (g_grid[r][c].formula[0]) {
+                    frec.row = (uint16_t)r;
+                    frec.col = (uint8_t)c;
+                    frec.reserved = 0;
+                    strncpy(frec.formula, g_grid[r][c].formula, sizeof(frec.formula) - 1);
+                    frec.formula[sizeof(frec.formula) - 1] = 0;
+                    fwrite(&frec, sizeof(FormulaRecord), 1, fformula);
+                }
+            }
+        }
+        fclose(fformula);
+    }
+
     return 0;
+}
+
+// Workbook Sheet Metadata
+typedef struct {
+    char name[128]; // CP1251 encoded sheet title
+    char xml_path[MAX_PATH];
+} WorkbookSheet;
+
+static WorkbookSheet g_wb_sheets[16];
+static int g_wb_sheet_count = 0;
+
+static void parse_workbook_sheets(const char* szExtractDir) {
+    g_wb_sheet_count = 0;
+    memset(g_wb_sheets, 0, sizeof(g_wb_sheets));
+
+    char pRels[MAX_PATH];
+    snprintf(pRels, sizeof(pRels), "%s\\xl\\_rels\\workbook.xml.rels", szExtractDir);
+    size_t rels_len = 0;
+    char* rels_buf = read_file_to_memory(pRels, &rels_len);
+
+    char rel_ids[32][32];
+    char rel_targets[32][MAX_PATH];
+    int rel_count = 0;
+
+    if (rels_buf) {
+        char* p = rels_buf;
+        while ((p = strstr(p, "<Relationship ")) != NULL && rel_count < 32) {
+            char id[32] = {0};
+            char target[MAX_PATH] = {0};
+            if (extract_attr(p, "Id", id, sizeof(id)) && extract_attr(p, "Target", target, sizeof(target))) {
+                strncpy(rel_ids[rel_count], id, sizeof(rel_ids[rel_count]) - 1);
+                strncpy(rel_targets[rel_count], target, sizeof(rel_targets[rel_count]) - 1);
+                rel_count++;
+            }
+            p += 14;
+        }
+        free(rels_buf);
+    }
+
+    char pWb[MAX_PATH];
+    snprintf(pWb, sizeof(pWb), "%s\\xl\\workbook.xml", szExtractDir);
+    size_t wb_len = 0;
+    char* wb_buf = read_file_to_memory(pWb, &wb_len);
+
+    if (wb_buf) {
+        char* p = wb_buf;
+        while ((p = strstr(p, "<sheet ")) != NULL && g_wb_sheet_count < 16) {
+            char name_raw[256] = {0};
+            char rid[64] = {0};
+            if (extract_attr(p, "name", name_raw, sizeof(name_raw))) {
+                unescape_xml_entities(name_raw);
+                utf8_to_acp(name_raw, g_wb_sheets[g_wb_sheet_count].name, sizeof(g_wb_sheets[g_wb_sheet_count].name));
+
+                if (!extract_attr(p, "r:id", rid, sizeof(rid))) {
+                    extract_attr(p, "id", rid, sizeof(rid));
+                }
+
+                // Match rid against rels
+                char target[MAX_PATH] = {0};
+                for (int i = 0; i < rel_count; i++) {
+                    if (strcmp(rel_ids[i], rid) == 0) {
+                        strncpy(target, rel_targets[i], sizeof(target) - 1);
+                        break;
+                    }
+                }
+
+                if (target[0]) {
+                    char* t = target;
+                    while (*t == '/' || *t == '\\') t++;
+                    if (_strnicmp(t, "xl/", 3) == 0 || _strnicmp(t, "xl\\", 3) == 0) {
+                        snprintf(g_wb_sheets[g_wb_sheet_count].xml_path, MAX_PATH, "%s\\%s", szExtractDir, t);
+                    } else {
+                        snprintf(g_wb_sheets[g_wb_sheet_count].xml_path, MAX_PATH, "%s\\xl\\%s", szExtractDir, t);
+                    }
+                    for (char* s = g_wb_sheets[g_wb_sheet_count].xml_path; *s; s++) {
+                        if (*s == '/') *s = '\\';
+                    }
+                    g_wb_sheet_count++;
+                }
+            }
+            p += 7;
+        }
+        free(wb_buf);
+    }
+
+    // Fallback if workbook.xml parsing didn't find any sheets
+    if (g_wb_sheet_count == 0) {
+        char test_path[MAX_PATH];
+        for (int i = 1; i <= 16; i++) {
+            snprintf(test_path, sizeof(test_path), "%s\\xl\\worksheets\\sheet%d.xml", szExtractDir, i);
+            FILE* ft = fopen(test_path, "r");
+            if (ft) {
+                fclose(ft);
+                snprintf(g_wb_sheets[g_wb_sheet_count].name, sizeof(g_wb_sheets[g_wb_sheet_count].name), "Sheet%d", i);
+                strncpy(g_wb_sheets[g_wb_sheet_count].xml_path, test_path, MAX_PATH - 1);
+                g_wb_sheet_count++;
+            } else {
+                if (i > 1 && g_wb_sheet_count > 0) break;
+            }
+        }
+    }
 }
 
 // Clean up temporary extracted directory
@@ -937,16 +1355,48 @@ __declspec(dllexport) int ConvertXlsxToCsvAndStyle(const char* szXlsxPath, const
     memset(g_sheet3, 0, sizeof(g_sheet3));
     prescan_sheet(pSheet2, g_sheet2);
     prescan_sheet(pSheet3, g_sheet3);
+    precalculate_financial_simulation();
 
     // Parse styles & strings
     parse_styles_xml(pStyles);
     parse_shared_strings_xml(pShared);
 
-    // Parse sheet1
-    parse_sheet_xml(pSheet1);
+    // Discover all workbook sheets
+    parse_workbook_sheets(szExtractDir);
 
-    // Write CSV and .style
-    int res = write_csv_and_style(szCsvPath, szStylePath);
+    int res = 0;
+    for (int i = 0; i < g_wb_sheet_count; i++) {
+        char csv_path[MAX_PATH];
+        char style_path[MAX_PATH];
+        if (i == 0) {
+            strncpy(csv_path, szCsvPath, sizeof(csv_path) - 1);
+            strncpy(style_path, szStylePath, sizeof(style_path) - 1);
+        } else {
+            snprintf(csv_path, sizeof(csv_path), "%s.%d", szCsvPath, i);
+            snprintf(style_path, sizeof(style_path), "%s.%d", szStylePath, i);
+        }
+
+        parse_sheet_xml(g_wb_sheets[i].xml_path);
+        int r = write_csv_and_style(csv_path, style_path);
+        if (i == 0) res = r;
+    }
+
+    // Write manifest .sheets file: magic 'XLTS', count, then 128 bytes name per sheet
+    char szSheetsPath[MAX_PATH];
+    snprintf(szSheetsPath, sizeof(szSheetsPath), "%s.sheets", szCsvPath);
+    FILE* fsheets = fopen(szSheetsPath, "wb");
+    if (fsheets) {
+        uint32_t magic = 0x53544C58; // 'XLTS'
+        fwrite(&magic, 4, 1, fsheets);
+        uint32_t count = (uint32_t)g_wb_sheet_count;
+        fwrite(&count, 4, 1, fsheets);
+        for (int i = 0; i < g_wb_sheet_count; i++) {
+            char name_rec[128] = {0};
+            strncpy(name_rec, g_wb_sheets[i].name, sizeof(name_rec) - 1);
+            fwrite(name_rec, sizeof(name_rec), 1, fsheets);
+        }
+        fclose(fsheets);
+    }
 
     // Clean up strings
     for (int i = 0; i < g_shared_count; i++) {

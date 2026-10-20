@@ -185,6 +185,9 @@ class ExcelViewerPro(ttk.Window):
             "open": self._open_file,
             "save": self._quick_save,
             "save_as": self._save_as,
+            # History
+            "undo": self._undo,
+            "redo": self._redo,
             # Clipboard
             "paste": self._paste,
             "paste_values": lambda: self._paste_special("values"),
@@ -217,6 +220,7 @@ class ExcelViewerPro(ttk.Window):
             # Styles / Conditional Formatting
             "add_cf_rule": self._add_cf_rule,
             "clear_cf_rules": self._clear_cf_rules,
+            "format_cells_dialog": self._show_format_cells_dialog,
             # Cells
             "insert_row_above": self._insert_row_above,
             "insert_row_below": self._insert_row_below,
@@ -224,6 +228,7 @@ class ExcelViewerPro(ttk.Window):
             "insert_col_right": self._insert_col_right,
             "delete_row": self._delete_row,
             "delete_column": self._delete_column,
+            "delete_cell": self._delete_cell,
             # Editing
             "apply_autosum": self._apply_autosum,
             "quick_sort": self._quick_sort,
@@ -233,18 +238,30 @@ class ExcelViewerPro(ttk.Window):
             "find_dialog": self._show_find_dialog,
             "replace_dialog": self._show_replace_dialog,
             "goto_dialog": self._show_goto_dialog,
+            "clear_all": self._clear_range_all,
+            "clear_formats": self._clear_range_formats,
+            "clear_comments": self._clear_range_comments,
             # Insert Tab
             "show_chart_wizard": self._show_chart_wizard,
             "quick_chart": self._create_quick_chart,
             "edit_comment": self._edit_cell_comment,
             "show_fx_wizard": self._show_fx_wizard,
             "insert_formula_text": self._insert_formula_text,
+            "load_demo_data": self._load_demo_data,
+            "add_sheet": self._on_add_sheet,
+            "formula_reference_dialog": self._show_formula_reference_dialog,
+            "import_csv": self._open_file,
+            "export_csv": lambda: self._export_file("csv"),
             # Data Tab
             "text_to_columns_dialog": self._show_text_to_columns_dialog,
             "remove_duplicates_dialog": self._show_remove_duplicates_dialog,
             "goal_seek_dialog": self._show_goal_seek_dialog,
             # Formulas Tab
             "recalculate_sheet": self._recalculate_all,
+            "toggle_show_formulas": self._toggle_show_formulas,
+            "formula_auditor_dialog": self._show_formula_auditor_dialog,
+            "simd_info_dialog": self._show_simd_info_dialog,
+            "simd_benchmark_dialog": self._show_simd_benchmark_dialog,
             # View Tab
             "toggle_formula_bar": self._toggle_formula_bar,
             "toggle_status_bar": self._toggle_status_bar,
@@ -253,6 +270,11 @@ class ExcelViewerPro(ttk.Window):
             "unfreeze_all": self._unfreeze_all,
             "autofit_all_cols": self._autofit_all_columns,
             "change_theme": self._change_theme,
+            "zoom_in": self._zoom_in,
+            "zoom_out": self._zoom_out,
+            "reset_zoom": lambda: self._set_zoom_level(100),
+            "refresh_grid": self._refresh,
+            "shortcuts_dialog": self._show_shortcuts_help_dialog,
         }
 
         self._ribbon = ExcelRibbon(self, callbacks)
@@ -287,7 +309,7 @@ class ExcelViewerPro(ttk.Window):
         self._status_bar.pack(fill=tk.X, side=tk.BOTTOM)
 
     def _create_menu(self) -> None:
-        """Create complete, professional Excel Menu Bar with all features."""
+        """Create complete, professional Excel Menu Bar with rich icons and accelerators."""
         menubar = Menu(self)
         self.config(menu=menubar)
 
@@ -295,124 +317,124 @@ class ExcelViewerPro(ttk.Window):
         file_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
         file_menu.add_command(
-            label="New Workbook", command=self._create_new_workbook, accelerator="Ctrl+N"
+            label="📄 New Workbook", command=self._create_new_workbook, accelerator="Ctrl+N"
         )
-        file_menu.add_command(label="Open...", command=self._open_file, accelerator="Ctrl+O")
-        file_menu.add_command(label="Open Financial Demo...", command=self._load_demo_data)
+        file_menu.add_command(label="📂 Open...", command=self._open_file, accelerator="Ctrl+O")
+        file_menu.add_command(label="📊 Open Financial Demo...", command=self._load_demo_data)
 
         self._recent_menu = Menu(file_menu, tearoff=0)
-        file_menu.add_cascade(label="Open Recent", menu=self._recent_menu)
+        file_menu.add_cascade(label="🕒 Open Recent", menu=self._recent_menu)
         self._update_recent_files_menu()
 
         file_menu.add_separator()
-        file_menu.add_command(label="Save", command=self._quick_save, accelerator="Ctrl+S")
-        file_menu.add_command(label="Save As...", command=self._save_as, accelerator="Ctrl+Shift+S")
+        file_menu.add_command(label="💾 Save", command=self._quick_save, accelerator="Ctrl+S")
+        file_menu.add_command(label="💾 Save As...", command=self._save_as, accelerator="Ctrl+Shift+S")
 
         export_menu = Menu(file_menu, tearoff=0)
-        file_menu.add_cascade(label="Export", menu=export_menu)
+        file_menu.add_cascade(label="📤 Export", menu=export_menu)
         export_menu.add_command(
-            label="Export as CSV (.csv)", command=lambda: self._export_file("csv")
+            label="📄 Export as CSV (.csv)", command=lambda: self._export_file("csv")
         )
         export_menu.add_command(
-            label="Export as TSV (.tsv)", command=lambda: self._export_file("tsv")
+            label="📄 Export as TSV (.tsv)", command=lambda: self._export_file("tsv")
         )
         export_menu.add_command(
-            label="Export as HTML Table (.html)", command=lambda: self._export_file("html")
+            label="🌐 Export as HTML Table (.html)", command=lambda: self._export_file("html")
         )
         export_menu.add_command(
-            label="Export as JSON (.json)", command=lambda: self._export_file("json")
+            label="📦 Export as JSON (.json)", command=lambda: self._export_file("json")
         )
 
         file_menu.add_separator()
         file_menu.add_command(
-            label="Close Workbook", command=self._close_workbook, accelerator="Ctrl+W"
+            label="❌ Close Workbook", command=self._close_workbook, accelerator="Ctrl+W"
         )
-        file_menu.add_command(label="Exit", command=self._on_close, accelerator="Alt+F4")
+        file_menu.add_command(label="🚪 Exit", command=self._on_close, accelerator="Alt+F4")
 
         # 2. EDIT MENU
         edit_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Edit", menu=edit_menu)
-        edit_menu.add_command(label="Undo", command=self._undo, accelerator="Ctrl+Z")
-        edit_menu.add_command(label="Redo", command=self._redo, accelerator="Ctrl+Y")
+        edit_menu.add_command(label="↩ Undo", command=self._undo, accelerator="Ctrl+Z")
+        edit_menu.add_command(label="↪ Redo", command=self._redo, accelerator="Ctrl+Y")
         edit_menu.add_separator()
-        edit_menu.add_command(label="Cut", command=self._cut, accelerator="Ctrl+X")
-        edit_menu.add_command(label="Copy", command=self._copy, accelerator="Ctrl+C")
-        edit_menu.add_command(label="Paste", command=self._paste, accelerator="Ctrl+V")
+        edit_menu.add_command(label="✂ Cut", command=self._cut, accelerator="Ctrl+X")
+        edit_menu.add_command(label="📋 Copy", command=self._copy, accelerator="Ctrl+C")
+        edit_menu.add_command(label="📋 Paste", command=self._paste, accelerator="Ctrl+V")
 
         ps_menu = Menu(edit_menu, tearoff=0)
-        edit_menu.add_cascade(label="Paste Special", menu=ps_menu)
+        edit_menu.add_cascade(label="📋 Paste Special", menu=ps_menu)
         ps_menu.add_command(
-            label="Paste Values Only", command=lambda: self._paste_special("values")
+            label="🔢 Paste Values Only", command=lambda: self._paste_special("values")
         )
         ps_menu.add_command(
-            label="Paste Formulas Only", command=lambda: self._paste_special("formulas")
+            label="fx Paste Formulas Only", command=lambda: self._paste_special("formulas")
         )
         ps_menu.add_command(
-            label="Paste Transposed", command=lambda: self._paste_special("transpose")
+            label="⇄ Paste Transposed", command=lambda: self._paste_special("transpose")
         )
         ps_menu.add_command(
-            label="Paste Formats Only", command=lambda: self._paste_special("formats")
+            label="🎨 Paste Formats Only", command=lambda: self._paste_special("formats")
         )
 
         edit_menu.add_separator()
         fill_menu = Menu(edit_menu, tearoff=0)
-        edit_menu.add_cascade(label="Fill", menu=fill_menu)
-        fill_menu.add_command(label="Fill Down", command=self._fill_down, accelerator="Ctrl+D")
-        fill_menu.add_command(label="Fill Right", command=self._fill_right, accelerator="Ctrl+R")
+        edit_menu.add_cascade(label="⬇ Fill", menu=fill_menu)
+        fill_menu.add_command(label="⬇ Fill Down", command=self._fill_down, accelerator="Ctrl+D")
+        fill_menu.add_command(label="➡ Fill Right", command=self._fill_right, accelerator="Ctrl+R")
 
         clear_menu = Menu(edit_menu, tearoff=0)
-        edit_menu.add_cascade(label="Clear", menu=clear_menu)
-        clear_menu.add_command(label="Clear All", command=self._clear_range_all)
-        clear_menu.add_command(label="Clear Contents", command=self._delete_cell, accelerator="Del")
-        clear_menu.add_command(label="Clear Formats", command=self._clear_range_formats)
-        clear_menu.add_command(label="Clear Comments", command=self._clear_range_comments)
+        edit_menu.add_cascade(label="🧹 Clear", menu=clear_menu)
+        clear_menu.add_command(label="🧹 Clear All", command=self._clear_range_all)
+        clear_menu.add_command(label="⌫ Clear Contents", command=self._delete_cell, accelerator="Del")
+        clear_menu.add_command(label="🎨 Clear Formats", command=self._clear_range_formats)
+        clear_menu.add_command(label="💬 Clear Comments", command=self._clear_range_comments)
 
         del_menu = Menu(edit_menu, tearoff=0)
-        edit_menu.add_cascade(label="Delete", menu=del_menu)
-        del_menu.add_command(label="Delete Row(s)", command=self._delete_row)
-        del_menu.add_command(label="Delete Column(s)", command=self._delete_column)
-        del_menu.add_command(label="Delete Cell Value", command=self._delete_cell)
+        edit_menu.add_cascade(label="🗑 Delete", menu=del_menu)
+        del_menu.add_command(label="➖ Delete Row(s)", command=self._delete_row)
+        del_menu.add_command(label="➖ Delete Column(s)", command=self._delete_column)
+        del_menu.add_command(label="⌫ Delete Cell Value", command=self._delete_cell)
 
         edit_menu.add_separator()
-        edit_menu.add_command(label="Select All", command=self._select_all, accelerator="Ctrl+A")
-        edit_menu.add_command(label="Select Entire Row", command=self._select_entire_row)
-        edit_menu.add_command(label="Select Entire Column", command=self._select_entire_column)
+        edit_menu.add_command(label="🔲 Select All", command=self._select_all, accelerator="Ctrl+A")
+        edit_menu.add_command(label="↔ Select Entire Row", command=self._select_entire_row)
+        edit_menu.add_command(label="↕ Select Entire Column", command=self._select_entire_column)
         edit_menu.add_separator()
-        edit_menu.add_command(label="Find...", command=self._show_find_dialog, accelerator="Ctrl+F")
+        edit_menu.add_command(label="🔍 Find...", command=self._show_find_dialog, accelerator="Ctrl+F")
         edit_menu.add_command(
-            label="Replace...", command=self._show_replace_dialog, accelerator="Ctrl+H"
+            label="🔄 Replace...", command=self._show_replace_dialog, accelerator="Ctrl+H"
         )
         edit_menu.add_command(
-            label="Go To Cell...", command=self._show_goto_dialog, accelerator="Ctrl+G"
+            label="🎯 Go To Cell...", command=self._show_goto_dialog, accelerator="Ctrl+G"
         )
 
         # 3. VIEW MENU
         view_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="View", menu=view_menu)
-        view_menu.add_command(label="Toggle Ribbon Bar", command=self._toggle_ribbon_visibility)
-        view_menu.add_command(label="Toggle Formula Bar", command=self._toggle_formula_bar)
-        view_menu.add_command(label="Toggle Status Bar", command=self._toggle_status_bar)
+        view_menu.add_command(label="🎀 Toggle Ribbon Bar", command=self._toggle_ribbon_visibility)
+        view_menu.add_command(label="📐 Toggle Formula Bar", command=self._toggle_formula_bar)
+        view_menu.add_command(label="📊 Toggle Status Bar", command=self._toggle_status_bar)
         view_menu.add_separator()
 
         freeze_menu = Menu(view_menu, tearoff=0)
-        view_menu.add_cascade(label="Freeze Panes", menu=freeze_menu)
-        freeze_menu.add_command(label="Freeze Top Row", command=self._freeze_top_row)
-        freeze_menu.add_command(label="Freeze First Column", command=self._freeze_first_col)
-        freeze_menu.add_command(label="Unfreeze All Panes", command=self._unfreeze_all)
+        view_menu.add_cascade(label="❄ Freeze Panes", menu=freeze_menu)
+        freeze_menu.add_command(label="❄ Freeze Top Row", command=self._freeze_top_row)
+        freeze_menu.add_command(label="❄ Freeze First Column", command=self._freeze_first_col)
+        freeze_menu.add_command(label="🔓 Unfreeze All Panes", command=self._unfreeze_all)
 
-        view_menu.add_command(label="Auto-fit All Columns", command=self._autofit_all_columns)
+        view_menu.add_command(label="↔ Auto-fit All Columns", command=self._autofit_all_columns)
         view_menu.add_separator()
 
         zoom_menu = Menu(view_menu, tearoff=0)
-        view_menu.add_cascade(label="Zoom", menu=zoom_menu)
-        zoom_menu.add_command(label="Zoom In", command=self._zoom_in, accelerator="Ctrl++")
-        zoom_menu.add_command(label="Zoom Out", command=self._zoom_out, accelerator="Ctrl+-")
+        view_menu.add_cascade(label="🔍 Zoom", menu=zoom_menu)
+        zoom_menu.add_command(label="🔍+ Zoom In", command=self._zoom_in, accelerator="Ctrl++")
+        zoom_menu.add_command(label="🔍- Zoom Out", command=self._zoom_out, accelerator="Ctrl+-")
         zoom_menu.add_separator()
         for pct in (50, 75, 100, 125, 150, 200):
-            zoom_menu.add_command(label=f"{pct}%", command=partial(self._set_zoom_level, pct))
+            zoom_menu.add_command(label=f"🔍 {pct}%", command=partial(self._set_zoom_level, pct))
 
         themes_menu = Menu(view_menu, tearoff=0)
-        view_menu.add_cascade(label="Themes", menu=themes_menu)
+        view_menu.add_cascade(label="🎨 Themes", menu=themes_menu)
         themes = [
             "cosmo",
             "flatly",
@@ -431,168 +453,177 @@ class ExcelViewerPro(ttk.Window):
             "vapor",
         ]
         for th in themes:
-            themes_menu.add_command(label=th.capitalize(), command=partial(self._change_theme, th))
+            themes_menu.add_command(label=f"🎨 {th.capitalize()}", command=partial(self._change_theme, th))
 
         view_menu.add_separator()
-        view_menu.add_command(label="Refresh Grid", command=self._refresh, accelerator="F5")
+        view_menu.add_command(label="🔄 Refresh Grid", command=self._refresh, accelerator="F5")
 
         # 4. INSERT MENU
         insert_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Insert", menu=insert_menu)
         insert_menu.add_command(
-            label="Insert Row Above", command=self._insert_row_above, accelerator="Ctrl+Shift++"
+            label="➕ Insert Row Above", command=self._insert_row_above, accelerator="Ctrl+Shift++"
         )
-        insert_menu.add_command(label="Insert Row Below", command=self._insert_row_below)
-        insert_menu.add_command(label="Insert Column Left", command=self._insert_col_left)
-        insert_menu.add_command(label="Insert Column Right", command=self._insert_col_right)
+        insert_menu.add_command(label="➕ Insert Row Below", command=self._insert_row_below)
+        insert_menu.add_command(label="➕ Insert Column Left", command=self._insert_col_left)
+        insert_menu.add_command(label="➕ Insert Column Right", command=self._insert_col_right)
         insert_menu.add_separator()
         insert_menu.add_command(
-            label="Insert Function (fx)...", command=self._show_fx_wizard, accelerator="Shift+F3"
+            label="fx Insert Function (fx)...", command=self._show_fx_wizard, accelerator="Shift+F3"
         )
         insert_menu.add_command(
-            label="Chart Wizard...", command=self._show_chart_wizard, accelerator="F11"
+            label="📊 Chart Wizard...", command=self._show_chart_wizard, accelerator="F11"
         )
 
         qc_menu = Menu(insert_menu, tearoff=0)
-        insert_menu.add_cascade(label="Quick Charts", menu=qc_menu)
+        insert_menu.add_cascade(label="📈 Quick Charts", menu=qc_menu)
+        chart_icons = {
+            "bar": "📊",
+            "line": "📈",
+            "pie": "🥧",
+            "scatter": "📉",
+            "area": "🏔",
+            "histogram": "📊",
+        }
         for c_type in ("bar", "line", "pie", "scatter", "area", "histogram"):
+            icon = chart_icons.get(c_type, "📊")
             qc_menu.add_command(
-                label=f"{c_type.capitalize()} Chart",
+                label=f"{icon} {c_type.capitalize()} Chart",
                 command=partial(self._create_quick_chart, c_type),
             )
 
         insert_menu.add_separator()
         insert_menu.add_command(
-            label="Cell Comment...", command=self._edit_cell_comment, accelerator="Shift+F2"
+            label="💬 Cell Comment...", command=self._edit_cell_comment, accelerator="Shift+F2"
         )
         insert_menu.add_command(
-            label="Insert New Sheet", command=self._on_add_sheet, accelerator="Shift+F11"
+            label="📑 Insert New Sheet", command=self._on_add_sheet, accelerator="Shift+F11"
         )
 
         # 5. FORMAT MENU
         format_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Format", menu=format_menu)
         format_menu.add_command(
-            label="Format Cells...", command=self._show_format_cells_dialog, accelerator="Ctrl+1"
+            label="⚙ Format Cells...", command=self._show_format_cells_dialog, accelerator="Ctrl+1"
         )
         format_menu.add_separator()
 
         font_menu = Menu(format_menu, tearoff=0)
-        format_menu.add_cascade(label="Font Styles", menu=font_menu)
-        font_menu.add_command(label="Bold", command=self._toggle_bold, accelerator="Ctrl+B")
-        font_menu.add_command(label="Italic", command=self._toggle_italic, accelerator="Ctrl+I")
+        format_menu.add_cascade(label="🔤 Font Styles", menu=font_menu)
+        font_menu.add_command(label="𝐁 Bold", command=self._toggle_bold, accelerator="Ctrl+B")
+        font_menu.add_command(label="𝐼 Italic", command=self._toggle_italic, accelerator="Ctrl+I")
         font_menu.add_command(
-            label="Underline", command=self._toggle_underline, accelerator="Ctrl+U"
+            label="U̲ Underline", command=self._toggle_underline, accelerator="Ctrl+U"
         )
         font_menu.add_command(
-            label="Strikethrough", command=self._toggle_strikethrough, accelerator="Ctrl+5"
+            label="S̶ Strikethrough", command=self._toggle_strikethrough, accelerator="Ctrl+5"
         )
         font_menu.add_separator()
-        font_menu.add_command(label="Increase Font Size", command=self._increase_font_size)
-        font_menu.add_command(label="Decrease Font Size", command=self._decrease_font_size)
-        font_menu.add_command(label="Pick Text Color...", command=self._pick_fg_color)
-        font_menu.add_command(label="Pick Cell Fill Color...", command=self._pick_bg_color)
+        font_menu.add_command(label="▲ Increase Font Size", command=self._increase_font_size)
+        font_menu.add_command(label="▼ Decrease Font Size", command=self._decrease_font_size)
+        font_menu.add_command(label="🎨 Pick Text Color...", command=self._pick_fg_color)
+        font_menu.add_command(label="🪣 Pick Cell Fill Color...", command=self._pick_bg_color)
 
         align_menu = Menu(format_menu, tearoff=0)
-        format_menu.add_cascade(label="Text Alignment", menu=align_menu)
+        format_menu.add_cascade(label="↔ Text Alignment", menu=align_menu)
         align_menu.add_command(
-            label="Align Left", command=partial(self._set_halign, "left"), accelerator="Ctrl+L"
+            label="⬅ Align Left", command=partial(self._set_halign, "left"), accelerator="Ctrl+L"
         )
         align_menu.add_command(
-            label="Center", command=partial(self._set_halign, "center"), accelerator="Ctrl+E"
+            label="⬌ Center", command=partial(self._set_halign, "center"), accelerator="Ctrl+E"
         )
         align_menu.add_command(
-            label="Align Right", command=partial(self._set_halign, "right"), accelerator="Ctrl+R"
+            label="➡ Align Right", command=partial(self._set_halign, "right"), accelerator="Ctrl+R"
         )
         align_menu.add_separator()
-        align_menu.add_command(label="Align Top", command=partial(self._set_valign, "top"))
-        align_menu.add_command(label="Align Middle", command=partial(self._set_valign, "center"))
-        align_menu.add_command(label="Align Bottom", command=partial(self._set_valign, "bottom"))
+        align_menu.add_command(label="⬆ Align Top", command=partial(self._set_valign, "top"))
+        align_menu.add_command(label="↕ Align Middle", command=partial(self._set_valign, "center"))
+        align_menu.add_command(label="⬇ Align Bottom", command=partial(self._set_valign, "bottom"))
 
-        format_menu.add_command(label="Wrap Text", command=self._toggle_wrap_text)
-        format_menu.add_command(label="Merge & Center Cells", command=self._toggle_merge_cells)
+        format_menu.add_command(label="↵ Wrap Text", command=self._toggle_wrap_text)
+        format_menu.add_command(label="⊞ Merge & Center Cells", command=self._toggle_merge_cells)
         format_menu.add_separator()
 
         num_menu = Menu(format_menu, tearoff=0)
-        format_menu.add_cascade(label="Number Formats", menu=num_menu)
+        format_menu.add_cascade(label="🔢 Number Formats", menu=num_menu)
         num_menu.add_command(label="General", command=partial(self._set_number_format, "General"))
         num_menu.add_command(
             label="Number (1,234.56)", command=partial(self._set_number_format, "#,##0.00")
         )
         num_menu.add_command(
-            label="Currency Dollar ($)", command=partial(self._set_number_format, "$#,##0.00")
+            label="$ Currency Dollar ($)", command=partial(self._set_number_format, "$#,##0.00")
         )
         num_menu.add_command(
-            label="Currency Ruble (₽)", command=partial(self._set_number_format, "#,##0.00 ₽")
+            label="₽ Currency Ruble (₽)", command=partial(self._set_number_format, "#,##0.00 ₽")
         )
         num_menu.add_command(
-            label="Currency Euro (€)", command=partial(self._set_number_format, "€#,##0.00")
+            label="€ Currency Euro (€)", command=partial(self._set_number_format, "€#,##0.00")
         )
         num_menu.add_command(
-            label="Percentage (0.00%)", command=partial(self._set_number_format, "0.00%")
+            label="% Percentage (0.00%)", command=partial(self._set_number_format, "0.00%")
         )
         num_menu.add_command(
-            label="Scientific (0.00E+00)", command=partial(self._set_number_format, "0.00E+00")
+            label="E Scientific (0.00E+00)", command=partial(self._set_number_format, "0.00E+00")
         )
         num_menu.add_command(
-            label="Short Date (YYYY-MM-DD)", command=partial(self._set_number_format, "YYYY-MM-DD")
+            label="📅 Short Date (YYYY-MM-DD)", command=partial(self._set_number_format, "YYYY-MM-DD")
         )
         num_menu.add_separator()
-        num_menu.add_command(label="Increase Decimal (.0+)", command=self._increase_decimals)
-        num_menu.add_command(label="Decrease Decimal (.0-)", command=self._decrease_decimals)
+        num_menu.add_command(label=".0+ Increase Decimal", command=self._increase_decimals)
+        num_menu.add_command(label=".0- Decrease Decimal", command=self._decrease_decimals)
 
         cf_menu = Menu(format_menu, tearoff=0)
-        format_menu.add_cascade(label="Conditional Formatting", menu=cf_menu)
+        format_menu.add_cascade(label="🎨 Conditional Formatting", menu=cf_menu)
         cf_menu.add_command(
-            label="Highlight: Greater Than...", command=partial(self._add_cf_rule, "greater_than")
+            label="🔴 Highlight: Greater Than...", command=partial(self._add_cf_rule, "greater_than")
         )
         cf_menu.add_command(
-            label="Highlight: Less Than...", command=partial(self._add_cf_rule, "less_than")
+            label="🔵 Highlight: Less Than...", command=partial(self._add_cf_rule, "less_than")
         )
         cf_menu.add_command(
-            label="Highlight: Equal To...", command=partial(self._add_cf_rule, "equal_to")
+            label="🟡 Highlight: Equal To...", command=partial(self._add_cf_rule, "equal_to")
         )
         cf_menu.add_command(
-            label="Color Scales (Heatmap)...", command=partial(self._add_cf_rule, "color_scale")
+            label="🌈 Color Scales (Heatmap)...", command=partial(self._add_cf_rule, "color_scale")
         )
         cf_menu.add_separator()
-        cf_menu.add_command(label="Clear Conditional Formatting", command=self._clear_cf_rules)
+        cf_menu.add_command(label="🧹 Clear Conditional Formatting", command=self._clear_cf_rules)
 
         # 6. FORMULAS MENU
         formulas_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Formulas", menu=formulas_menu)
         formulas_menu.add_command(
-            label="Recalculate Workbook", command=self._recalculate_all, accelerator="F9"
+            label="🔄 Recalculate Workbook", command=self._recalculate_all, accelerator="F9"
         )
         formulas_menu.add_separator()
 
         autosum_menu = Menu(formulas_menu, tearoff=0)
-        formulas_menu.add_cascade(label="AutoSum", menu=autosum_menu)
+        formulas_menu.add_cascade(label="Σ AutoSum", menu=autosum_menu)
         autosum_menu.add_command(
-            label="SUM", command=partial(self._apply_autosum, "SUM"), accelerator="Alt+="
+            label="Σ SUM", command=partial(self._apply_autosum, "SUM"), accelerator="Alt+="
         )
-        autosum_menu.add_command(label="AVERAGE", command=partial(self._apply_autosum, "AVERAGE"))
+        autosum_menu.add_command(label="μ AVERAGE", command=partial(self._apply_autosum, "AVERAGE"))
         autosum_menu.add_command(
-            label="COUNT NUMBERS", command=partial(self._apply_autosum, "COUNT")
+            label="№ COUNT NUMBERS", command=partial(self._apply_autosum, "COUNT")
         )
-        autosum_menu.add_command(label="MAX", command=partial(self._apply_autosum, "MAX"))
-        autosum_menu.add_command(label="MIN", command=partial(self._apply_autosum, "MIN"))
+        autosum_menu.add_command(label="▲ MAX", command=partial(self._apply_autosum, "MAX"))
+        autosum_menu.add_command(label="▼ MIN", command=partial(self._apply_autosum, "MIN"))
 
         fn_lib_menu = Menu(formulas_menu, tearoff=0)
-        formulas_menu.add_cascade(label="Function Library", menu=fn_lib_menu)
+        formulas_menu.add_cascade(label="📚 Function Library", menu=fn_lib_menu)
 
         categories_funcs = [
-            ("Financial", ["PMT", "PV", "FV", "RATE", "NPER", "NPV", "IRR"]),
-            ("Logical", ["IF", "IFS", "AND", "OR", "NOT", "XOR", "IFERROR"]),
+            ("💰 Financial", ["PMT", "PV", "FV", "RATE", "NPER", "NPV", "IRR"]),
+            ("🔀 Logical", ["IF", "IFS", "AND", "OR", "NOT", "XOR", "IFERROR"]),
             (
-                "Text",
+                "🔤 Text",
                 ["CONCAT", "TEXTJOIN", "LEFT", "RIGHT", "MID", "UPPER", "LOWER", "TRIM", "LEN"],
             ),
-            ("Date & Time", ["TODAY", "NOW", "DATE", "TIME", "YEAR", "MONTH", "DAY"]),
-            ("Lookup & Reference", ["VLOOKUP", "HLOOKUP", "XLOOKUP", "INDEX", "MATCH", "CHOOSE"]),
-            ("Math & Trig", ["SUM", "SUMIF", "SUMIFS", "PRODUCT", "ROUND", "ABS", "SQRT", "POWER"]),
+            ("📅 Date & Time", ["TODAY", "NOW", "DATE", "TIME", "YEAR", "MONTH", "DAY"]),
+            ("🔍 Lookup & Reference", ["VLOOKUP", "HLOOKUP", "XLOOKUP", "INDEX", "MATCH", "CHOOSE"]),
+            ("📐 Math & Trig", ["SUM", "SUMIF", "SUMIFS", "PRODUCT", "ROUND", "ABS", "SQRT", "POWER"]),
             (
-                "Statistical",
+                "📊 Statistical",
                 ["AVERAGE", "COUNT", "COUNTA", "COUNTIF", "MAX", "MIN", "MEDIAN", "STDEV"],
             ),
         ]
@@ -600,61 +631,61 @@ class ExcelViewerPro(ttk.Window):
             cat_sub = Menu(fn_lib_menu, tearoff=0)
             fn_lib_menu.add_cascade(label=cat_name, menu=cat_sub)
             for fn in funcs:
-                cat_sub.add_command(label=fn, command=partial(self._insert_formula_text, f"={fn}("))
+                cat_sub.add_command(label=f"fx {fn}", command=partial(self._insert_formula_text, f"={fn}("))
 
         formulas_menu.add_separator()
         formulas_menu.add_command(
-            label="Insert Function (fx) Wizard...",
+            label="fx Insert Function Wizard...",
             command=self._show_fx_wizard,
             accelerator="Shift+F3",
         )
         formulas_menu.add_command(
-            label="Toggle Show Formulas", command=self._toggle_show_formulas, accelerator="Ctrl+`"
+            label="👁 Toggle Show Formulas", command=self._toggle_show_formulas, accelerator="Ctrl+`"
         )
         formulas_menu.add_separator()
         formulas_menu.add_command(
-            label="SIMD Hardware Acceleration Status...", command=self._show_simd_info_dialog
+            label="⚡ SIMD Hardware Acceleration Status...", command=self._show_simd_info_dialog
         )
 
         # 7. DATA MENU
         data_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Data", menu=data_menu)
         data_menu.add_command(
-            label="Sort Ascending (A to Z)", command=partial(self._quick_sort, False)
+            label="⬆ Sort Ascending (A to Z)", command=partial(self._quick_sort, False)
         )
         data_menu.add_command(
-            label="Sort Descending (Z to A)", command=partial(self._quick_sort, True)
+            label="⬇ Sort Descending (Z to A)", command=partial(self._quick_sort, True)
         )
         data_menu.add_command(
-            label="Custom Multi-Level Sort...", command=self._show_custom_sort_dialog
+            label="⚡ Custom Multi-Level Sort...", command=self._show_custom_sort_dialog
         )
         data_menu.add_separator()
         data_menu.add_command(
-            label="AutoFilter", command=self._toggle_autofilter, accelerator="Ctrl+Shift+L"
+            label="🔍 AutoFilter", command=self._toggle_autofilter, accelerator="Ctrl+Shift+L"
         )
-        data_menu.add_command(label="Clear All Filters", command=self._clear_filters)
+        data_menu.add_command(label="❌ Clear All Filters", command=self._clear_filters)
         data_menu.add_separator()
-        data_menu.add_command(label="Text to Columns...", command=self._show_text_to_columns_dialog)
+        data_menu.add_command(label="✂ Text to Columns...", command=self._show_text_to_columns_dialog)
         data_menu.add_command(
-            label="Remove Duplicates...", command=self._show_remove_duplicates_dialog
+            label="🗑 Remove Duplicates...", command=self._show_remove_duplicates_dialog
         )
         data_menu.add_command(
-            label="What-If Analysis: Goal Seek...", command=self._show_goal_seek_dialog
+            label="🎯 What-If Analysis: Goal Seek...", command=self._show_goal_seek_dialog
         )
         data_menu.add_separator()
-        data_menu.add_command(label="Refresh Data", command=self._refresh, accelerator="F5")
+        data_menu.add_command(label="🔄 Refresh Data", command=self._refresh, accelerator="F5")
 
         # 8. TOOLS MENU
         tools_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Tools", menu=tools_menu)
         tools_menu.add_command(
-            label="Run SIMD Hardware Benchmark...", command=self._show_simd_benchmark_dialog
+            label="⚡ Run SIMD Hardware Benchmark...", command=self._show_simd_benchmark_dialog
         )
         tools_menu.add_command(
-            label="Formula Store & Dependency Auditor...", command=self._show_formula_auditor_dialog
+            label="🔬 Formula Store & Dependency Auditor...", command=self._show_formula_auditor_dialog
         )
         tools_menu.add_command(
-            label="Model Context Protocol (MCP) Server Status...",
+            label="🔌 Model Context Protocol (MCP) Server Status...",
             command=self._show_mcp_status_dialog,
         )
 
@@ -662,19 +693,19 @@ class ExcelViewerPro(ttk.Window):
         help_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(
-            label="Keyboard Shortcuts Reference",
+            label="⌨ Keyboard Shortcuts Reference",
             command=self._show_shortcuts_help_dialog,
             accelerator="Ctrl+?",
         )
         help_menu.add_command(
-            label="Formula Functions Reference (129 Functions)...",
+            label="📖 Formula Functions Reference (129 Functions)...",
             command=self._show_formula_reference_dialog,
         )
         help_menu.add_command(
-            label="SIMD Vector Hardware Architecture...", command=self._show_simd_info_dialog
+            label="⚡ SIMD Vector Hardware Architecture...", command=self._show_simd_info_dialog
         )
         help_menu.add_separator()
-        help_menu.add_command(label="About Excel Viewer Pro...", command=self._show_about_dialog)
+        help_menu.add_command(label="ℹ About Excel Viewer Pro...", command=self._show_about_dialog)
 
     def _create_grid(self) -> None:
         """Create main spreadsheet grid."""
@@ -762,6 +793,10 @@ class ExcelViewerPro(ttk.Window):
         self._tree.bind("<ButtonRelease-1>", self._on_grid_mouse_up)
         self._tree.bind("<Double-1>", self._on_grid_double_click)
         self._tree.bind("<Button-3>", self._show_grid_context_menu)
+        self._tree.bind("<Shift-F10>", self._show_grid_context_menu_keyboard)
+        self._tree.bind("<App>", self._show_grid_context_menu_keyboard)
+        self.bind("<Shift-F10>", self._show_grid_context_menu_keyboard)
+        self.bind("<App>", self._show_grid_context_menu_keyboard)
         self._tree.bind("<Configure>", lambda e: self._refresh_highlights())
 
         # Keyboard Navigation
@@ -1804,12 +1839,16 @@ class ExcelViewerPro(ttk.Window):
         col_anchors = {}
         for c_idx in range(col_count):
             align_votes = {"left": 0, "center": 0, "right": 0}
+            total_non_empty = 0
             for r_idx in range(s_data.row_count):
                 val = self._get_cell_value_for_formula(r_idx, c_idx, s_name)
                 style = s_data.cell_styles.get((r_idx, c_idx))
+                has_val = val is not None and str(val).strip() != ""
+                if has_val:
+                    total_non_empty += 1
                 if style and style.halign in align_votes:
-                    align_votes[style.halign] += 2
-                elif val is not None and str(val).strip() != "":
+                    align_votes[style.halign] += 1
+                elif has_val:
                     s_val = str(val).strip()
                     if (
                         isinstance(val, (int, float))
@@ -1822,7 +1861,12 @@ class ExcelViewerPro(ttk.Window):
                     else:
                         align_votes["left"] += 1
 
-            best = max(align_votes, key=align_votes.get)
+            if total_non_empty > 0 and align_votes["center"] >= max(2, total_non_empty // 2 + 1):
+                best = "center"
+            elif align_votes["right"] > align_votes["left"]:
+                best = "right"
+            else:
+                best = "left"
             col_anchors[c_idx] = CENTER if best == "center" else (E if best == "right" else W)
 
         # Data columns
@@ -3563,14 +3607,22 @@ class ExcelViewerPro(ttk.Window):
     def _toggle_formula_bar(self) -> None:
         if self._formula_bar.winfo_ismapped():
             self._formula_bar.pack_forget()
+            if hasattr(self, "_ribbon") and hasattr(self._ribbon, "set_formula_bar_check"):
+                self._ribbon.set_formula_bar_check(False)
         else:
             self._formula_bar.pack(fill=tk.X, before=self._tree.master)
+            if hasattr(self, "_ribbon") and hasattr(self._ribbon, "set_formula_bar_check"):
+                self._ribbon.set_formula_bar_check(True)
 
     def _toggle_status_bar(self) -> None:
         if self._status_bar.winfo_ismapped():
             self._status_bar.pack_forget()
+            if hasattr(self, "_ribbon") and hasattr(self._ribbon, "set_status_bar_check"):
+                self._ribbon.set_status_bar_check(False)
         else:
             self._status_bar.pack(fill=tk.X, side=tk.BOTTOM)
+            if hasattr(self, "_ribbon") and hasattr(self._ribbon, "set_status_bar_check"):
+                self._ribbon.set_status_bar_check(True)
 
     def _freeze_top_row(self) -> None:
         messagebox.showinfo("Freeze Panes", "Top row is frozen.")
@@ -3605,20 +3657,52 @@ class ExcelViewerPro(ttk.Window):
             self._selected = cell.copy()
             self._update_selection_highlight()
             self._update_formula_bar()
+        self._popup_grid_context_menu(event.x_root, event.y_root)
 
+    def _show_grid_context_menu_keyboard(self, event: tk.Event | None = None) -> None:
+        try:
+            item_id = str(self._selected.row + 1)
+            col_id = f"#{self._selected.col + 1}"
+            bbox = self._tree.bbox(item_id, col_id)
+            if bbox:
+                x = self._tree.winfo_rootx() + bbox[0]
+                y = self._tree.winfo_rooty() + bbox[1] + bbox[3]
+            else:
+                x = self._tree.winfo_rootx() + 60
+                y = self._tree.winfo_rooty() + 60
+        except Exception:
+            x = self.winfo_rootx() + 100
+            y = self.winfo_rooty() + 100
+        self._popup_grid_context_menu(x, y)
+
+    def _popup_grid_context_menu(self, x: int, y: int) -> None:
         menu = Menu(self, tearoff=0)
-        menu.add_command(label="Cut (Ctrl+X)", command=self._cut)
-        menu.add_command(label="Copy (Ctrl+C)", command=self._copy)
-        menu.add_command(label="Paste (Ctrl+V)", command=self._paste)
+        menu.add_command(label="✂ Cut", accelerator="Ctrl+X", command=self._cut)
+        menu.add_command(label="📄 Copy", accelerator="Ctrl+C", command=self._copy)
+        menu.add_command(label="📋 Paste", accelerator="Ctrl+V", command=self._paste)
+        menu.add_command(label="📋 Paste Values Only", command=lambda: self._paste_special("values"))
         menu.add_separator()
-        menu.add_command(label="Insert Row Above", command=self._insert_row_above)
-        menu.add_command(label="Insert Column Left", command=self._insert_col_left)
-        menu.add_command(label="Delete Row", command=self._delete_row)
-        menu.add_command(label="Delete Column", command=self._delete_column)
+        menu.add_command(label="➕ Insert Row Above", command=self._insert_row_above)
+        menu.add_command(label="➕ Insert Column Left", command=self._insert_col_left)
+        menu.add_command(label="➖ Delete Row", command=self._delete_row)
+        menu.add_command(label="➖ Delete Column", command=self._delete_column)
         menu.add_separator()
-        menu.add_command(label="Clear Contents", command=self._delete_cell)
-        menu.add_command(label="Add / Edit Comment...", command=self._edit_cell_comment)
-        menu.tk_popup(event.x_root, event.y_root)
+        menu.add_command(label="🧹 Clear Contents", accelerator="Del", command=self._delete_cell)
+        menu.add_command(label="💬 Add / Edit Comment...", command=self._edit_cell_comment)
+        menu.add_separator()
+        menu.add_command(label="𝐁 Bold", accelerator="Ctrl+B", command=self._toggle_bold)
+        menu.add_command(label="𝐼 Italic", accelerator="Ctrl+I", command=self._toggle_italic)
+        menu.add_command(label="⬌ Center", accelerator="Ctrl+E", command=lambda: self._set_halign("center"))
+        menu.add_command(label="💲 Format: Currency ($)", command=lambda: self._set_number_format("$#,##0.00"))
+        menu.add_command(label="₽ Format: Currency (₽)", command=lambda: self._set_number_format("#,##0.00 ₽"))
+        menu.add_command(label="％ Format: Percentage (%)", command=lambda: self._set_number_format("0.00%"))
+        menu.add_separator()
+        menu.add_command(label="Σ AutoSum", command=lambda: self._apply_autosum("SUM"))
+        menu.add_command(label="⬆ Sort A to Z", command=lambda: self._quick_sort(False))
+        menu.add_command(label="⬇ Sort Z to A", command=lambda: self._quick_sort(True))
+        menu.add_separator()
+        menu.add_command(label="🔍 Find & Replace...", accelerator="Ctrl+F", command=self._show_find_dialog)
+        menu.tk_popup(x, y)
 
     def _refresh(self) -> None:
         if self._file_path:
@@ -3627,12 +3711,33 @@ class ExcelViewerPro(ttk.Window):
             self._load_active_sheet()
 
     def _set_app_icon(self) -> None:
-        icon_p = Path(Config.ICON_PATH)
-        if icon_p.exists():
-            try:
-                self.iconbitmap(str(icon_p))
-            except Exception:
-                pass
+        candidates = [
+            Path(Config.ICON_PATH),
+            Path(__file__).parent / Config.ICON_PATH,
+            Path(__file__).parent.parent / Config.ICON_PATH,
+        ]
+        for p in candidates:
+            if p.exists():
+                try:
+                    self.iconbitmap(str(p))
+                    break
+                except Exception:
+                    pass
+
+        png_candidates = [
+            Path(Config.ICON_PNG_PATH),
+            Path(__file__).parent / Config.ICON_PNG_PATH,
+            Path(__file__).parent.parent / Config.ICON_PNG_PATH,
+        ]
+        for pp in png_candidates:
+            if pp.exists():
+                try:
+                    from PIL import ImageTk
+                    self._icon_photo = ImageTk.PhotoImage(file=str(pp))
+                    self.iconphoto(True, self._icon_photo)
+                    break
+                except Exception:
+                    pass
 
     def _set_modified(self, modified: bool) -> None:
         self._modified = modified
