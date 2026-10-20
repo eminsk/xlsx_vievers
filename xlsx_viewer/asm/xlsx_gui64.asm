@@ -284,6 +284,7 @@ EM_SETSEL           = 00B1h
 VK_RETURN           = 0Dh
 VK_TAB              = 09h
 VK_CONTROL          = 11h
+VK_SHIFT            = 10h
 VK_DELETE           = 2Eh
 VK_F2               = 71h
 VK_F3               = 72h
@@ -707,6 +708,15 @@ section '.data' data readable writeable
     total_rows      dd 30
     sheet_count     dd 3
     cur_sheet       dd 0
+
+    sel_start_row   dd 0
+    sel_start_col   dd 1
+    sel_end_row     dd 0
+    sel_end_col     dd 1
+    is_mouse_sel    dd 0
+    g_is_shift_down dd 0
+    g_is_ctrl_down  dd 0
+    origGridProc    dq 0
 
     font_size_pt    dd 10
     pCurFontFace    dq 0
@@ -4171,6 +4181,763 @@ FormulaEditProc:
 
 
 ; =============================================================================
+; Grid Helper: Synchronize ListView Scroll / Visible State
+; =============================================================================
+SyncListViewItemState:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 40h
+    mov rcx, [hGrid]
+    test rcx, rcx
+    jz .slv_done
+    mov edx, 1013h ; LVM_ENSUREVISIBLE
+    mov r8d, [cur_row]
+    xor r9d, r9d
+    call [SendMessageA]
+.slv_done:
+    leave
+    ret
+
+
+; =============================================================================
+; Check if (r10d = row, r11d = col) is within current selection
+; Returns eax = 1 if inside, 0 if outside
+; =============================================================================
+CheckCellInSelection:
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    cmp r10d, eax
+    jl .not_in_sel
+    cmp r10d, edx
+    jg .not_in_sel
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    cmp r11d, eax
+    jl .not_in_sel
+    cmp r11d, edx
+    jg .not_in_sel
+
+    mov eax, 1
+    ret
+.not_in_sel:
+    xor eax, eax
+    ret
+
+
+; =============================================================================
+; GridSubclassProc: Intercepts all Mouse Drag & Keyboard Navigation for 2D Grid
+; =============================================================================
+GridSubclassProc:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 90h
+    mov [rbp-08h], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+    mov [rbp-30h], r14
+    mov [rbp-38h], r15
+
+    ; Save original arguments in safe local stack slots
+    mov [rbp-40h], rcx      ; hWnd
+    mov [rbp-48h], rdx      ; uMsg
+    mov [rbp-50h], r8       ; wParam
+    mov [rbp-58h], r9       ; lParam
+
+    cmp edx, 0087h ; WM_GETDLGCODE
+    je .gsp_getdlgcode
+    cmp edx, 0201h ; WM_LBUTTONDOWN
+    je .gsp_lbutton_down
+    cmp edx, 0200h ; WM_MOUSEMOVE
+    je .gsp_mouse_move
+    cmp edx, 0202h ; WM_LBUTTONUP
+    je .gsp_lbutton_up
+    cmp edx, 0204h ; WM_RBUTTONDOWN
+    je .gsp_rbutton_down
+    cmp edx, 0100h ; WM_KEYDOWN
+    je .gsp_keydown
+    cmp edx, 0101h ; WM_KEYUP
+    je .gsp_keyup
+    cmp edx, 0008h ; WM_KILLFOCUS
+    je .gsp_killfocus
+
+.gsp_call_orig:
+    mov rax, [origGridProc]
+    mov rcx, rax            ; 1st arg: lpPrevWndFunc
+    mov rdx, [rbp-40h]      ; 2nd arg: hWnd
+    mov r8, [rbp-48h]       ; 3rd arg: uMsg
+    mov r9, [rbp-50h]       ; 4th arg: wParam
+    mov r10, [rbp-58h]      ; 5th arg: lParam
+    mov [rsp+20h], r10
+    call [CallWindowProcA]
+    jmp .gsp_ret
+
+.gsp_getdlgcode:
+    mov eax, 0005h ; DLGC_WANTARROWS | DLGC_WANTALLKEYS
+    jmp .gsp_ret
+
+.gsp_lbutton_down:
+    mov rcx, [hGrid]
+    call [SetFocus]
+
+    mov r9, [rbp-58h]       ; reload lParam
+    movsx eax, r9w         ; x
+    mov dword [lvhit], eax
+    shr r9, 16
+    movsx eax, r9w         ; y
+    mov dword [lvhit+4], eax
+    mov dword [lvhit+8], 0
+    mov dword [lvhit+12], -1
+    mov dword [lvhit+16], -1
+
+    mov rcx, [hGrid]
+    mov edx, 1039h          ; LVM_SUBITEMHITTEST
+    xor r8d, r8d
+    lea r9, [lvhit]
+    call [SendMessageA]
+
+    cmp dword [lvhit+12], -1
+    je .gsp_call_orig
+
+    mov eax, dword [lvhit+12] ; row
+    mov ebx, dword [lvhit+16] ; col
+
+    ; If user clicked col 0 (Row number # column), select whole row 1..26!
+    cmp ebx, 0
+    jne .gsp_lbtn_normal_col
+    mov [sel_start_col], 1
+    mov [sel_end_col], 26
+    mov [cur_col], 1
+    mov [sel_start_row], eax
+    mov [sel_end_row], eax
+    mov [cur_row], eax
+    jmp .gsp_lbtn_capture
+
+.gsp_lbtn_normal_col:
+    cmp ebx, 1
+    jge @f
+    mov ebx, 1
+@@:
+    cmp ebx, 26
+    jle @f
+    mov ebx, 26
+@@:
+
+    ; Check Shift key
+    mov r8, [rbp-50h]       ; reload wParam (contains MK_SHIFT = 0x0004)
+    test r8d, 4             ; MK_SHIFT
+    jnz .gsp_lbtn_shift
+    cmp dword [g_is_shift_down], 1
+    je .gsp_lbtn_shift
+    mov ecx, VK_SHIFT
+    call [GetAsyncKeyState]
+    test ax, 8000h
+    jnz .gsp_lbtn_shift
+    mov ecx, VK_SHIFT
+    call [GetKeyState]
+    test ax, 8000h
+    jnz .gsp_lbtn_shift
+
+    ; Normal click: set new anchor
+    mov [sel_start_row], eax
+    mov [sel_start_col], ebx
+    mov [sel_end_row], eax
+    mov [sel_end_col], ebx
+    mov [cur_row], eax
+    mov [cur_col], ebx
+    jmp .gsp_lbtn_capture
+
+.gsp_lbtn_shift:
+    mov [sel_end_row], eax
+    mov [sel_end_col], ebx
+    mov [cur_row], eax
+    mov [cur_col], ebx
+
+.gsp_lbtn_capture:
+    mov dword [is_mouse_sel], 1
+    mov rcx, [hGrid]
+    call [SetCapture]
+
+    call UpdateCellSelectionDisplay
+    call SyncListViewItemState
+    xor eax, eax
+    jmp .gsp_ret
+
+.gsp_mouse_move:
+    cmp dword [is_mouse_sel], 1
+    jne .gsp_call_orig
+
+    ; Check left mouse button
+    mov r8, [rbp-50h]       ; reload wParam
+    test r8d, 1             ; MK_LBUTTON
+    jz .gsp_lbtn_lost
+
+    mov r9, [rbp-58h]       ; reload lParam
+    movsx eax, r9w          ; x
+    mov r12d, eax
+    shr r9, 16
+    movsx eax, r9w          ; y
+    mov r13d, eax
+
+    ; Autoscroll if dragged beyond vertical bounds
+    cmp r13d, 0
+    jge @f
+    mov rcx, [hGrid]
+    mov edx, 0115h          ; WM_VSCROLL
+    mov r8d, 0              ; SB_LINEUP
+    xor r9d, r9d
+    call [SendMessageA]
+    jmp .gsp_mm_hittest
+@@:
+    cmp r13d, 480
+    jle .gsp_mm_hittest
+    mov rcx, [hGrid]
+    mov edx, 0115h          ; WM_VSCROLL
+    mov r8d, 1              ; SB_LINEDOWN
+    xor r9d, r9d
+    call [SendMessageA]
+
+.gsp_mm_hittest:
+    mov dword [lvhit], r12d
+    mov dword [lvhit+4], r13d
+    mov dword [lvhit+8], 0
+    mov dword [lvhit+12], -1
+    mov dword [lvhit+16], -1
+
+    mov rcx, [hGrid]
+    mov edx, 1039h          ; LVM_SUBITEMHITTEST
+    xor r8d, r8d
+    lea r9, [lvhit]
+    call [SendMessageA]
+
+    cmp dword [lvhit+12], -1
+    je .gsp_mm_done
+
+    mov eax, dword [lvhit+12] ; row
+    mov ebx, dword [lvhit+16] ; col
+
+    cmp ebx, 1
+    jge @f
+    mov ebx, 1
+@@:
+    cmp ebx, 26
+    jle @f
+    mov ebx, 26
+@@:
+
+    cmp eax, [sel_end_row]
+    jne .gsp_mm_update
+    cmp ebx, [sel_end_col]
+    je .gsp_mm_done
+
+.gsp_mm_update:
+    mov [sel_end_row], eax
+    mov [sel_end_col], ebx
+    mov [cur_row], eax
+    mov [cur_col], ebx
+
+    call UpdateCellSelectionDisplay
+    call SyncListViewItemState
+
+.gsp_mm_done:
+    xor eax, eax
+    jmp .gsp_ret
+
+.gsp_lbtn_lost:
+    mov dword [is_mouse_sel], 0
+    call [ReleaseCapture]
+    call UpdateCellSelectionDisplay
+    xor eax, eax
+    jmp .gsp_ret
+
+.gsp_lbutton_up:
+    cmp dword [is_mouse_sel], 1
+    jne .gsp_call_orig
+
+    mov dword [is_mouse_sel], 0
+    call [ReleaseCapture]
+    call UpdateCellSelectionDisplay
+    xor eax, eax
+    jmp .gsp_ret
+
+.gsp_rbutton_down:
+    mov r9, [rbp-58h]       ; reload lParam
+    movsx eax, r9w
+    mov dword [lvhit], eax
+    shr r9, 16
+    movsx eax, r9w
+    mov dword [lvhit+4], eax
+    mov dword [lvhit+8], 0
+    mov dword [lvhit+12], -1
+    mov dword [lvhit+16], -1
+
+    mov rcx, [hGrid]
+    mov edx, 1039h          ; LVM_SUBITEMHITTEST
+    xor r8d, r8d
+    lea r9, [lvhit]
+    call [SendMessageA]
+
+    cmp dword [lvhit+12], -1
+    je .gsp_call_orig
+
+    mov eax, dword [lvhit+12]
+    mov ebx, dword [lvhit+16]
+    cmp ebx, 1
+    jl .gsp_call_orig
+    cmp ebx, 26
+    jg .gsp_call_orig
+
+    mov r10d, eax
+    mov r11d, ebx
+    call CheckCellInSelection
+    test eax, eax
+    jnz .gsp_call_orig
+
+    mov [sel_start_row], r10d
+    mov [sel_start_col], r11d
+    mov [sel_end_row], r10d
+    mov [sel_end_col], r11d
+    mov [cur_row], r10d
+    mov [cur_col], r11d
+    call UpdateCellSelectionDisplay
+    call SyncListViewItemState
+    jmp .gsp_call_orig
+
+.gsp_keyup:
+    mov r8d, dword [rbp-50h] ; wParam
+    cmp r8d, 10h            ; VK_SHIFT
+    jne @f
+    mov dword [g_is_shift_down], 0
+@@:
+    cmp r8d, 11h            ; VK_CONTROL
+    jne .gsp_call_orig
+    mov dword [g_is_ctrl_down], 0
+    jmp .gsp_call_orig
+
+.gsp_killfocus:
+    mov dword [g_is_shift_down], 0
+    mov dword [g_is_ctrl_down], 0
+    jmp .gsp_call_orig
+
+.gsp_keydown:
+    mov r8d, dword [rbp-50h] ; wParam
+    cmp r8d, 10h            ; VK_SHIFT
+    jne @f
+    mov dword [g_is_shift_down], 1
+    xor eax, eax
+    jmp .gsp_ret
+@@:
+    cmp r8d, 11h            ; VK_CONTROL
+    jne .gsp_proc_key
+    mov dword [g_is_ctrl_down], 1
+    xor eax, eax
+    jmp .gsp_ret
+
+.gsp_proc_key:
+    xor r14d, r14d
+    cmp dword [g_is_shift_down], 1
+    je .shift_yes
+    mov ecx, VK_SHIFT
+    call [GetAsyncKeyState]
+    test ax, 8000h
+    jnz .shift_yes
+    mov ecx, VK_SHIFT
+    call [GetKeyState]
+    test ax, 8000h
+    jz .shift_no
+.shift_yes:
+    mov r14b, 1
+.shift_no:
+
+    xor r15d, r15d
+    cmp dword [g_is_ctrl_down], 1
+    je .ctrl_yes
+    mov ecx, VK_CONTROL
+    call [GetAsyncKeyState]
+    test ax, 8000h
+    jnz .ctrl_yes
+    mov ecx, VK_CONTROL
+    call [GetKeyState]
+    test ax, 8000h
+    jz .ctrl_no
+.ctrl_yes:
+    mov r15b, 1
+.ctrl_no:
+
+    mov r8d, dword [rbp-50h] ; wParam
+
+    test r15b, r15b
+    jz .gsp_no_ctrl
+
+    ; Ctrl Shortcuts
+    cmp r8d, 'A'
+    je .gsp_ctrl_a
+    cmp r8d, 'a'
+    je .gsp_ctrl_a
+    cmp r8d, 'C'
+    je .gsp_ctrl_c
+    cmp r8d, 'c'
+    je .gsp_ctrl_c
+    cmp r8d, 'V'
+    je .gsp_ctrl_v
+    cmp r8d, 'v'
+    je .gsp_ctrl_v
+    cmp r8d, 'X'
+    je .gsp_ctrl_x
+    cmp r8d, 'x'
+    je .gsp_ctrl_x
+    cmp r8d, 'Z'
+    je .gsp_ctrl_z
+    cmp r8d, 'z'
+    je .gsp_ctrl_z
+    cmp r8d, 'Y'
+    je .gsp_ctrl_y
+    cmp r8d, 'y'
+    je .gsp_ctrl_y
+    cmp r8d, 'B'
+    je .gsp_ctrl_b
+    cmp r8d, 'b'
+    je .gsp_ctrl_b
+    cmp r8d, 'I'
+    je .gsp_ctrl_i
+    cmp r8d, 'i'
+    je .gsp_ctrl_i
+    cmp r8d, 'U'
+    je .gsp_ctrl_u
+    cmp r8d, 'u'
+    je .gsp_ctrl_u
+    cmp r8d, 'S'
+    je .gsp_ctrl_s
+    cmp r8d, 's'
+    je .gsp_ctrl_s
+    cmp r8d, 'O'
+    je .gsp_ctrl_o
+    cmp r8d, 'o'
+    je .gsp_ctrl_o
+    cmp r8d, 'F'
+    je .gsp_ctrl_f
+    cmp r8d, 'f'
+    je .gsp_ctrl_f
+    jmp .gsp_call_orig
+
+.gsp_ctrl_a:
+    call DoSelectAll
+    xor eax, eax
+    jmp .gsp_ret
+.gsp_ctrl_c:
+    call DoClipboardCopy
+    xor eax, eax
+    jmp .gsp_ret
+.gsp_ctrl_v:
+    call DoClipboardPaste
+    xor eax, eax
+    jmp .gsp_ret
+.gsp_ctrl_x:
+    call DoClipboardCut
+    xor eax, eax
+    jmp .gsp_ret
+.gsp_ctrl_z:
+    call DoUndo
+    xor eax, eax
+    jmp .gsp_ret
+.gsp_ctrl_y:
+    call DoRedo
+    xor eax, eax
+    jmp .gsp_ret
+.gsp_ctrl_b:
+    call ToggleCellBold
+    xor eax, eax
+    jmp .gsp_ret
+.gsp_ctrl_i:
+    call ToggleCellItalic
+    xor eax, eax
+    jmp .gsp_ret
+.gsp_ctrl_u:
+    call ToggleCellUnderline
+    xor eax, eax
+    jmp .gsp_ret
+.gsp_ctrl_s:
+    call DoFileSave
+    xor eax, eax
+    jmp .gsp_ret
+.gsp_ctrl_o:
+    call DoFileOpen
+    xor eax, eax
+    jmp .gsp_ret
+.gsp_ctrl_f:
+    call DoFindText
+    xor eax, eax
+    jmp .gsp_ret
+
+.gsp_no_ctrl:
+    cmp r8d, 25h    ; VK_LEFT
+    je .gsp_nav_left
+    cmp r8d, 27h    ; VK_RIGHT
+    je .gsp_nav_right
+    cmp r8d, 26h    ; VK_UP
+    je .gsp_nav_up
+    cmp r8d, 28h    ; VK_DOWN
+    je .gsp_nav_down
+    cmp r8d, 09h    ; VK_TAB
+    je .gsp_nav_tab
+    cmp r8d, 0Dh    ; VK_RETURN
+    je .gsp_nav_return
+    cmp r8d, 24h    ; VK_HOME
+    je .gsp_nav_home
+    cmp r8d, 23h    ; VK_END
+    je .gsp_nav_end
+    cmp r8d, 21h    ; VK_PRIOR (PageUp)
+    je .gsp_nav_pgup
+    cmp r8d, 22h    ; VK_NEXT (PageDown)
+    je .gsp_nav_pgdn
+    cmp r8d, 71h    ; VK_F2
+    je .gsp_key_f2
+    cmp r8d, 72h    ; VK_F3
+    je .gsp_key_f3
+    cmp r8d, 74h    ; VK_F5
+    je .gsp_key_f5
+    cmp r8d, 78h    ; VK_F9
+    je .gsp_key_f9
+    cmp r8d, 2Eh    ; VK_DELETE
+    je .gsp_key_del
+
+    jmp .gsp_call_orig
+
+.gsp_nav_left:
+    test r14b, r14b
+    jz .gsp_nl_noshift
+    cmp dword [sel_end_col], 1
+    jle .gsp_nav_apply
+    dec dword [sel_end_col]
+    mov eax, [sel_end_col]
+    mov [cur_col], eax
+    jmp .gsp_nav_apply
+.gsp_nl_noshift:
+    cmp dword [cur_col], 1
+    jle .gsp_nav_apply
+    dec dword [cur_col]
+    mov eax, [cur_col]
+    mov [sel_start_col], eax
+    mov [sel_end_col], eax
+    mov eax, [cur_row]
+    mov [sel_start_row], eax
+    mov [sel_end_row], eax
+    jmp .gsp_nav_apply
+
+.gsp_nav_right:
+    test r14b, r14b
+    jz .gsp_nr_noshift
+    cmp dword [sel_end_col], 26
+    jge .gsp_nav_apply
+    inc dword [sel_end_col]
+    mov eax, [sel_end_col]
+    mov [cur_col], eax
+    jmp .gsp_nav_apply
+.gsp_nr_noshift:
+    cmp dword [cur_col], 26
+    jge .gsp_nav_apply
+    inc dword [cur_col]
+    mov eax, [cur_col]
+    mov [sel_start_col], eax
+    mov [sel_end_col], eax
+    mov eax, [cur_row]
+    mov [sel_start_row], eax
+    mov [sel_end_row], eax
+    jmp .gsp_nav_apply
+
+.gsp_nav_up:
+    test r14b, r14b
+    jz .gsp_nu_noshift
+    cmp dword [sel_end_row], 0
+    jle .gsp_nav_apply
+    dec dword [sel_end_row]
+    mov eax, [sel_end_row]
+    mov [cur_row], eax
+    jmp .gsp_nav_apply
+.gsp_nu_noshift:
+    cmp dword [cur_row], 0
+    jle .gsp_nav_apply
+    dec dword [cur_row]
+    mov eax, [cur_row]
+    mov [sel_start_row], eax
+    mov [sel_end_row], eax
+    mov eax, [cur_col]
+    mov [sel_start_col], eax
+    mov [sel_end_col], eax
+    jmp .gsp_nav_apply
+
+.gsp_nav_down:
+    mov edx, [total_rows]
+    dec edx
+    test r14b, r14b
+    jz .gsp_nd_noshift
+    cmp dword [sel_end_row], edx
+    jge .gsp_nav_apply
+    inc dword [sel_end_row]
+    mov eax, [sel_end_row]
+    mov [cur_row], eax
+    jmp .gsp_nav_apply
+.gsp_nd_noshift:
+    cmp dword [cur_row], edx
+    jge .gsp_nav_apply
+    inc dword [cur_row]
+    mov eax, [cur_row]
+    mov [sel_start_row], eax
+    mov [sel_end_row], eax
+    mov eax, [cur_col]
+    mov [sel_start_col], eax
+    mov [sel_end_col], eax
+    jmp .gsp_nav_apply
+
+.gsp_nav_tab:
+    test r14b, r14b
+    jnz .gsp_nav_left
+    jmp .gsp_nav_right
+
+.gsp_nav_return:
+    jmp .gsp_nav_down
+
+.gsp_nav_home:
+    test r14b, r14b
+    jz @f
+    mov dword [sel_end_col], 1
+    mov dword [cur_col], 1
+    jmp .gsp_nav_apply
+@@:
+    mov dword [cur_col], 1
+    mov dword [sel_start_col], 1
+    mov dword [sel_end_col], 1
+    mov eax, [cur_row]
+    mov [sel_start_row], eax
+    mov [sel_end_row], eax
+    jmp .gsp_nav_apply
+
+.gsp_nav_end:
+    test r14b, r14b
+    jz @f
+    mov dword [sel_end_col], 26
+    mov dword [cur_col], 26
+    jmp .gsp_nav_apply
+@@:
+    mov dword [cur_col], 26
+    mov dword [sel_start_col], 26
+    mov dword [sel_end_col], 26
+    mov eax, [cur_row]
+    mov [sel_start_row], eax
+    mov [sel_end_row], eax
+    jmp .gsp_nav_apply
+
+.gsp_nav_pgup:
+    test r14b, r14b
+    jz @f
+    sub dword [sel_end_row], 10
+    jns .pgu_ok1
+    mov dword [sel_end_row], 0
+.pgu_ok1:
+    mov eax, [sel_end_row]
+    mov [cur_row], eax
+    jmp .gsp_nav_apply
+@@:
+    sub dword [cur_row], 10
+    jns .pgu_ok2
+    mov dword [cur_row], 0
+.pgu_ok2:
+    mov eax, [cur_row]
+    mov [sel_start_row], eax
+    mov [sel_end_row], eax
+    mov eax, [cur_col]
+    mov [sel_start_col], eax
+    mov [sel_end_col], eax
+    jmp .gsp_nav_apply
+
+.gsp_nav_pgdn:
+    mov edx, [total_rows]
+    dec edx
+    test r14b, r14b
+    jz @f
+    add dword [sel_end_row], 10
+    cmp dword [sel_end_row], edx
+    jle .pgd_ok1
+    mov [sel_end_row], edx
+.pgd_ok1:
+    mov eax, [sel_end_row]
+    mov [cur_row], eax
+    jmp .gsp_nav_apply
+@@:
+    add dword [cur_row], 10
+    cmp dword [cur_row], edx
+    jle .pgd_ok2
+    mov [cur_row], edx
+.pgd_ok2:
+    mov eax, [cur_row]
+    mov [sel_start_row], eax
+    mov [sel_end_row], eax
+    mov eax, [cur_col]
+    mov [sel_start_col], eax
+    mov [sel_end_col], eax
+    jmp .gsp_nav_apply
+
+.gsp_nav_apply:
+    call UpdateCellSelectionDisplay
+    call SyncListViewItemState
+    xor eax, eax
+    jmp .gsp_ret
+
+.gsp_key_f2:
+    mov rcx, [hFormulaEdit]
+    call [SetFocus]
+    mov rcx, [hFormulaEdit]
+    mov edx, EM_SETSEL
+    xor r8d, r8d
+    mov r9d, -1
+    call [SendMessageA]
+    xor eax, eax
+    jmp .gsp_ret
+
+.gsp_key_f3:
+    call DoShowFxWizard
+    xor eax, eax
+    jmp .gsp_ret
+
+.gsp_key_f5:
+    call DoRefreshGrid
+    xor eax, eax
+    jmp .gsp_ret
+
+.gsp_key_f9:
+    call DoRecalculateAll
+    xor eax, eax
+    jmp .gsp_ret
+
+.gsp_key_del:
+    call DoClearCell
+    xor eax, eax
+    jmp .gsp_ret
+
+.gsp_ret:
+    mov rbx, [rbp-08h]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
+    mov r14, [rbp-30h]
+    mov r15, [rbp-38h]
+    leave
+    ret
+
+
+
+; =============================================================================
 ; Build Spreadsheet Grid View (SysListView32: #, A..J, Rows 1..30)
 ; =============================================================================
 BuildSpreadsheetGrid:
@@ -4207,6 +4974,13 @@ BuildSpreadsheetGrid:
     xor r8d, r8d
     mov r9d, LVS_EX_GRIDLINES or LVS_EX_FULLROWSELECT or LVS_EX_DOUBLEBUFFER
     call [SendMessageA]
+
+    ; Subclass Grid ListView for full 2D mouse drag & keyboard selection
+    mov rcx, [hGrid]
+    mov edx, -4 ; GWLP_WNDPROC
+    lea r8, [GridSubclassProc]
+    call [SetWindowLongPtrA]
+    mov [origGridProc], rax
 
     ; Setup Columns: # (width 42), A..J (width 118 each)
     lea rdi, [lvcol]
@@ -4445,25 +5219,45 @@ BuildSheetTabsAndStatus:
 UpdateStatusStats:
     push rbp
     mov rbp, rsp
-    sub rsp, 60h
-    mov [rbp-8], rbx
-    mov [rbp-16], rsi
-    mov [rbp-24], rdi
-    mov [rbp-32], r12
-    mov [rbp-40], r13
+    sub rsp, 90h
+    mov [rbp-08h], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
 
+    ; Local variables strictly in [rbp-30h] .. [rbp-48h]
+    ; Outgoing calls use [rsp]..[rsp+28h] = [rbp-90h]..[rbp-68h]
     xor rax, rax
-    mov [rbp-48], rax       ; sum = 0.0
+    mov [rbp-30h], rax       ; sum = 0.0 (qword)
     xor ebx, ebx            ; count = 0
 
-    mov r12d, 0             ; row = 0..total_rows-1
-.row_loop:
-    cmp r12d, [total_rows]
-    jge .stats_done
+    ; Compute min_row, max_row, min_col, max_col
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r12d, eax           ; r12d = min_row
+    mov [rbp-38h], edx      ; [rbp-38h] = max_row
 
-    mov r13d, 1             ; col = 1..10 (A..J)
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov [rbp-40h], eax      ; [rbp-40h] = min_col
+    mov [rbp-48h], edx      ; [rbp-48h] = max_col
+
+.row_loop:
+    cmp r12d, [rbp-38h]
+    jg .stats_done
+
+    mov r13d, [rbp-40h]
 .col_loop:
-    cmp r13d, 10
+    cmp r13d, [rbp-48h]
     jg .next_row
 
     ; Get cell text
@@ -4494,9 +5288,9 @@ UpdateStatusStats:
 
 .is_num:
     inc ebx
-    movsd xmm2, [rbp-48]
+    movsd xmm2, [rbp-30h]
     addsd xmm2, xmm0
-    movsd [rbp-48], xmm2
+    movsd [rbp-30h], xmm2
 
 .next_col:
     inc r13d
@@ -4507,7 +5301,7 @@ UpdateStatusStats:
     jmp .row_loop
 
 .stats_done:
-    movsd xmm0, [rbp-48]   ; SUM
+    movsd xmm0, [rbp-30h]   ; SUM
 
     ; AVG
     xorpd xmm1, xmm1
@@ -4532,11 +5326,11 @@ UpdateStatusStats:
     lea r9, [szBuffer]
     call [SendMessageA]
 
-    mov rbx, [rbp-8]
-    mov rsi, [rbp-16]
-    mov rdi, [rbp-24]
-    mov r12, [rbp-32]
-    mov r13, [rbp-40]
+    mov rbx, [rbp-08h]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
     leave
     ret
 
@@ -4671,16 +5465,14 @@ WndProc:
     mov edx, [rax+16]
     cmp edx, -12 ; NM_CUSTOMDRAW
     je .on_customdraw
-    cmp edx, -101 ; LVN_ITEMCHANGED (row selection change)
-    je .on_grid_item_changed
+    cmp edx, -108 ; LVN_COLUMNCLICK
+    je .on_column_click
     cmp edx, NM_CLICK
     je .on_grid_click
     cmp edx, NM_DBLCLK
     je .on_grid_dblclick
     cmp edx, TCN_SELCHANGE
     je .on_tab_change
-    cmp edx, LVN_KEYDOWN
-    je .on_lvn_keydown
     jmp .ret0
 
 .on_customdraw:
@@ -4717,8 +5509,17 @@ WndProc:
     test r11d, r11d
     jnz .check_active_cell
 
-    cmp r10d, [cur_row]
-    jne .col0_normal
+    ; Check if r10d is within [min_row..max_row]
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    cmp r10d, eax
+    jl .col0_normal
+    cmp r10d, edx
+    jg .col0_normal
     ; Selected row header: accent indicator
     mov dword [rsi+84], 00D0C4B8h ; darker accent gray
     mov dword [rsi+80], 001A1008h ; dark text
@@ -4795,11 +5596,34 @@ WndProc:
     mov r12, [hFontItalic]
 
 .apply_active_cell:
-    ; Check if this is the active selected cell (cur_row, cur_col)
+    ; Check if (r10d, r11d) is inside selection range [min_row..max_row, min_col..max_col]
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    cmp r10d, eax
+    jl .paint_cell_now
+    cmp r10d, edx
+    jg .paint_cell_now
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    cmp r11d, eax
+    jl .paint_cell_now
+    cmp r11d, edx
+    jg .paint_cell_now
+
+    ; --- Cell IS in selection range! ---
     cmp r10d, [cur_row]
-    jne .paint_cell_now
+    jne .paint_selected_non_active
     cmp r11d, [cur_col]
-    jne .paint_cell_now
+    jne .paint_selected_non_active
 
     ; Active Cell!
     mov rax, [pCellStyleTable]
@@ -4811,7 +5635,7 @@ WndProc:
     shl rdx, 4
     add rdx, rax
     test dword [rdx+8], 2   ; has_bk?
-    jnz .draw_focus_border  ; keep rich background (Navy etc.) so no holes in banners!
+    jnz .draw_focus_border  ; keep rich background (Navy etc.)
 
 .set_active_tint:
     mov dword [rsi+84], 00FFE4D0h ; soft blue #D0E4FF
@@ -4821,6 +5645,23 @@ WndProc:
     mov rcx, [rsi+32]       ; hdc
     lea rdx, [rsi+48]       ; &rc
     call [DrawFocusRect]
+    jmp .paint_cell_now
+
+.paint_selected_non_active:
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .set_sel_tint
+    mov edx, r10d
+    shl edx, 5
+    add edx, r11d
+    shl rdx, 4
+    add rdx, rax
+    test dword [rdx+8], 2   ; has_bk?
+    jnz .paint_cell_now     ; keep rich custom background
+
+.set_sel_tint:
+    mov dword [rsi+84], 00F8E0CCh ; Excel selection light blue (RGB 204, 224, 248)
+    mov dword [rsi+80], 00382010h ; dark slate navy text
 
 .paint_cell_now:
     mov rcx, [rsi+32]       ; hdc
@@ -4829,37 +5670,29 @@ WndProc:
     mov eax, 2              ; CDRF_NEWFONT
     jmp .done
 
-.on_grid_item_changed:
+.on_column_click:
     mov rax, r9             ; pNMListView
-    test dword [rax+24], 2  ; LVIS_SELECTED in uNewState
-    jz .ret0
-    mov edx, [rax+8]        ; iItem
-    cmp edx, -1
-    je .ret0
-    mov [cur_row], edx
-    call UpdateCellSelectionDisplay
+    mov edx, [rax+28]       ; iSubItem (column index: 0 = #, 1 = A.. 26 = Z)
+    cmp edx, 0
+    jne .col_click_col
+    call DoSelectAll
     jmp .ret0
 
-.on_lvn_keydown:
-    movzx r8d, word [rax+24]
-    cmp r8d, 25h            ; VK_LEFT
-    je .key_left
-    cmp r8d, 27h            ; VK_RIGHT
-    je .key_right
-    jmp .handle_key
-
-.key_left:
-    cmp dword [cur_col], 1
-    jle .ret0
-    dec dword [cur_col]
+.col_click_col:
+    cmp edx, 1
+    jl .ret0
+    cmp edx, 26
+    jg .ret0
+    mov [sel_start_col], edx
+    mov [sel_end_col], edx
+    mov [cur_col], edx
+    mov [sel_start_row], 0
+    mov eax, [total_rows]
+    dec eax
+    mov [sel_end_row], eax
+    mov [cur_row], 0
     call UpdateCellSelectionDisplay
-    jmp .ret0
-
-.key_right:
-    cmp dword [cur_col], 26
-    jge .ret0
-    inc dword [cur_col]
-    call UpdateCellSelectionDisplay
+    call SyncListViewItemState
     jmp .ret0
 
 .on_grid_click:
@@ -5818,6 +6651,8 @@ DoGridCellHitTest:
 
     mov eax, dword [lvhit+12]
     mov [cur_row], eax
+    mov [sel_start_row], eax
+    mov [sel_end_row], eax
 
     mov eax, dword [lvhit+16]   ; iSubItem (0 = #, 1 = A, 2 = B, ..., 26 = Z)
     cmp eax, 1
@@ -5825,10 +6660,14 @@ DoGridCellHitTest:
     cmp eax, 26
     jg .use_col1
     mov [cur_col], eax
+    mov [sel_start_col], eax
+    mov [sel_end_col], eax
     jmp .update_display
 
 .use_col1:
     mov dword [cur_col], 1
+    mov dword [sel_start_col], 1
+    mov dword [sel_end_col], 1
     jmp .update_display
 
 .use_selected_row:
@@ -5856,9 +6695,22 @@ DoGridCellHitTest:
 UpdateCellSelectionDisplay:
     push rbp
     mov rbp, rsp
-    sub rsp, 40h
+    sub rsp, 80h
+    mov [rbp-08h], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
 
-    ; Format Address: e.g. A1, B3, C10...
+    ; Check if single cell or multi-cell selection
+    mov eax, [sel_start_row]
+    cmp eax, [sel_end_row]
+    jne .fmt_range
+    mov eax, [sel_start_col]
+    cmp eax, [sel_end_col]
+    jne .fmt_range
+
+    ; --- SINGLE CELL ---
     mov eax, [cur_col]
     dec eax
     cmp eax, 26
@@ -5887,7 +6739,7 @@ UpdateCellSelectionDisplay:
     mov eax, [cur_row]
     inc eax
     mov ecx, 10
-    lea rsi, [szTemp+16]
+    lea rsi, [szTemp+32]
     mov byte [rsi], 0
 .itos2:
     xor edx, edx
@@ -5903,7 +6755,87 @@ UpdateCellSelectionDisplay:
     stosb
     test al, al
     jnz .copy_row_str
+    jmp .apply_to_ui
 
+.fmt_range:
+    ; Format Range: min_col, min_row : max_col, max_row
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r12d, eax       ; min_row
+    mov r13d, edx       ; max_row
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, edx        ; max_col
+
+    ; Format Start Col (eax)
+    dec eax
+    add al, 'A'
+    lea rdi, [szTemp]
+    mov [rdi], al
+    inc rdi
+
+    ; Format Start Row (r12d + 1)
+    mov eax, r12d
+    inc eax
+    mov ecx, 10
+    lea rsi, [szTemp+48]
+    mov byte [rsi], 0
+.r_itos1:
+    xor edx, edx
+    div ecx
+    add dl, '0'
+    dec rsi
+    mov [rsi], dl
+    test eax, eax
+    jnz .r_itos1
+.r_copy1:
+    lodsb
+    stosb
+    test al, al
+    jnz .r_copy1
+    dec rdi             ; back up over null terminator
+
+    ; Append ':'
+    mov byte [rdi], ':'
+    inc rdi
+
+    ; Format End Col (ebx)
+    mov eax, ebx
+    dec eax
+    add al, 'A'
+    mov [rdi], al
+    inc rdi
+
+    ; Format End Row (r13d + 1)
+    mov eax, r13d
+    inc eax
+    mov ecx, 10
+    lea rsi, [szTemp+48]
+    mov byte [rsi], 0
+.r_itos2:
+    xor edx, edx
+    div ecx
+    add dl, '0'
+    dec rsi
+    mov [rsi], dl
+    test eax, eax
+    jnz .r_itos2
+.r_copy2:
+    lodsb
+    stosb
+    test al, al
+    jnz .r_copy2
+
+.apply_to_ui:
     mov rcx, [hNameBox]
     lea rdx, [szTemp]
     call [SetWindowTextA]
@@ -5941,6 +6873,11 @@ UpdateCellSelectionDisplay:
     xor r8d, r8d
     call [InvalidateRect]
 
+    mov rbx, [rbp-08h]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
     leave
     ret
 
@@ -5954,38 +6891,92 @@ UpdateCellSelectionDisplay:
 ToggleCellBold:
     push rbp
     mov rbp, rsp
-    sub rsp, 20h
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
 
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .tcb_done
-    mov edx, [cur_row]
-    cmp edx, 10000
-    jae .tcb_done
-    mov ecx, [cur_col]
-    cmp ecx, 32
-    jae .tcb_done
 
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r12d, eax       ; min_row
+    mov r13d, edx       ; max_row
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, eax        ; min_col
+    mov esi, edx        ; max_col
+
+    mov edx, [cur_row]
+    mov ecx, [cur_col]
     shl edx, 5
     add edx, ecx
     shl rdx, 4
-    add rdx, rax
+    add rdx, [pCellStyleTable]
+    mov edi, [rdx+8]
+    xor edi, 1
+    and edi, 1
+    mov [is_bold_active], edi
 
-    xor dword [rdx+8], 1
+.tcb_r_loop:
+    cmp r12d, r13d
+    jg .tcb_redraw
 
-    mov eax, [rdx+8]
-    and eax, 1
-    mov [is_bold_active], eax
+    mov ecx, ebx
+.tcb_c_loop:
+    cmp ecx, esi
+    jg .tcb_next_r
 
+    cmp r12d, 10000
+    jae .tcb_next_c
+    cmp ecx, 32
+    jae .tcb_next_c
+
+    mov edx, r12d
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    and dword [rdx+8], not 1
+    or dword [rdx+8], edi
+
+.tcb_next_c:
+    inc ecx
+    jmp .tcb_c_loop
+
+.tcb_next_r:
+    inc r12d
+    jmp .tcb_r_loop
+
+.tcb_redraw:
     mov rcx, [hGrid]
     test rcx, rcx
     jz .tcb_done
     xor edx, edx
     mov r8d, 1
     call [InvalidateRect]
-
     call SaveActiveSheetToBuffer
+
 .tcb_done:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
     leave
     ret
 
@@ -5996,39 +6987,94 @@ ToggleCellBold:
 ToggleCellItalic:
     push rbp
     mov rbp, rsp
-    sub rsp, 20h
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
 
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .tci_done
-    mov edx, [cur_row]
-    cmp edx, 10000
-    jae .tci_done
-    mov ecx, [cur_col]
-    cmp ecx, 32
-    jae .tci_done
 
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r12d, eax
+    mov r13d, edx
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, eax
+    mov esi, edx
+
+    mov edx, [cur_row]
+    mov ecx, [cur_col]
     shl edx, 5
     add edx, ecx
     shl rdx, 4
-    add rdx, rax
-
-    xor dword [rdx+8], 8
-
-    mov eax, [rdx+8]
-    and eax, 8
+    add rdx, [pCellStyleTable]
+    mov edi, [rdx+8]
+    xor edi, 8
+    and edi, 8
+    mov eax, edi
     shr eax, 3
     mov [is_italic_act], eax
 
+.tci_r_loop:
+    cmp r12d, r13d
+    jg .tci_redraw
+
+    mov ecx, ebx
+.tci_c_loop:
+    cmp ecx, esi
+    jg .tci_next_r
+
+    cmp r12d, 10000
+    jae .tci_next_c
+    cmp ecx, 32
+    jae .tci_next_c
+
+    mov edx, r12d
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    and dword [rdx+8], not 8
+    or dword [rdx+8], edi
+
+.tci_next_c:
+    inc ecx
+    jmp .tci_c_loop
+
+.tci_next_r:
+    inc r12d
+    jmp .tci_r_loop
+
+.tci_redraw:
     mov rcx, [hGrid]
     test rcx, rcx
     jz .tci_done
     xor edx, edx
     mov r8d, 1
     call [InvalidateRect]
-
     call SaveActiveSheetToBuffer
+
 .tci_done:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
     leave
     ret
 
@@ -6039,39 +7085,94 @@ ToggleCellItalic:
 ToggleCellUnderline:
     push rbp
     mov rbp, rsp
-    sub rsp, 20h
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
 
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .tcu_done
-    mov edx, [cur_row]
-    cmp edx, 10000
-    jae .tcu_done
-    mov ecx, [cur_col]
-    cmp ecx, 32
-    jae .tcu_done
 
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r12d, eax
+    mov r13d, edx
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, eax
+    mov esi, edx
+
+    mov edx, [cur_row]
+    mov ecx, [cur_col]
     shl edx, 5
     add edx, ecx
     shl rdx, 4
-    add rdx, rax
-
-    xor dword [rdx+8], 16
-
-    mov eax, [rdx+8]
-    and eax, 16
+    add rdx, [pCellStyleTable]
+    mov edi, [rdx+8]
+    xor edi, 16
+    and edi, 16
+    mov eax, edi
     shr eax, 4
     mov [is_under_act], eax
 
+.tcu_r_loop:
+    cmp r12d, r13d
+    jg .tcu_redraw
+
+    mov ecx, ebx
+.tcu_c_loop:
+    cmp ecx, esi
+    jg .tcu_next_r
+
+    cmp r12d, 10000
+    jae .tcu_next_c
+    cmp ecx, 32
+    jae .tcu_next_c
+
+    mov edx, r12d
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    and dword [rdx+8], not 16
+    or dword [rdx+8], edi
+
+.tcu_next_c:
+    inc ecx
+    jmp .tcu_c_loop
+
+.tcu_next_r:
+    inc r12d
+    jmp .tcu_r_loop
+
+.tcu_redraw:
     mov rcx, [hGrid]
     test rcx, rcx
     jz .tcu_done
     xor edx, edx
     mov r8d, 1
     call [InvalidateRect]
-
     call SaveActiveSheetToBuffer
+
 .tcu_done:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
     leave
     ret
 
@@ -6082,39 +7183,94 @@ ToggleCellUnderline:
 ToggleCellStrike:
     push rbp
     mov rbp, rsp
-    sub rsp, 20h
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
 
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .tcs_done
-    mov edx, [cur_row]
-    cmp edx, 10000
-    jae .tcs_done
-    mov ecx, [cur_col]
-    cmp ecx, 32
-    jae .tcs_done
 
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r12d, eax
+    mov r13d, edx
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, eax
+    mov esi, edx
+
+    mov edx, [cur_row]
+    mov ecx, [cur_col]
     shl edx, 5
     add edx, ecx
     shl rdx, 4
-    add rdx, rax
-
-    xor dword [rdx+8], 32
-
-    mov eax, [rdx+8]
-    and eax, 32
+    add rdx, [pCellStyleTable]
+    mov edi, [rdx+8]
+    xor edi, 32
+    and edi, 32
+    mov eax, edi
     shr eax, 5
     mov [is_strike_act], eax
 
+.tcs_r_loop:
+    cmp r12d, r13d
+    jg .tcs_redraw
+
+    mov ecx, ebx
+.tcs_c_loop:
+    cmp ecx, esi
+    jg .tcs_next_r
+
+    cmp r12d, 10000
+    jae .tcs_next_c
+    cmp ecx, 32
+    jae .tcs_next_c
+
+    mov edx, r12d
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    and dword [rdx+8], not 32
+    or dword [rdx+8], edi
+
+.tcs_next_c:
+    inc ecx
+    jmp .tcs_c_loop
+
+.tcs_next_r:
+    inc r12d
+    jmp .tcs_r_loop
+
+.tcs_redraw:
     mov rcx, [hGrid]
     test rcx, rcx
     jz .tcs_done
     xor edx, edx
     mov r8d, 1
     call [InvalidateRect]
-
     call SaveActiveSheetToBuffer
+
 .tcs_done:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
     leave
     ret
 
@@ -6125,40 +7281,96 @@ ToggleCellStrike:
 ToggleCellFill:
     push rbp
     mov rbp, rsp
-    sub rsp, 20h
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
 
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .tcf_done
-    mov edx, [cur_row]
-    cmp edx, 10000
-    jae .tcf_done
-    mov ecx, [cur_col]
-    cmp ecx, 32
-    jae .tcf_done
 
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r12d, eax
+    mov r13d, edx
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, eax
+    mov esi, edx
+
+    mov edx, [cur_row]
+    mov ecx, [cur_col]
     shl edx, 5
     add edx, ecx
     shl rdx, 4
-    add rdx, rax
+    add rdx, [pCellStyleTable]
+    mov edi, [rdx+8]
+    xor edi, 2
+    and edi, 2
 
-    test dword [rdx+8], 2
-    jnz .clear_fill
+.tcf_r_loop:
+    cmp r12d, r13d
+    jg .tcf_redraw
+
+    mov ecx, ebx
+.tcf_c_loop:
+    cmp ecx, esi
+    jg .tcf_next_r
+
+    cmp r12d, 10000
+    jae .tcf_next_c
+    cmp ecx, 32
+    jae .tcf_next_c
+
+    mov edx, r12d
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    test edi, edi
+    jz .tcf_clr
     mov dword [rdx], 00CCF2FFh ; Yellow highlight
     or dword [rdx+8], 2
-    jmp .fill_redraw
-.clear_fill:
+    jmp .tcf_next_c
+.tcf_clr:
     and dword [rdx+8], not 2
-.fill_redraw:
+
+.tcf_next_c:
+    inc ecx
+    jmp .tcf_c_loop
+
+.tcf_next_r:
+    inc r12d
+    jmp .tcf_r_loop
+
+.tcf_redraw:
     mov rcx, [hGrid]
     test rcx, rcx
     jz .tcf_done
     xor edx, edx
     mov r8d, 1
     call [InvalidateRect]
-
     call SaveActiveSheetToBuffer
+
 .tcf_done:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
     leave
     ret
 
@@ -6169,40 +7381,96 @@ ToggleCellFill:
 ToggleCellTextColor:
     push rbp
     mov rbp, rsp
-    sub rsp, 20h
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
 
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .tct_done
-    mov edx, [cur_row]
-    cmp edx, 10000
-    jae .tct_done
-    mov ecx, [cur_col]
-    cmp ecx, 32
-    jae .tct_done
 
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r12d, eax
+    mov r13d, edx
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, eax
+    mov esi, edx
+
+    mov edx, [cur_row]
+    mov ecx, [cur_col]
     shl edx, 5
     add edx, ecx
     shl rdx, 4
-    add rdx, rax
+    add rdx, [pCellStyleTable]
+    mov edi, [rdx+8]
+    xor edi, 4
+    and edi, 4
 
-    test dword [rdx+8], 4
-    jnz .clear_fg
+.tct_r_loop:
+    cmp r12d, r13d
+    jg .tct_redraw
+
+    mov ecx, ebx
+.tct_c_loop:
+    cmp ecx, esi
+    jg .tct_next_r
+
+    cmp r12d, 10000
+    jae .tct_next_c
+    cmp ecx, 32
+    jae .tct_next_c
+
+    mov edx, r12d
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    test edi, edi
+    jz .tct_clr
     mov dword [rdx+4], 000000C0h ; Dark red
     or dword [rdx+8], 4
-    jmp .fg_redraw
-.clear_fg:
+    jmp .tct_next_c
+.tct_clr:
     and dword [rdx+8], not 4
-.fg_redraw:
+
+.tct_next_c:
+    inc ecx
+    jmp .tct_c_loop
+
+.tct_next_r:
+    inc r12d
+    jmp .tct_r_loop
+
+.tct_redraw:
     mov rcx, [hGrid]
     test rcx, rcx
     jz .tct_done
     xor edx, edx
     mov r8d, 1
     call [InvalidateRect]
-
     call SaveActiveSheetToBuffer
+
 .tct_done:
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
     leave
     ret
 
@@ -6794,11 +8062,24 @@ DoEvalFormula:
 DoClipboardCopy:
     push rbp
     mov rbp, rsp
-    sub rsp, 40h
+    sub rsp, 70h
     mov [rbp-8], rbx
-    mov [rbp-16], r12
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
+    mov [rbp-48], r14
+    mov [rbp-56], r15
 
-    ; Get active cell text
+    ; Check if single cell or range
+    mov eax, [sel_start_row]
+    cmp eax, [sel_end_row]
+    jne .dcc_multi
+    mov eax, [sel_start_col]
+    cmp eax, [sel_end_col]
+    jne .dcc_multi
+
+    ; Single cell copy
     mov dword [lvitem], LVIF_TEXT
     mov eax, [cur_row]
     mov dword [lvitem+4], eax
@@ -6813,24 +8094,22 @@ DoClipboardCopy:
     lea r9, [lvitem]
     call [SendMessageA]
 
-    ; Open Clipboard
     mov rcx, [hWnd]
     call [OpenClipboard]
     test eax, eax
-    jz .done
+    jz .dcc_done
     call [EmptyClipboard]
 
-    ; Allocate global memory
     lea rcx, [szCellVal]
     call [strlen]
-    inc eax                 ; + null terminator
+    inc eax
     mov ebx, eax
     mov ecx, GMEM_MOVEABLE or GMEM_ZEROINIT
     mov edx, ebx
     call [GlobalAlloc]
     test rax, rax
-    jz .close_cb
-    mov r12, rax            ; hMem
+    jz .dcc_close_cb
+    mov r12, rax
 
     mov rcx, r12
     call [GlobalLock]
@@ -6845,12 +8124,119 @@ DoClipboardCopy:
     mov rdx, r12
     call [SetClipboardData]
 
-.close_cb:
+.dcc_close_cb:
+    call [CloseClipboard]
+    jmp .dcc_done
+
+.dcc_multi:
+    ; Multi-cell range copy
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r12d, eax       ; min_row
+    mov r13d, edx       ; max_row
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r14d, eax       ; min_col
+    mov r15d, edx       ; max_col
+
+    mov ecx, GMEM_MOVEABLE or GMEM_ZEROINIT
+    mov edx, 65536
+    call [GlobalAlloc]
+    test rax, rax
+    jz .dcc_done
+    mov [rbp-64], rax   ; hMem
+
+    mov rcx, rax
+    call [GlobalLock]
+    mov rdi, rax
+
+    mov ebx, r12d       ; row index
+.dcc_m_r:
+    cmp ebx, r13d
+    jg .dcc_m_finish
+
+    mov esi, r14d       ; col index
+.dcc_m_c:
+    cmp esi, r15d
+    jg .dcc_m_next_r
+
+    mov dword [lvitem], LVIF_TEXT
+    mov dword [lvitem+4], ebx
+    mov dword [lvitem+8], esi
+    lea rax, [szCellVal]
+    mov qword [lvitem+24], rax
+    mov dword [lvitem+32], 1000
+    mov rcx, [hGrid]
+    mov edx, LVM_GETITEMTEXTA
+    mov r8d, ebx
+    lea r9, [lvitem]
+    call [SendMessageA]
+
+    lea rdx, [szCellVal]
+.dcc_m_cp:
+    mov al, [rdx]
+    test al, al
+    jz .dcc_m_cp_done
+    mov [rdi], al
+    inc rdi
+    inc rdx
+    jmp .dcc_m_cp
+
+.dcc_m_cp_done:
+    cmp esi, r15d
+    jge @f
+    mov byte [rdi], 9   ; Tab
+    inc rdi
+@@:
+    inc esi
+    jmp .dcc_m_c
+
+.dcc_m_next_r:
+    cmp ebx, r13d
+    jge @f
+    mov byte [rdi], 13  ; \r
+    inc rdi
+    mov byte [rdi], 10  ; \n
+    inc rdi
+@@:
+    inc ebx
+    jmp .dcc_m_r
+
+.dcc_m_finish:
+    mov byte [rdi], 0
+
+    mov rcx, [rbp-64]
+    call [GlobalUnlock]
+
+    mov rcx, [hWnd]
+    call [OpenClipboard]
+    test eax, eax
+    jz .dcc_done
+    call [EmptyClipboard]
+
+    mov ecx, CF_TEXT
+    mov rdx, [rbp-64]
+    call [SetClipboardData]
+
     call [CloseClipboard]
 
-.done:
+.dcc_done:
     mov rbx, [rbp-8]
-    mov r12, [rbp-16]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
+    mov r14, [rbp-48]
+    mov r15, [rbp-56]
     leave
     ret
 
@@ -6859,26 +8245,7 @@ DoClipboardCut:
     mov rbp, rsp
     sub rsp, 20h
     call DoClipboardCopy
-
-    ; Clear active cell
-    mov dword [lvitem], LVIF_TEXT
-    mov eax, [cur_row]
-    mov dword [lvitem+4], eax
-    mov eax, [cur_col]
-    mov dword [lvitem+8], eax
-    lea rax, [empty_str]
-    mov qword [lvitem+24], rax
-    mov rcx, [hGrid]
-    mov edx, LVM_SETITEMTEXTA
-    mov r8d, [cur_row]
-    lea r9, [lvitem]
-    call [SendMessageA]
-
-    mov rcx, [hFormulaEdit]
-    lea rdx, [empty_str]
-    call [SetWindowTextA]
-
-    call UpdateStatusStats
+    call DoClearCell
     leave
     ret
 
@@ -9378,26 +10745,77 @@ DoDecDecimals:
 DoClearCell:
     push rbp
     mov rbp, rsp
-    sub rsp, 40h
+    sub rsp, 60h
+    mov [rbp-8], rbx
+    mov [rbp-16], rsi
+    mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
+
+    ; Determine selection bounds
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r12d, eax       ; min_row
+    mov r13d, edx       ; max_row
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, eax        ; min_col
+    mov esi, edx        ; max_col
+
+.dcc_r_loop:
+    cmp r12d, r13d
+    jg .dcc_finish
+
+    mov edi, ebx
+.dcc_c_loop:
+    cmp edi, esi
+    jg .dcc_next_r
+
     mov dword [lvitem], LVIF_TEXT
-    mov eax, [cur_row]
-    mov dword [lvitem+4], eax
-    mov eax, [cur_col]
-    mov dword [lvitem+8], eax
+    mov dword [lvitem+4], r12d
+    mov dword [lvitem+8], edi
     lea rax, [empty_str]
     mov qword [lvitem+24], rax
     mov rcx, [hGrid]
     mov edx, LVM_SETITEMTEXTA
-    mov r8d, [cur_row]
+    mov r8d, r12d
     lea r9, [lvitem]
     call [SendMessageA]
 
+    inc edi
+    jmp .dcc_c_loop
+
+.dcc_next_r:
+    inc r12d
+    jmp .dcc_r_loop
+
+.dcc_finish:
     mov rcx, [hFormulaEdit]
     lea rdx, [empty_str]
     call [SetWindowTextA]
 
     call SaveActiveSheetToBuffer
     call UpdateStatusStats
+
+    mov rcx, [hGrid]
+    xor edx, edx
+    mov r8d, 1
+    call [InvalidateRect]
+
+    mov rbx, [rbp-8]
+    mov rsi, [rbp-16]
+    mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
     leave
     ret
 
@@ -9405,16 +10823,16 @@ DoSelectAll:
     push rbp
     mov rbp, rsp
     sub rsp, 40h
-    mov dword [lvitem], 8
-    mov dword [lvitem+4], -1
-    mov dword [lvitem+8], 0
-    mov dword [lvitem+12], 2
-    mov dword [lvitem+16], 2
-    mov rcx, [hGrid]
-    mov edx, 102Bh ; LVM_SETITEMSTATE
-    mov r8d, -1
-    lea r9, [lvitem]
-    call [SendMessageA]
+    mov dword [sel_start_row], 0
+    mov dword [sel_start_col], 1
+    mov eax, [total_rows]
+    dec eax
+    mov [sel_end_row], eax
+    mov dword [sel_end_col], 26
+    mov dword [cur_row], 0
+    mov dword [cur_col], 1
+    call UpdateCellSelectionDisplay
+    call SyncListViewItemState
     leave
     ret
 
@@ -10353,6 +11771,9 @@ user32_table:
     DestroyWindow               dq RVA _DestroyWindow
     DrawFocusRect               dq RVA _DrawFocusRect
     GetDlgItem                  dq RVA _GetDlgItem
+    SetCapture                  dq RVA _SetCapture
+    ReleaseCapture              dq RVA _ReleaseCapture
+    GetAsyncKeyState             dq RVA _GetAsyncKeyState
                                 dq 0
 
 gdi32_table:
@@ -10488,6 +11909,12 @@ _DrawFocusRect dw 0
  db 'DrawFocusRect', 0
 _GetDlgItem dw 0
  db 'GetDlgItem', 0
+_SetCapture dw 0
+ db 'SetCapture', 0
+_ReleaseCapture dw 0
+ db 'ReleaseCapture', 0
+_GetAsyncKeyState dw 0
+ db 'GetAsyncKeyState', 0
 
 _CreateFontA dw 0
  db 'CreateFontA', 0

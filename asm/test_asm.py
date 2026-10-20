@@ -65,6 +65,103 @@ class TestAsmEngine(unittest.TestCase):
             header = f.read(2)
             self.assertEqual(header, b"MZ", "Must be valid Windows PE executable")
 
+    def test_gui_mouse_and_keyboard_selection(self):
+        import ctypes
+        import subprocess
+
+        user32 = ctypes.windll.user32
+        exe_path = Path(__file__).parent / "xlsx_gui64.exe"
+        proc = subprocess.Popen([str(exe_path)])
+        time.sleep(1.0)
+        hwnd_main = 0
+        try:
+            def cb_m(h, _):
+                nonlocal hwnd_main
+                cls = ctypes.create_unicode_buffer(256)
+                user32.GetClassNameW(h, cls, 256)
+                if "ExcelViewerPro_ASM64" in cls.value:
+                    hwnd_main = h
+                    return False
+                return True
+
+            user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)(cb_m), 0)
+            self.assertTrue(hwnd_main, "Main window must be found")
+
+            h_grid, h_name, h_header = 0, 0, 0
+            def cb_c(h, _):
+                nonlocal h_grid, h_name, h_header
+                cid = user32.GetWindowLongW(h, -12)
+                cls = ctypes.create_unicode_buffer(256)
+                user32.GetClassNameW(h, cls, 256)
+                if cid == 1301: h_grid = h
+                elif cid == 1201: h_name = h
+                elif "header" in cls.value.lower(): h_header = h
+                return True
+
+            user32.EnumChildWindows(hwnd_main, ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)(cb_c), 0)
+            self.assertTrue(h_grid and h_name and h_header, "Child controls must be found")
+
+            def gt(hw):
+                l = user32.SendMessageW(hw, 0xE, 0, 0)
+                b = ctypes.create_unicode_buffer(l + 2)
+                user32.SendMessageW(hw, 0xD, l + 1, ctypes.byref(b))
+                return b.value
+
+            user32.SetForegroundWindow(hwnd_main)
+            user32.SetFocus(h_grid)
+            time.sleep(0.1)
+
+            # 1. Navigation down and right
+            user32.SendMessageW(h_grid, 0x100, 0x28, 0) # VK_DOWN
+            user32.SendMessageW(h_grid, 0x101, 0x28, 0)
+            user32.SendMessageW(h_grid, 0x100, 0x27, 0) # VK_RIGHT
+            user32.SendMessageW(h_grid, 0x101, 0x27, 0)
+            time.sleep(0.05)
+            self.assertEqual(gt(h_name), "B2")
+
+            # 2. Shift + Down and Shift + Right (2D range)
+            user32.SendMessageW(h_grid, 0x100, 0x10, 0) # VK_SHIFT
+            user32.SendMessageW(h_grid, 0x100, 0x28, 0) # VK_DOWN
+            user32.SendMessageW(h_grid, 0x101, 0x28, 0)
+            user32.SendMessageW(h_grid, 0x100, 0x27, 0) # VK_RIGHT
+            user32.SendMessageW(h_grid, 0x101, 0x27, 0)
+            user32.SendMessageW(h_grid, 0x101, 0x10, 0)
+            time.sleep(0.05)
+            self.assertEqual(gt(h_name), "B2:C3")
+
+            # 3. Ctrl + A (Select All)
+            user32.SendMessageW(h_grid, 0x100, 0x11, 0) # VK_CONTROL
+            user32.SendMessageW(h_grid, 0x100, ord("A"), 0)
+            user32.SendMessageW(h_grid, 0x101, ord("A"), 0)
+            user32.SendMessageW(h_grid, 0x101, 0x11, 0)
+            time.sleep(0.05)
+            self.assertEqual(gt(h_name), "A1:Z30")
+
+            # 4. Mouse click and drag
+            user32.SendMessageW(h_grid, 0x201, 1, (50 << 16) | 120)
+            user32.SendMessageW(h_grid, 0x200, 1, (110 << 16) | 250)
+            user32.SendMessageW(h_grid, 0x202, 0, (110 << 16) | 250)
+            time.sleep(0.05)
+            self.assertTrue(":" in gt(h_name))
+
+            # 5. Column Header Click
+            user32.SendMessageW(h_header, 0x201, 1, (10 << 16) | 320)
+            user32.SendMessageW(h_header, 0x202, 0, (10 << 16) | 320)
+            time.sleep(0.05)
+            self.assertEqual(gt(h_name), "C1:C30")
+
+            # 6. Row Header Click (Col 0 in Grid at row 5)
+            user32.SendMessageW(h_grid, 0x201, 1, (110 << 16) | 25)
+            user32.SendMessageW(h_grid, 0x202, 0, (110 << 16) | 25)
+            time.sleep(0.05)
+            self.assertTrue(gt(h_name).startswith("A") and ":Z" in gt(h_name))
+        finally:
+            if hwnd_main:
+                user32.PostMessageW(hwnd_main, 0x0010, 0, 0) # WM_CLOSE
+            time.sleep(0.2)
+            if proc.poll() is None:
+                proc.kill()
+
 
 def run_benchmark():
     print("=" * 70)
