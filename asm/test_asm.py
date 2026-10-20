@@ -245,6 +245,23 @@ class TestAsmEngine(unittest.TestCase):
             # 5. Bold command executes cleanly
             user32.SendMessageW(hwnd_main, 0x0111, 1125, 0) # ID_BTN_BOLD
             time.sleep(0.05)
+
+            # 6. Mouse click on Row 23 (A23) must select ONLY A23, NOT from A1
+            user32.SendMessageW(h_grid, 0x0201, 1, (340 << 16) | 100) # LBUTTONDOWN at Row 23
+            user32.SendMessageW(h_grid, 0x0202, 0, (340 << 16) | 100) # LBUTTONUP
+            time.sleep(0.05)
+            self.assertEqual(gt(h_name), "A23")
+
+            # 7. Mouse drag from Row 11 to Row 16 must select A11:A16, NOT starting from A1
+            user32.SendMessageW(h_grid, 0x0201, 1, (160 << 16) | 100) # LBUTTONDOWN at Row 11
+            time.sleep(0.02)
+            self.assertEqual(gt(h_name), "A11")
+            user32.SendMessageW(h_grid, 0x0200, 1, (240 << 16) | 100) # MOUSEMOVE to Row 16
+            time.sleep(0.02)
+            self.assertEqual(gt(h_name), "A11:A16")
+            user32.SendMessageW(h_grid, 0x0202, 0, (240 << 16) | 100) # LBUTTONUP
+            time.sleep(0.05)
+            self.assertEqual(gt(h_name), "A11:A16")
         finally:
             if hwnd_main:
                 user32.PostMessageW(hwnd_main, 0x0010, 0, 0)

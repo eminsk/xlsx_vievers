@@ -4334,22 +4334,13 @@ GridSubclassProc:
     mov ebx, 26
 @@:
 
-    ; Check Shift key
-    mov r8, [rbp-50h]       ; reload wParam (contains MK_SHIFT = 0x0004)
+    ; Check Shift key from wParam (MK_SHIFT = 0x0004)
+    mov r8, [rbp-50h]       ; reload wParam
     test r8d, 4             ; MK_SHIFT
     jnz .gsp_lbtn_shift
-    cmp dword [g_is_shift_down], 1
-    je .gsp_lbtn_shift
-    mov ecx, VK_SHIFT
-    call [GetAsyncKeyState]
-    test ax, 8000h
-    jnz .gsp_lbtn_shift
-    mov ecx, VK_SHIFT
-    call [GetKeyState]
-    test ax, 8000h
-    jnz .gsp_lbtn_shift
 
-    ; Normal click: set new anchor
+    ; Normal click: set new anchor at clicked cell (lvhit+12 = row, ebx = col)
+    mov eax, dword [lvhit+12]
     mov [sel_start_row], eax
     mov [sel_start_col], ebx
     mov [sel_end_row], eax
@@ -4359,6 +4350,7 @@ GridSubclassProc:
     jmp .gsp_lbtn_capture
 
 .gsp_lbtn_shift:
+    mov eax, dword [lvhit+12]
     mov [sel_end_row], eax
     mov [sel_end_col], ebx
     mov [cur_row], eax
@@ -6701,6 +6693,8 @@ DoGridCellHitTest:
     cmp eax, -1
     je .hit_done
     mov [cur_row], eax
+    mov [sel_start_row], eax
+    mov [sel_end_row], eax
 
 .update_display:
     call UpdateCellSelectionDisplay
