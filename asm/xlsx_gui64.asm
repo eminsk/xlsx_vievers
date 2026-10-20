@@ -754,13 +754,57 @@ WndProc:
     cmp edi, [cur_col]
     jne .paint_selected_non_active
 
-    ; Active Cell: soft ice blue background #D0E4FF with dark navy text #0A3069
+    ; Active Cell: check if cell has custom background/text color
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .act_default_colors
+    cmp ebx, 10000
+    jae .act_default_colors
+    cmp edi, 32
+    jae .act_default_colors
+    mov edx, ebx
+    shl edx, 5
+    add edx, edi
+    shl rdx, 4
+    add rdx, rax
+    test dword [rdx+8], 2    ; has_bk?
+    jnz @f
     mov dword [rsi+84], 00FFE4D0h ; soft blue #D0E4FF
+@@:
+    test dword [rdx+8], 4    ; has_fg?
+    jnz .paint_cell_now
     mov dword [rsi+80], 0069300Ah ; Navy text #0A3069
     jmp .paint_cell_now
 
+.act_default_colors:
+    mov dword [rsi+84], 00FFE4D0h
+    mov dword [rsi+80], 0069300Ah
+    jmp .paint_cell_now
+
 .paint_selected_non_active:
-    ; Non-active selected cell: Excel selection light blue #CCE0F8 with dark slate navy text
+    ; Non-active selected cell
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .sel_default_colors
+    cmp ebx, 10000
+    jae .sel_default_colors
+    cmp edi, 32
+    jae .sel_default_colors
+    mov edx, ebx
+    shl edx, 5
+    add edx, edi
+    shl rdx, 4
+    add rdx, rax
+    test dword [rdx+8], 2    ; has_bk?
+    jnz @f
+    mov dword [rsi+84], 00F8E0CCh ; Excel selection light blue
+@@:
+    test dword [rdx+8], 4    ; has_fg?
+    jnz .paint_cell_now
+    mov dword [rsi+80], 00382010h ; dark slate navy text
+    jmp .paint_cell_now
+
+.sel_default_colors:
     mov dword [rsi+84], 00F8E0CCh ; Excel selection light blue (RGB 204, 224, 248)
     mov dword [rsi+80], 00382010h ; dark slate navy text
 
@@ -769,7 +813,7 @@ WndProc:
     mov rdx, r12            ; font
     call [SelectObject]
 
-    ; Check if this cell has a custom alignment in pCellStyleTable
+    ; Check if this cell has a custom alignment, font, or fill color in pCellStyleTable
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .pcn_default
@@ -790,6 +834,8 @@ WndProc:
     jne .pcn_do_draw
     cmp byte [rdx+14], 0
     jne .pcn_do_draw
+    test dword [rdx+8], 2    ; has_bk?
+    jnz .pcn_do_draw
     jmp .pcn_default
 
 .pcn_do_draw:
@@ -899,6 +945,14 @@ WndProc:
     call [DrawTextA]
 
 .pcn_skip_text:
+    cmp ebx, [cur_row]
+    jne @f
+    cmp edi, [cur_col]
+    jne @f
+    lea rdx, [rcBgCd]
+    mov rcx, [rsi+32]
+    call [DrawFocusRect]
+@@:
     mov eax, 4 ; CDRF_SKIPDEFAULT
     jmp .done
 

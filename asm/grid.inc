@@ -1786,21 +1786,47 @@ ToggleCellStrike:
 
 
 ; =============================================================================
-; Toggle Active Cell Fill Color (Flag bit 1: yellow #FFF2CC)
+; Pick & Apply Cell Fill / Background Color (ChooseColorA)
 ; =============================================================================
+DoPickFillColor:
 ToggleCellFill:
     push rbp
     mov rbp, rsp
-    sub rsp, 60h
+    sub rsp, 0A0h
     mov [rbp-8], rbx
-    mov [rbp-16], rsi
-    mov [rbp-24], rdi
-    mov [rbp-32], r12
-    mov [rbp-40], r13
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+
+    ; Clear CHOOSECOLORA structure (72 bytes at rbp-70h)
+    lea rdi, [rbp-70h]
+    xor eax, eax
+    mov ecx, 9
+    rep stosq
+
+    ; Populate CHOOSECOLORA
+    mov dword [rbp-70h + 0], 72              ; lStructSize
+    mov rax, [hWnd]
+    mov qword [rbp-70h + 8], rax              ; hwndOwner
+    mov eax, [cur_fill_color]
+    mov dword [rbp-70h + 24], eax             ; rgbResult
+    lea rax, [cust_colors]
+    mov qword [rbp-70h + 32], rax             ; lpCustColors
+    mov dword [rbp-70h + 40], 00000003h       ; Flags = CC_RGBINIT | CC_FULLOPEN
+
+    lea rcx, [rbp-70h]
+    call [ChooseColorA]
+    test eax, eax
+    jz .dpfc_done
+
+    mov eax, dword [rbp-70h + 24]
+    mov [cur_fill_color], eax
+    mov edi, eax                              ; edi = chosen COLORREF
 
     mov rax, [pCellStyleTable]
     test rax, rax
-    jz .tcf_done
+    jz .dpfc_done
 
     mov eax, [sel_start_row]
     mov edx, [sel_end_row]
@@ -1808,8 +1834,8 @@ ToggleCellFill:
     jle @f
     xchg eax, edx
 @@:
-    mov r12d, eax
-    mov r13d, edx
+    mov r12d, eax       ; min_row
+    mov r13d, edx       ; max_row
 
     mov eax, [sel_start_col]
     mov edx, [sel_end_col]
@@ -1817,32 +1843,22 @@ ToggleCellFill:
     jle @f
     xchg eax, edx
 @@:
-    mov ebx, eax
-    mov esi, edx
+    mov ebx, eax        ; min_col
+    mov esi, edx        ; max_col
 
-    mov edx, [cur_row]
-    mov ecx, [cur_col]
-    shl edx, 5
-    add edx, ecx
-    shl rdx, 4
-    add rdx, [pCellStyleTable]
-    mov edi, [rdx+8]
-    xor edi, 2
-    and edi, 2
-
-.tcf_r_loop:
+.dpfc_r_loop:
     cmp r12d, r13d
-    jg .tcf_redraw
+    jg .dpfc_redraw
 
     mov ecx, ebx
-.tcf_c_loop:
+.dpfc_c_loop:
     cmp ecx, esi
-    jg .tcf_next_r
+    jg .dpfc_next_r
 
     cmp r12d, 10000
-    jae .tcf_next_c
+    jae .dpfc_next_c
     cmp ecx, 32
-    jae .tcf_next_c
+    jae .dpfc_next_c
 
     mov edx, r12d
     shl edx, 5
@@ -1850,57 +1866,86 @@ ToggleCellFill:
     shl rdx, 4
     add rdx, [pCellStyleTable]
 
-    test edi, edi
-    jz .tcf_clr
-    mov dword [rdx], 00CCF2FFh ; Yellow highlight
-    or dword [rdx+8], 2
-    jmp .tcf_next_c
-.tcf_clr:
-    and dword [rdx+8], not 2
+    mov [rdx], edi          ; clrBk = chosen color
+    or dword [rdx+8], 2     ; set has_bk bit 1
 
-.tcf_next_c:
+.dpfc_next_c:
     inc ecx
-    jmp .tcf_c_loop
+    jmp .dpfc_c_loop
 
-.tcf_next_r:
+.dpfc_next_r:
     inc r12d
-    jmp .tcf_r_loop
+    jmp .dpfc_r_loop
 
-.tcf_redraw:
+.dpfc_redraw:
     mov rcx, [hGrid]
     test rcx, rcx
-    jz .tcf_done
+    jz @f
     xor edx, edx
     mov r8d, 1
     call [InvalidateRect]
+@@:
+    mov rcx, [hWnd]
+    test rcx, rcx
+    jz @f
+    xor edx, edx
+    mov r8d, 1
+    call [InvalidateRect]
+@@:
     call SaveActiveSheetToBuffer
 
-.tcf_done:
+.dpfc_done:
     mov rbx, [rbp-8]
-    mov rsi, [rbp-16]
-    mov rdi, [rbp-24]
-    mov r12, [rbp-32]
-    mov r13, [rbp-40]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
     leave
     ret
 
 
 ; =============================================================================
-; Toggle Active Cell Text Color (Flag bit 2: red #C00000)
+; Pick & Apply Cell Text Color (ChooseColorA)
 ; =============================================================================
+DoPickTextColor:
 ToggleCellTextColor:
     push rbp
     mov rbp, rsp
-    sub rsp, 60h
+    sub rsp, 0A0h
     mov [rbp-8], rbx
-    mov [rbp-16], rsi
-    mov [rbp-24], rdi
-    mov [rbp-32], r12
-    mov [rbp-40], r13
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+
+    ; Clear CHOOSECOLORA structure (72 bytes at rbp-70h)
+    lea rdi, [rbp-70h]
+    xor eax, eax
+    mov ecx, 9
+    rep stosq
+
+    ; Populate CHOOSECOLORA
+    mov dword [rbp-70h + 0], 72              ; lStructSize
+    mov rax, [hWnd]
+    mov qword [rbp-70h + 8], rax              ; hwndOwner
+    mov eax, [cur_text_color]
+    mov dword [rbp-70h + 24], eax             ; rgbResult
+    lea rax, [cust_colors]
+    mov qword [rbp-70h + 32], rax             ; lpCustColors
+    mov dword [rbp-70h + 40], 00000003h       ; Flags = CC_RGBINIT | CC_FULLOPEN
+
+    lea rcx, [rbp-70h]
+    call [ChooseColorA]
+    test eax, eax
+    jz .dptc_done
+
+    mov eax, dword [rbp-70h + 24]
+    mov [cur_text_color], eax
+    mov edi, eax                              ; edi = chosen COLORREF
 
     mov rax, [pCellStyleTable]
     test rax, rax
-    jz .tct_done
+    jz .dptc_done
 
     mov eax, [sel_start_row]
     mov edx, [sel_end_row]
@@ -1908,8 +1953,8 @@ ToggleCellTextColor:
     jle @f
     xchg eax, edx
 @@:
-    mov r12d, eax
-    mov r13d, edx
+    mov r12d, eax       ; min_row
+    mov r13d, edx       ; max_row
 
     mov eax, [sel_start_col]
     mov edx, [sel_end_col]
@@ -1917,32 +1962,22 @@ ToggleCellTextColor:
     jle @f
     xchg eax, edx
 @@:
-    mov ebx, eax
-    mov esi, edx
+    mov ebx, eax        ; min_col
+    mov esi, edx        ; max_col
 
-    mov edx, [cur_row]
-    mov ecx, [cur_col]
-    shl edx, 5
-    add edx, ecx
-    shl rdx, 4
-    add rdx, [pCellStyleTable]
-    mov edi, [rdx+8]
-    xor edi, 4
-    and edi, 4
-
-.tct_r_loop:
+.dptc_r_loop:
     cmp r12d, r13d
-    jg .tct_redraw
+    jg .dptc_redraw
 
     mov ecx, ebx
-.tct_c_loop:
+.dptc_c_loop:
     cmp ecx, esi
-    jg .tct_next_r
+    jg .dptc_next_r
 
     cmp r12d, 10000
-    jae .tct_next_c
+    jae .dptc_next_c
     cmp ecx, 32
-    jae .tct_next_c
+    jae .dptc_next_c
 
     mov edx, r12d
     shl edx, 5
@@ -1950,37 +1985,40 @@ ToggleCellTextColor:
     shl rdx, 4
     add rdx, [pCellStyleTable]
 
-    test edi, edi
-    jz .tct_clr
-    mov dword [rdx+4], 000000C0h ; Dark red
-    or dword [rdx+8], 4
-    jmp .tct_next_c
-.tct_clr:
-    and dword [rdx+8], not 4
+    mov [rdx+4], edi        ; clrText = chosen color
+    or dword [rdx+8], 4     ; set has_fg bit 2
 
-.tct_next_c:
+.dptc_next_c:
     inc ecx
-    jmp .tct_c_loop
+    jmp .dptc_c_loop
 
-.tct_next_r:
+.dptc_next_r:
     inc r12d
-    jmp .tct_r_loop
+    jmp .dptc_r_loop
 
-.tct_redraw:
+.dptc_redraw:
     mov rcx, [hGrid]
     test rcx, rcx
-    jz .tct_done
+    jz @f
     xor edx, edx
     mov r8d, 1
     call [InvalidateRect]
+@@:
+    mov rcx, [hWnd]
+    test rcx, rcx
+    jz @f
+    xor edx, edx
+    mov r8d, 1
+    call [InvalidateRect]
+@@:
     call SaveActiveSheetToBuffer
 
-.tct_done:
+.dptc_done:
     mov rbx, [rbp-8]
-    mov rsi, [rbp-16]
-    mov rdi, [rbp-24]
-    mov r12, [rbp-32]
-    mov r13, [rbp-40]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
     leave
     ret
 

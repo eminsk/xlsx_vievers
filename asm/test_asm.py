@@ -365,7 +365,7 @@ class TestAsmEngine(unittest.TestCase):
 
             # Check Data Tab buttons
             self.assertIn(1421, ctrls) # ID_BTN_DATA_CSV
-            self.assertEqual(ctrls[1421], "From CSV")
+            self.assertIn(ctrls[1421], ("From File", "From CSV"))
             self.assertIn(1424, ctrls) # ID_BTN_DATA_SORT_ASC
             self.assertEqual(ctrls[1424], "Sort A-Z")
 
@@ -768,6 +768,8 @@ class TestAsmEngine(unittest.TestCase):
         import subprocess
 
         user32 = ctypes.windll.user32
+        user32.GetDlgItem.restype = ctypes.c_void_p
+        user32.GetDlgItem.argtypes = [ctypes.c_void_p, ctypes.c_int]
         exe_path = Path(__file__).parent / "xlsx_gui64.exe"
         proc = subprocess.Popen([str(exe_path)])
 
@@ -842,6 +844,67 @@ class TestAsmEngine(unittest.TestCase):
             self.assertEqual(get_text(h_name), "A1")
             self.assertEqual(get_combo_sel(h_combo_size), 4) # 12pt
             self.assertEqual(get_combo_sel(h_combo_font), 1) # Calibri
+        finally:
+            if hwnd_main:
+                user32.PostMessageW(hwnd_main, 0x0010, 0, 0)
+            time.sleep(0.2)
+            if proc.poll() is None:
+                proc.kill()
+
+    def test_gui_color_buttons_and_universal_file_menu(self):
+        import ctypes
+        import subprocess
+
+        exe_path = Path(__file__).parent / "xlsx_gui64.exe"
+        self.assertTrue(exe_path.exists())
+
+        # 1. Verify PE Binary contains universal file menu strings and ChooseColorA import
+        pe_bytes = exe_path.read_bytes()
+        self.assertIn(b"&Open File (Excel, CSV)...", pe_bytes)
+        self.assertIn(b"&Save File\tCtrl+S", pe_bytes)
+        self.assertIn(b"Save &As...\tCtrl+Shift+S", pe_bytes)
+        self.assertIn(b"ChooseColorA", pe_bytes)
+
+        # 2. Verify live UI controls for Fill Color and Text Color
+        user32 = ctypes.windll.user32
+        user32.GetDlgItem.restype = ctypes.c_void_p
+        user32.GetDlgItem.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        user32.GetWindowLongW.restype = ctypes.c_long
+        user32.GetWindowLongW.argtypes = [ctypes.c_void_p, ctypes.c_int]
+
+        proc = subprocess.Popen([str(exe_path)])
+        hwnd_main = 0
+
+        def enum_cb(h, _):
+            nonlocal hwnd_main
+            cls = ctypes.create_unicode_buffer(256)
+            user32.GetClassNameW(h, cls, 256)
+            if "ExcelViewerPro_ASM64" in cls.value:
+                hwnd_main = h
+                return False
+            return True
+
+        try:
+            for _ in range(30):
+                user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)(enum_cb), 0)
+                if hwnd_main:
+                    break
+                time.sleep(0.1)
+
+            self.assertTrue(hwnd_main, "Main window must be found")
+
+            # ID_BTN_FILL_COLOR = 1130, ID_BTN_TEXT_COLOR = 1131
+            h_fill = user32.GetDlgItem(hwnd_main, 1130)
+            h_text = user32.GetDlgItem(hwnd_main, 1131)
+            self.assertTrue(h_fill, "Fill Color button must exist")
+            self.assertTrue(h_text, "Text Color button must exist")
+
+            # Verify buttons have BS_OWNERDRAW style (0x0B)
+            GWL_STYLE = -16
+            style_fill = user32.GetWindowLongW(h_fill, GWL_STYLE)
+            style_text = user32.GetWindowLongW(h_text, GWL_STYLE)
+            self.assertEqual(style_fill & 0x0F, 0x0B, "Fill Color button must be BS_OWNERDRAW")
+            self.assertEqual(style_text & 0x0F, 0x0B, "Text Color button must be BS_OWNERDRAW")
         finally:
             if hwnd_main:
                 user32.PostMessageW(hwnd_main, 0x0010, 0, 0)

@@ -21,10 +21,10 @@ section '.data' data readable writeable
     ; Menu strings
     m_file          db '&File', 0
     m_new           db '&New Workbook', 9, 'Ctrl+N', 0
-    m_open_csv      db '&Open CSV File...', 9, 'Ctrl+O', 0
+    m_open_csv      db '&Open File (Excel, CSV)...', 9, 'Ctrl+O', 0
     m_open_demo     db 'Open &Financial Demo Model', 0
-    m_save          db '&Save CSV', 9, 'Ctrl+S', 0
-    m_save_as       db 'Save &As CSV...', 9, 'Ctrl+Shift+S', 0
+    m_save          db '&Save File', 9, 'Ctrl+S', 0
+    m_save_as       db 'Save &As...', 9, 'Ctrl+Shift+S', 0
     m_exit          db 'E&xit', 9, 'Alt+F4', 0
 
     m_edit          db '&Edit', 0
@@ -87,8 +87,8 @@ section '.data' data readable writeable
                        'CSV / TSV Files (*.csv;*.tsv)', 0, '*.csv;*.tsv', 0,\
                        'All Files (*.*)', 0, '*.*', 0, 0
     def_ext_csv     db 'xlsx', 0
-    ofn_title_open  db 'Open Spreadsheet File (XLSX, XLS, CSV)', 0
-    ofn_title_save  db 'Save Spreadsheet As CSV', 0
+    ofn_title_open  db 'Open Spreadsheet File (Excel, CSV, TSV)', 0
+    ofn_title_save  db 'Save Spreadsheet File', 0
     mode_r          db 'r', 0
     mode_w          db 'w', 0
     csv_line_fmt    db '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s', 13, 10, 0
@@ -198,7 +198,7 @@ section '.data' data readable writeable
 
     ; Data tab labels
     grp_data_get_txt  db 'Get && Transform', 0
-    btn_data_csv_txt  db 'From CSV', 0
+    btn_data_csv_txt  db 'From File', 0
     btn_data_ref_txt  db 'Refresh', 0
     grp_data_srt_txt  db 'Sort && Filter', 0
     btn_data_asc_txt  db 'Sort A-Z', 0
@@ -637,6 +637,11 @@ section '.data' data readable writeable
 
     rcRibbonArea    dd 0, 24, 3000, 122
     cur_ribbon_tab  dd 0
+
+    ; Cell Fill & Text Color Picker Storage
+    cur_fill_color  dd 00CCF2FFh ; default light yellow (#FFF2CC in BGR format)
+    cur_text_color  dd 000000C0h ; default dark red (#C00000 in BGR format)
+    cust_colors     dd 16 dup(00FFFFFFh) ; 16 custom color slots for ChooseColorA
 
     ; GDI Brushes & Pens for Ribbon Button Icons
     hBrBtnFace      dq 0

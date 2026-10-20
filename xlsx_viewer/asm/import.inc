@@ -111,6 +111,7 @@ comctl_table:
 comdlg_table:
     GetOpenFileNameA            dq RVA _GetOpenFileNameA
     GetSaveFileNameA            dq RVA _GetSaveFileNameA
+    ChooseColorA                dq RVA _ChooseColorA
                                 dq 0
 
 msvcrt_table:
@@ -311,6 +312,8 @@ _GetOpenFileNameA dw 0
  db 'GetOpenFileNameA', 0
 _GetSaveFileNameA dw 0
  db 'GetSaveFileNameA', 0
+_ChooseColorA dw 0
+ db 'ChooseColorA', 0
 
 _strtod dw 0
  db 'strtod', 0

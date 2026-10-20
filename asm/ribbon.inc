@@ -526,7 +526,7 @@ BuildRibbonBar:
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_fill_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
     mov dword [rsp+20h], 269
     mov dword [rsp+28h], 72
     mov dword [rsp+30h], 30
@@ -547,7 +547,7 @@ BuildRibbonBar:
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_col_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
     mov dword [rsp+20h], 301
     mov dword [rsp+28h], 72
     mov dword [rsp+30h], 27
@@ -1567,6 +1567,10 @@ DrawRibbonOwnerButton:
     je .ico_wrap_text
     cmp r13d, ID_BTN_MERGE
     je .ico_merge_center
+    cmp r13d, ID_BTN_FILL_COLOR
+    je .ico_fill_color
+    cmp r13d, ID_BTN_TEXT_COLOR
+    je .ico_text_color
 
     cmp r13d, ID_BTN_INS_TABLE
     je .ico_table
@@ -3916,6 +3920,235 @@ DrawRibbonOwnerButton:
     lea r8d, [eax+2]
     call [LineTo]
     jmp .render_btn_text
+
+.ico_fill_color:
+    ; 1. Draw Paint Bucket body
+    mov rdx, [hPenDark2]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hBrWhite]
+    mov rcx, r12
+    call [SelectObject]
+
+    ; Top rim of bucket: line from (cx-5, cy-4) to (cx+2, cy-4)
+    mov rcx, r12
+    lea edx, [ebx-5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-4]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-4]
+    call [LineTo]
+
+    ; Right side: line to (cx+4, cy)
+    mov rcx, r12
+    lea edx, [ebx+4]
+    mov r8d, [rbp-5Ch]
+    call [LineTo]
+
+    ; Bottom: line to (cx-3, cy)
+    mov rcx, r12
+    lea edx, [ebx-3]
+    mov r8d, [rbp-5Ch]
+    call [LineTo]
+
+    ; Left side: line back to (cx-5, cy-4)
+    mov rcx, r12
+    lea edx, [ebx-5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-4]
+    call [LineTo]
+
+    ; Handle: from (cx-3, cy-4) up to (cx-1, cy-7) then to (cx+1, cy-4)
+    mov rdx, [hPenDark]
+    mov rcx, r12
+    call [SelectObject]
+    mov rcx, r12
+    lea edx, [ebx-3]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-4]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx-1]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-7]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx+1]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-4]
+    call [LineTo]
+
+    ; Paint drop dripping on bottom-right (cx+5, cy-1) to (cx+5, cy+2)
+    mov rdx, [hPenBlue]
+    mov rcx, r12
+    call [SelectObject]
+    mov rcx, r12
+    lea edx, [ebx+5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-1]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
+    call [LineTo]
+
+    ; 2. Dynamic Fill Color Bar underneath bucket: (cx-7, cy+4) to (cx+7, cy+7)
+    mov ecx, [cur_fill_color]
+    call [CreateSolidBrush]
+    mov [rsp+40h], rax
+
+    mov rdx, [hPenNull]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [rsp+40h]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-7]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+4]
+    lea r9d, [ebx+8]
+    lea eax, [eax+8]
+    mov [rsp+20h], eax
+    call [Rectangle]
+
+    ; Border around color bar
+    mov rdx, [hPenBorder]
+    mov rcx, r12
+    call [SelectObject]
+    mov rcx, r12
+    lea edx, [ebx-7]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+4]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+7]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+4]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx+7]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+7]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx-7]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+7]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx-7]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+4]
+    call [LineTo]
+
+    mov rcx, [rsp+40h]
+    call [DeleteObject]
+    jmp .btn_drawn
+
+.ico_text_color:
+    ; 1. Draw bold letter 'A'
+    ; Left leg of 'A': (cx-5, cy+2) to (cx, cy-7)
+    mov rdx, [hPenDark2]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    mov edx, ebx
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-7]
+    call [LineTo]
+
+    ; Right leg of 'A': (cx, cy-7) to (cx+5, cy+2)
+    mov rcx, r12
+    lea edx, [ebx+5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
+    call [LineTo]
+
+    ; Crossbar of 'A': (cx-3, cy-1) to (cx+3, cy-1)
+    mov rcx, r12
+    lea edx, [ebx-3]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-1]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+3]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-1]
+    call [LineTo]
+
+    ; 2. Dynamic Text Color Bar underneath 'A': (cx-6, cy+4) to (cx+6, cy+7)
+    mov ecx, [cur_text_color]
+    call [CreateSolidBrush]
+    mov [rsp+40h], rax
+
+    mov rdx, [hPenNull]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [rsp+40h]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+4]
+    lea r9d, [ebx+7]
+    lea eax, [eax+8]
+    mov [rsp+20h], eax
+    call [Rectangle]
+
+    ; Border around color bar
+    mov rdx, [hPenBorder]
+    mov rcx, r12
+    call [SelectObject]
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+4]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+4]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx+6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+7]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+7]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+4]
+    call [LineTo]
+
+    mov rcx, [rsp+40h]
+    call [DeleteObject]
+    jmp .btn_drawn
 
 .render_btn_text:
     ; Read window text from button into safe static buffer
