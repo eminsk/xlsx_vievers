@@ -162,6 +162,96 @@ class TestAsmEngine(unittest.TestCase):
             if proc.poll() is None:
                 proc.kill()
 
+    def test_gui_loaded_file_selection_and_tabs(self):
+        import ctypes
+        import subprocess
+
+        user32 = ctypes.windll.user32
+        exe_path = Path(__file__).parent / "xlsx_gui64.exe"
+        sample_path = Path(__file__).parent.parent / "examples" / "sample_financial_plan.xlsx"
+        if not sample_path.exists():
+            return
+
+        proc = subprocess.Popen([str(exe_path), str(sample_path)])
+        time.sleep(1.2)
+        hwnd_main = 0
+        try:
+            def cb_m(h, _):
+                nonlocal hwnd_main
+                cls = ctypes.create_unicode_buffer(256)
+                user32.GetClassNameW(h, cls, 256)
+                if "ExcelViewerPro_ASM64" in cls.value:
+                    hwnd_main = h
+                    return False
+                return True
+
+            user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)(cb_m), 0)
+            self.assertTrue(hwnd_main, "Main window must be found on loaded file")
+
+            h_grid = user32.GetDlgItem(hwnd_main, 1301)
+            h_name = user32.GetDlgItem(hwnd_main, 1201)
+            h_ribbon = user32.GetDlgItem(hwnd_main, 1100)
+
+            def gt(hw):
+                l = user32.SendMessageW(hw, 0xE, 0, 0)
+                b = ctypes.create_unicode_buffer(l + 2)
+                user32.SendMessageW(hw, 0xD, l + 1, ctypes.byref(b))
+                return b.value
+
+            # 1. Selection must initialize to A1 on file open
+            self.assertEqual(gt(h_name), "A1")
+
+            # 2. Arrow keys immediately move selection
+            user32.SendMessageW(h_grid, 0x100, 0x28, 0) # VK_DOWN
+            user32.SendMessageW(h_grid, 0x101, 0x28, 0)
+            time.sleep(0.05)
+            self.assertEqual(gt(h_name), "A2")
+
+            user32.SendMessageW(h_grid, 0x100, 0x27, 0) # VK_RIGHT
+            user32.SendMessageW(h_grid, 0x101, 0x27, 0)
+            time.sleep(0.05)
+            self.assertEqual(gt(h_name), "B2")
+
+            # 3. Shift + Down selects 2D range
+            user32.SendMessageW(h_grid, 0x100, 0x10, 0) # VK_SHIFT
+            user32.SendMessageW(h_grid, 0x100, 0x28, 0) # VK_DOWN
+            user32.SendMessageW(h_grid, 0x101, 0x28, 0)
+            user32.SendMessageW(h_grid, 0x101, 0x10, 0)
+            time.sleep(0.05)
+            self.assertEqual(gt(h_name), "B2:B3")
+
+            # 4. Ribbon tab switching (Click Insert at 80, 10)
+            lparam_ins = (10 << 16) | 80
+            user32.SendMessageW(h_ribbon, 0x0201, 1, lparam_ins)
+            user32.SendMessageW(h_ribbon, 0x0202, 0, lparam_ins)
+            time.sleep(0.15)
+            cur_tab = user32.SendMessageW(h_ribbon, 0x1300 + 11, 0, 0)
+            self.assertEqual(cur_tab, 1)
+
+            h_ins_btn = user32.GetDlgItem(hwnd_main, 1400)
+            h_bold_btn = user32.GetDlgItem(hwnd_main, 1125)
+            self.assertEqual(user32.IsWindowVisible(h_ins_btn), 1)
+            self.assertEqual(user32.IsWindowVisible(h_bold_btn), 0)
+
+            # Switch back to Home (Click at 25, 10)
+            lparam_home = (10 << 16) | 25
+            user32.SendMessageW(h_ribbon, 0x0201, 1, lparam_home)
+            user32.SendMessageW(h_ribbon, 0x0202, 0, lparam_home)
+            time.sleep(0.15)
+            cur_tab0 = user32.SendMessageW(h_ribbon, 0x1300 + 11, 0, 0)
+            self.assertEqual(cur_tab0, 0)
+            self.assertEqual(user32.IsWindowVisible(h_bold_btn), 1)
+
+            # 5. Bold command executes cleanly
+            user32.SendMessageW(hwnd_main, 0x0111, 1125, 0) # ID_BTN_BOLD
+            time.sleep(0.05)
+        finally:
+            if hwnd_main:
+                user32.PostMessageW(hwnd_main, 0x0010, 0, 0)
+            time.sleep(0.2)
+            if proc.poll() is None:
+                proc.kill()
+
 
 def run_benchmark():
     print("=" * 70)

@@ -279,6 +279,7 @@ LVNI_SELECTED       = 0002h
 NM_CLICK            = -2
 NM_DBLCLK           = -3
 
+WM_SETFOCUS         = 0007h
 WM_KEYDOWN          = 0100h
 EM_SETSEL           = 00B1h
 VK_RETURN           = 0Dh
@@ -5341,15 +5342,21 @@ UpdateStatusStats:
 WndProc:
     push rbp
     mov rbp, rsp
-    sub rsp, 40h
+    sub rsp, 60h
     mov [rbp-8], rbx
     mov [rbp-16], rsi
     mov [rbp-24], rdi
+    mov [rbp-32], r12
+    mov [rbp-40], r13
+    mov [rbp-48], r14
+    mov [rbp-56], r15
 
     cmp edx, WM_COMMAND
     je .command
     cmp edx, WM_NOTIFY
     je .notify
+    cmp edx, WM_SETFOCUS
+    je .setfocus
     cmp edx, WM_KEYDOWN
     je .keydown
     cmp edx, WM_SIZE
@@ -5358,6 +5365,14 @@ WndProc:
     je .destroy
 
     call [DefWindowProcA]
+    jmp .done
+
+.setfocus:
+    mov rcx, [hGrid]
+    test rcx, rcx
+    jz .ret0
+    call [SetFocus]
+    xor eax, eax
     jmp .done
 
 .destroy:
@@ -5625,41 +5640,13 @@ WndProc:
     cmp r11d, [cur_col]
     jne .paint_selected_non_active
 
-    ; Active Cell!
-    mov rax, [pCellStyleTable]
-    test rax, rax
-    jz .set_active_tint
-    mov edx, r10d
-    shl edx, 5
-    add edx, r11d
-    shl rdx, 4
-    add rdx, rax
-    test dword [rdx+8], 2   ; has_bk?
-    jnz .draw_focus_border  ; keep rich background (Navy etc.)
-
-.set_active_tint:
+    ; Active Cell: soft ice blue background #D0E4FF with dark navy text #0A3069
     mov dword [rsi+84], 00FFE4D0h ; soft blue #D0E4FF
     mov dword [rsi+80], 0069300Ah ; Navy text #0A3069
-
-.draw_focus_border:
-    mov rcx, [rsi+32]       ; hdc
-    lea rdx, [rsi+48]       ; &rc
-    call [DrawFocusRect]
     jmp .paint_cell_now
 
 .paint_selected_non_active:
-    mov rax, [pCellStyleTable]
-    test rax, rax
-    jz .set_sel_tint
-    mov edx, r10d
-    shl edx, 5
-    add edx, r11d
-    shl rdx, 4
-    add rdx, rax
-    test dword [rdx+8], 2   ; has_bk?
-    jnz .paint_cell_now     ; keep rich custom background
-
-.set_sel_tint:
+    ; Non-active selected cell: Excel selection light blue #CCE0F8 with dark slate navy text
     mov dword [rsi+84], 00F8E0CCh ; Excel selection light blue (RGB 204, 224, 248)
     mov dword [rsi+80], 00382010h ; dark slate navy text
 
@@ -5725,6 +5712,28 @@ WndProc:
     cmp r8d, VK_F9
     je .key_f9
 
+    ; Forward navigation keys to Grid if received by main window
+    cmp r8d, 25h ; VK_LEFT
+    je .fwd_grid_key
+    cmp r8d, 26h ; VK_UP
+    je .fwd_grid_key
+    cmp r8d, 27h ; VK_RIGHT
+    je .fwd_grid_key
+    cmp r8d, 28h ; VK_DOWN
+    je .fwd_grid_key
+    cmp r8d, 09h ; VK_TAB
+    je .fwd_grid_key
+    cmp r8d, 0Dh ; VK_RETURN
+    je .fwd_grid_key
+    cmp r8d, 21h ; VK_PRIOR (PgUp)
+    je .fwd_grid_key
+    cmp r8d, 22h ; VK_NEXT (PgDn)
+    je .fwd_grid_key
+    cmp r8d, 24h ; VK_HOME
+    je .fwd_grid_key
+    cmp r8d, 23h ; VK_END
+    je .fwd_grid_key
+
     ; Check Control key
     mov ecx, VK_CONTROL
     call [GetKeyState]
@@ -5785,6 +5794,15 @@ WndProc:
     cmp r8d, 'u'
     je .on_toggle_underline
     jmp .ret0
+
+.fwd_grid_key:
+    mov rcx, [hGrid]
+    test rcx, rcx
+    jz .ret0
+    mov edx, WM_KEYDOWN
+    call [SendMessageA]
+    xor eax, eax
+    jmp .done
 
 .key_f2:
     mov rcx, [hFormulaEdit]
@@ -6612,6 +6630,10 @@ WndProc:
     mov rbx, [rbp-8]
     mov rsi, [rbp-16]
     mov rdi, [rbp-24]
+    mov r12, [rbp-32]
+    mov r13, [rbp-40]
+    mov r14, [rbp-48]
+    mov r15, [rbp-56]
     leave
     ret
 
@@ -7545,6 +7567,9 @@ SwitchRibbonTab:
     mov r8d, 1
     call [InvalidateRect]
 
+    mov rcx, [hWnd]
+    call [UpdateWindow]
+
     leave
     ret
 
@@ -7557,7 +7582,7 @@ SwitchRibbonTab:
 SetTabGroupVisibility:
     push rbp
     mov rbp, rsp
-    sub rsp, 30h
+    sub rsp, 40h
     mov [rbp-8], rdx
     mov [rbp-16], r8
 
@@ -7575,6 +7600,27 @@ SetTabGroupVisibility:
     mov rcx, rax
     mov edx, dword [rbp-8]
     call [ShowWindow]
+
+    cmp dword [rbp-8], 0
+    je .skip_vis_ctrl
+
+    mov r8, [rbp-16]
+    mov edx, dword [r8]
+    mov rcx, [hWnd]
+    call [GetDlgItem]
+    test rax, rax
+    jz .skip_vis_ctrl
+
+    mov rcx, rax
+    xor edx, edx ; HWND_TOP = 0
+    xor r8d, r8d
+    xor r9d, r9d
+    sub rsp, 30h
+    mov dword [rsp+20h], 0
+    mov dword [rsp+28h], 0
+    mov dword [rsp+30h], 0043h ; SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
+    call [SetWindowPos]
+    add rsp, 30h
 
 .skip_vis_ctrl:
     add qword [rbp-16], 4
@@ -10257,6 +10303,27 @@ DoFileOpenDirect:
     lea r9, [szFileName]
     call [SendMessageA]
 
+    ; Reset active cell and selection to A1
+    mov dword [cur_row], 0
+    mov dword [cur_col], 1
+    mov dword [sel_start_row], 0
+    mov dword [sel_start_col], 1
+    mov dword [sel_end_row], 0
+    mov dword [sel_end_col], 1
+
+    call UpdateCellSelectionDisplay
+    call SyncListViewItemState
+
+    ; Ensure keyboard focus is on grid so navigation keys work immediately
+    mov rcx, [hGrid]
+    call [SetFocus]
+
+    ; Force full redraw of grid
+    mov rcx, [hGrid]
+    xor edx, edx
+    mov r8d, 1
+    call [InvalidateRect]
+
 .direct_done:
     mov rbx, [rbp-8]
     mov rsi, [rbp-16]
@@ -11774,6 +11841,7 @@ user32_table:
     SetCapture                  dq RVA _SetCapture
     ReleaseCapture              dq RVA _ReleaseCapture
     GetAsyncKeyState             dq RVA _GetAsyncKeyState
+    SetWindowPos                dq RVA _SetWindowPos
                                 dq 0
 
 gdi32_table:
@@ -11915,6 +11983,8 @@ _ReleaseCapture dw 0
  db 'ReleaseCapture', 0
 _GetAsyncKeyState dw 0
  db 'GetAsyncKeyState', 0
+_SetWindowPos dw 0
+ db 'SetWindowPos', 0
 
 _CreateFontA dw 0
  db 'CreateFontA', 0
