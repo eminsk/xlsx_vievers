@@ -602,9 +602,13 @@ section '.data' data readable writeable
     is_temp_file    db 0
     mode_rb         db 'rb', 0
     fmt_temp_csv    db '%sxlsx_view_tmp.csv', 0
-    fmt_temp_style  db '%s.style', 0
-    pCellStyleTable dq 0
-    fmt_convert_cmd db 'cmd.exe /c uv --directory "C:\proekts\xlsx_vievers" run python -m xlsx_viewer.cli --to-csv "%s" "%s" || "C:\proekts\xlsx_vievers\.venv\Scripts\python.exe" -m xlsx_viewer.cli --to-csv "%s" "%s"', 0
+    fmt_temp_style   db '%s.style', 0
+    pCellStyleTable  dq 0
+    szNativeDllName  db 'xlsx_native.dll', 0
+    szNativeDllPath  db 'C:\proekts\xlsx_vievers\asm\xlsx_native.dll', 0
+    szNativeFuncName db 'ConvertXlsxToCsvAndStyle', 0
+    hNativeDll       dq 0
+    pfnConvertXlsx   dq 0
 
     hFxWizWnd       dq 0
     hWizList        dq 0
@@ -2597,11 +2601,11 @@ BuildSpreadsheetGrid:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Enable Double-Buffering & Gridlines
+    ; Enable Double-Buffering & Gridlines (Cell-by-cell selection without full row wipeout)
     mov rcx, [hGrid]
     mov edx, LVM_SETEXTENDEDLISTVIEWSTYLE
     xor r8d, r8d
-    mov r9d, LVS_EX_GRIDLINES or LVS_EX_FULLROWSELECT or LVS_EX_DOUBLEBUFFER
+    mov r9d, LVS_EX_GRIDLINES or LVS_EX_DOUBLEBUFFER
     call [SendMessageA]
 
     ; Setup Columns: # (width 42), A..J (width 118 each)
@@ -3067,6 +3071,8 @@ WndProc:
     mov edx, [rax+16]
     cmp edx, -12 ; NM_CUSTOMDRAW
     je .on_customdraw
+    cmp edx, -101 ; LVN_ITEMCHANGED (row selection change)
+    je .on_grid_item_changed
     cmp edx, NM_CLICK
     je .on_grid_click
     cmp edx, NM_DBLCLK
@@ -3104,14 +3110,22 @@ WndProc:
     mov r10d, [rsi+56]      ; dwItemSpec (row index: 0..N)
     mov r11d, [rsi+88]      ; iSubItem (col index: 0..N)
 
-    ; If item is selected, let Windows draw standard selection highlight
-    test dword [rsi+64], 1  ; CDIS_SELECTED
-    jnz .skip_sel_override
-
-    ; If col == 0: Row number column styling
+    ; Col 0: Row number column styling
     test r11d, r11d
-    jnz .check_style_table
+    jnz .check_active_cell
 
+    cmp r10d, [cur_row]
+    jne .col0_normal
+    ; Selected row header: accent indicator
+    mov dword [rsi+84], 00D0C4B8h ; darker accent gray
+    mov dword [rsi+80], 001A1008h ; dark text
+    mov rcx, [rsi+32]
+    mov rdx, [hFontBold]
+    call [SelectObject]
+    mov eax, 2              ; CDRF_NEWFONT
+    jmp .done
+
+.col0_normal:
     mov dword [rsi+84], 00EAE6E2h ; clrTextBk (Soft light gray #E2E6EA)
     mov dword [rsi+80], 0068554Ah ; clrText (Slate gray #4A5568)
     mov rcx, [rsi+32]       ; hdc
@@ -3120,7 +3134,33 @@ WndProc:
     mov eax, 2              ; CDRF_NEWFONT
     jmp .done
 
+.check_active_cell:
+    ; Check if this subitem is the ACTIVE selected cell (cur_row, cur_col)
+    cmp r10d, [cur_row]
+    jne .check_style_table
+    cmp r11d, [cur_col]
+    jne .check_style_table
+
+    ; Active Cell Highlight: Excel soft blue selection tint (#D0E4FF / Navy text #0A3069)
+    mov dword [rsi+84], 00FFE4D0h ; clrTextBk: #D0E4FF in BGR
+    mov dword [rsi+80], 0069300Ah ; clrText: #0A3069 in BGR
+    mov rcx, [rsi+32]             ; hdc
+    mov rdx, [hFontBold]
+    call [SelectObject]
+    mov eax, 2                    ; CDRF_NEWFONT
+    jmp .done
+
 .check_style_table:
+    ; Default zebra background and text color
+    test r10d, 1
+    jz .even_default
+    mov dword [rsi+84], 00FCFAF7h ; odd row
+    jmp .set_default_fg
+.even_default:
+    mov dword [rsi+84], 00FFFFFFh ; even row
+.set_default_fg:
+    mov dword [rsi+80], 002C201Ah ; dark charcoal
+
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .heuristic_style
@@ -3168,35 +3208,45 @@ WndProc:
     jmp .done
 
 .heuristic_style:
-    ; Row 0 default header
+    ; Row 0 default header fallback
     test r10d, r10d
-    jnz .zebra_check
+    jnz .font_normal
     mov dword [rsi+84], 005D361Bh ; clrTextBk: Navy (#1B365D)
     mov dword [rsi+80], 00FFFFFFh ; clrText: White (#FFFFFF)
     jmp .font_bold
 
-.zebra_check:
-    test r10d, 1
-    jz .zebra_even
-.zebra_odd:
-    mov dword [rsi+84], 00FCFAF7h ; clrTextBk: Soft tint (#F7FAFC)
-    mov dword [rsi+80], 002C201Ah ; clrText: Dark charcoal (#1A202C)
-    jmp .font_normal
-.zebra_even:
-    mov dword [rsi+84], 00FFFFFFh ; clrTextBk: White
-    mov dword [rsi+80], 002C201Ah ; clrText: Dark charcoal
-    jmp .font_normal
-
-.skip_sel_override:
-    mov rcx, [rsi+32]       ; hdc
-    mov rdx, [hFontUI]
-    call [SelectObject]
-    xor eax, eax            ; CDRF_DODEFAULT
-    jmp .done
+.on_grid_item_changed:
+    mov rax, r9             ; pNMListView
+    test dword [rax+24], 2  ; LVIS_SELECTED in uNewState
+    jz .ret0
+    mov edx, [rax+8]        ; iItem
+    cmp edx, -1
+    je .ret0
+    mov [cur_row], edx
+    call UpdateCellSelectionDisplay
+    jmp .ret0
 
 .on_lvn_keydown:
     movzx r8d, word [rax+24]
+    cmp r8d, 25h            ; VK_LEFT
+    je .key_left
+    cmp r8d, 27h            ; VK_RIGHT
+    je .key_right
     jmp .handle_key
+
+.key_left:
+    cmp dword [cur_col], 1
+    jle .ret0
+    dec dword [cur_col]
+    call UpdateCellSelectionDisplay
+    jmp .ret0
+
+.key_right:
+    cmp dword [cur_col], 26
+    jge .ret0
+    inc dword [cur_col]
+    call UpdateCellSelectionDisplay
+    jmp .ret0
 
 .on_grid_click:
     call DoGridCellHitTest
@@ -3915,10 +3965,10 @@ DoGridCellHitTest:
     mov eax, dword [lvhit+12]
     mov [cur_row], eax
 
-    mov eax, dword [lvhit+16]   ; iSubItem (0 = #, 1 = A, 2 = B, ..., 10 = J)
+    mov eax, dword [lvhit+16]   ; iSubItem (0 = #, 1 = A, 2 = B, ..., 26 = Z)
     cmp eax, 1
     jl .update_display
-    cmp eax, 10
+    cmp eax, 26
     jg .update_display
     mov [cur_col], eax
     jmp .update_display
@@ -3934,14 +3984,48 @@ DoGridCellHitTest:
     mov [cur_row], eax
 
 .update_display:
+    call UpdateCellSelectionDisplay
+
+.hit_done:
+    leave
+    ret
+
+
+; =============================================================================
+; UpdateCellSelectionDisplay
+; Updates NameBox, FormulaEdit, StatusBar and Repaints Grid for active cell
+; =============================================================================
+UpdateCellSelectionDisplay:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 40h
+
     ; Format Address: e.g. A1, B3, C10...
-    mov al, byte [cur_col]
-    dec al
+    mov eax, [cur_col]
+    dec eax
+    cmp eax, 26
+    jge .multi_letter
     add al, 'A'
     lea rdi, [szTemp]
     mov [rdi], al
     inc rdi
+    jmp .fmt_row_num
 
+.multi_letter:
+    xor edx, edx
+    mov ecx, 26
+    div ecx
+    dec eax
+    add al, 'A'
+    lea rdi, [szTemp]
+    mov [rdi], al
+    inc rdi
+    mov al, dl
+    add al, 'A'
+    mov [rdi], al
+    inc rdi
+
+.fmt_row_num:
     mov eax, [cur_row]
     inc eax
     mov ecx, 10
@@ -3993,7 +4077,12 @@ DoGridCellHitTest:
 
     call UpdateStatusStats
 
-.hit_done:
+    ; Repaint grid so the active cell highlight moves immediately to current cell
+    mov rcx, [hGrid]
+    xor edx, edx
+    xor r8d, r8d
+    call [InvalidateRect]
+
     leave
     ret
 
@@ -6036,17 +6125,42 @@ DoFileOpenDirect:
     lea r8, [szTemp]
     call [sprintf]
 
-    ; Build shell command:
-    lea rcx, [szCmdBuf]
-    lea rdx, [fmt_convert_cmd]
-    lea r8, [szFileName]
-    lea r9, [szTempCsv]
-    mov [rsp+20h], r8
-    mov [rsp+28h], r9
+    ; Form szTempStyle: "%sxlsx_view_tmp.csv.style"
+    lea rcx, [szTempStyle]
+    lea rdx, [fmt_temp_style]
+    lea r8, [szTempCsv]
     call [sprintf]
 
-    lea rcx, [szCmdBuf]
-    call [system]
+    ; Load xlsx_native.dll dynamically if not already loaded
+    mov rax, [pfnConvertXlsx]
+    test rax, rax
+    jnz .run_native_convert
+
+    lea rcx, [szNativeDllName]
+    call [LoadLibraryA]
+    test rax, rax
+    jnz .dll_loaded
+    lea rcx, [szNativeDllPath]
+    call [LoadLibraryA]
+    test rax, rax
+    jz .open_temp_csv
+.dll_loaded:
+    mov [hNativeDll], rax
+    mov rcx, rax
+    lea rdx, [szNativeFuncName]
+    call [GetProcAddress]
+    test rax, rax
+    jz .open_temp_csv
+    mov [pfnConvertXlsx], rax
+
+.run_native_convert:
+    ; Call native ConvertXlsxToCsvAndStyle(szFileName, szTempCsv, szTempStyle)
+    lea rcx, [szFileName]
+    lea rdx, [szTempCsv]
+    lea r8, [szTempStyle]
+    call [pfnConvertXlsx]
+
+.open_temp_csv:
 
     ; Open the converted temp CSV
     lea rcx, [szTempCsv]
@@ -7803,6 +7917,8 @@ kernel32_table:
     lstrcmpiA                   dq RVA _lstrcmpiA
     GetTempPathA                dq RVA _GetTempPathA
     GetCommandLineA             dq RVA _GetCommandLineA
+    LoadLibraryA                dq RVA _LoadLibraryA
+    GetProcAddress              dq RVA _GetProcAddress
                                 dq 0
 
 user32_table:
@@ -7897,6 +8013,10 @@ _GetTempPathA dw 0
  db 'GetTempPathA', 0
 _GetCommandLineA dw 0
  db 'GetCommandLineA', 0
+_LoadLibraryA dw 0
+ db 'LoadLibraryA', 0
+_GetProcAddress dw 0
+ db 'GetProcAddress', 0
 
 _RegisterClassExA dw 0
  db 'RegisterClassExA', 0
