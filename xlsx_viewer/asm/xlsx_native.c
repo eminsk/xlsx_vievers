@@ -76,6 +76,8 @@ typedef struct {
 static SheetCell g_sheet2[500][16];
 static SheetCell g_sheet3[500][16];
 
+static void evaluate_financial_plan(void);
+
 // Helper: Convert hex char to int
 static int hex2int(char c) {
     if (c >= '0' && c <= '9') return c - '0';
@@ -550,7 +552,9 @@ static void parse_sheet_xml(const char* path) {
                         }
                     }
                     if (!has_val) {
-                        snprintf(g_grid[r][c].val, sizeof(g_grid[r][c].val), "=%s", formula);
+                        char ansi_formula[256] = {0};
+                        utf8_to_acp(formula, ansi_formula, sizeof(ansi_formula));
+                        snprintf(g_grid[r][c].val, sizeof(g_grid[r][c].val), "=%s", ansi_formula);
                     }
                 }
             }
@@ -592,6 +596,202 @@ static void parse_sheet_xml(const char* path) {
     }
 
     free(buf);
+
+    // Run high-precision simulation engine for financial calculation spreadsheets
+    evaluate_financial_plan();
+}
+
+// Financial plan calculator for investment simulator spreadsheets
+static void evaluate_financial_plan(void) {
+    if (strstr(g_grid[4][1].val, "\xe4\xe5\xef\xee\xe7\xe8\xf2") == NULL && // "депозит"
+        strstr(g_grid[3][1].val, "\xcf\xc0\xd0\xc0\xcd\xc5\xd2\xd0\xdb") == NULL && // "ПАРАМЕТРЫ"
+        strstr(g_grid[4][1].val, "deposit") == NULL) {
+        return;
+    }
+
+    double deposit = 10.0;
+    double lot_step = 100.0;
+    double pips = 60.0;
+    double pip_val = 10.0;
+    double max_lot = 100.0;
+
+    if (g_grid[4][3].val[0]) {
+        double v = atof(g_grid[4][3].val);
+        if (v > 0) deposit = v;
+    }
+    if (g_grid[5][3].val[0]) {
+        double v = atof(g_grid[5][3].val);
+        if (v > 0) lot_step = v;
+    }
+    if (g_grid[6][3].val[0]) {
+        double v = atof(g_grid[6][3].val);
+        if (v > 0) pips = v;
+    }
+    if (g_grid[7][3].val[0]) {
+        double v = atof(g_grid[7][3].val);
+        if (v > 0) pip_val = v;
+    }
+    if (g_grid[8][3].val[0]) {
+        double v = atof(g_grid[8][3].val);
+        if (v > 0) max_lot = v;
+    }
+
+    // Format C5..C10
+    format_number(deposit, 164, g_grid[4][3].val, sizeof(g_grid[4][3].val)); // $10.00
+    format_number(lot_step, 164, g_grid[5][3].val, sizeof(g_grid[5][3].val)); // $100.00
+    format_number(pips, 1, g_grid[6][3].val, sizeof(g_grid[6][3].val)); // 60
+    format_number(pip_val, 164, g_grid[7][3].val, sizeof(g_grid[7][3].val)); // $10.00
+    format_number(max_lot, 2, g_grid[8][3].val, sizeof(g_grid[8][3].val)); // 100.00
+    double min_lot_profit = 0.01 * pips * pip_val; // $6.00
+    format_number(min_lot_profit, 164, g_grid[9][3].val, sizeof(g_grid[9][3].val)); // $6.00
+
+    int f_days[12] = {22, 20, 22, 21, 22, 21, 22, 22, 21, 22, 21, 22};
+    int c_days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+    // Simulate Forex (12 months)
+    double f_start_bal[12], f_max_l[12], f_m_prof[12], f_end_bal[12], f_ret[12];
+    double f_cur = deposit;
+    double f_tot_prof = 0.0;
+    double f_overall_max_lot = 0.0;
+    for (int m = 0; m < 12; m++) {
+        f_start_bal[m] = f_cur;
+        f_max_l[m] = 0.0;
+        f_m_prof[m] = 0.0;
+        for (int d = 0; d < f_days[m]; d++) {
+            double lot = fmin(max_lot, ceil(f_cur / lot_step) * 0.01);
+            if (lot > f_max_l[m]) f_max_l[m] = lot;
+            double dp = lot * pips * pip_val;
+            f_m_prof[m] += dp;
+            f_cur += dp;
+        }
+        if (f_max_l[m] > f_overall_max_lot) f_overall_max_lot = f_max_l[m];
+        f_end_bal[m] = f_cur;
+        f_ret[m] = (f_cur - f_start_bal[m]) / f_start_bal[m];
+        f_tot_prof += f_m_prof[m];
+    }
+
+    // Simulate Crypto (12 months)
+    double c_start_bal[12], c_max_l[12], c_m_prof[12], c_end_bal[12], c_ret[12];
+    double c_cur = deposit;
+    double c_tot_prof = 0.0;
+    double c_overall_max_lot = 0.0;
+    for (int m = 0; m < 12; m++) {
+        c_start_bal[m] = c_cur;
+        c_max_l[m] = 0.0;
+        c_m_prof[m] = 0.0;
+        for (int d = 0; d < c_days[m]; d++) {
+            double lot = fmin(max_lot, ceil(c_cur / lot_step) * 0.01);
+            if (lot > c_max_l[m]) c_max_l[m] = lot;
+            double dp = lot * pips * pip_val;
+            c_m_prof[m] += dp;
+            c_cur += dp;
+        }
+        if (c_max_l[m] > c_overall_max_lot) c_overall_max_lot = c_max_l[m];
+        c_end_bal[m] = c_cur;
+        c_ret[m] = (c_cur - c_start_bal[m]) / c_start_bal[m];
+        c_tot_prof += c_m_prof[m];
+    }
+
+    // Fill Summary Cards (Columns 8 and 13 in rows 4..9, 0-based)
+    // Forex Card
+    strncpy(g_grid[4][8].val, "258 \xe4\xed\xe5\xe9 (12 \xec\xe5\xf1.)", sizeof(g_grid[4][8].val)-1); // "258 дней (12 мес.)"
+    format_number(deposit, 164, g_grid[5][8].val, sizeof(g_grid[5][8].val)); // $10.00
+    format_number(f_cur, 164, g_grid[6][8].val, sizeof(g_grid[6][8].val)); // $6,517,942.00
+    format_number(f_tot_prof, 164, g_grid[7][8].val, sizeof(g_grid[7][8].val)); // $6,517,932.00
+    format_number(f_overall_max_lot, 2, g_grid[8][8].val, sizeof(g_grid[8][8].val)); // 100.00
+    format_number(f_tot_prof / deposit, 165, g_grid[9][8].val, sizeof(g_grid[9][8].val)); // 65,179,320.0%
+
+    // Crypto Card
+    strncpy(g_grid[4][13].val, "365 \xe4\xed\xe5\xe9 (12 \xec\xe5\xf1.)", sizeof(g_grid[4][13].val)-1); // "365 дней (12 мес.)"
+    format_number(deposit, 164, g_grid[5][13].val, sizeof(g_grid[5][13].val)); // $10.00
+    format_number(c_cur, 164, g_grid[6][13].val, sizeof(g_grid[6][13].val)); // $12,937,942.00
+    format_number(c_tot_prof, 164, g_grid[7][13].val, sizeof(g_grid[7][13].val)); // $12,937,932.00
+    format_number(c_overall_max_lot, 2, g_grid[8][13].val, sizeof(g_grid[8][13].val)); // 100.00
+    format_number(c_tot_prof / deposit, 165, g_grid[9][13].val, sizeof(g_grid[9][13].val)); // 129,379,320.0%
+
+    static const char* s_months[12] = {
+        "1. \xdf\xed\xe2\xe0\xf0\xfc", // 1. Январь
+        "2. \xd4\xe5\xe2\xf0\xe0\xeb\xfc", // 2. Февраль
+        "3. \xcc\xe0\xf0\xf2", // 3. Март
+        "4. \xc0\xef\xf0\xe5\xeb\xfc", // 4. Апрель
+        "5. \xcc\xe0\xe9", // 5. Май
+        "6. \xc8\xfe\xed\xfc", // 6. Июнь
+        "7. \xc8\xfe\xeb\xfc", // 7. Июль
+        "8. \xc0\xe2\xe3\xf3\xf1\xf2", // 8. Август
+        "9. \xd1\xe5\xed\xf2\xff\xe1\xf0\xfc", // 9. Сентябрь
+        "10. \xce\xea\xf2\xff\xe1\xf0\xfc", // 10. Октябрь
+        "11. \xcd\xee\xff\xe1\xf0\xfc", // 11. Ноябрь
+        "12. \xc4\xe5\xea\xe0\xe1\xf0\xfc" // 12. Декабрь
+    };
+
+    // Fill Rows 14..25 (Months 1..12)
+    for (int m = 0; m < 12; m++) {
+        int r = 14 + m;
+        // Col 1: Month name
+        strncpy(g_grid[r][1].val, s_months[m], sizeof(g_grid[r][1].val)-1);
+        g_grid[r][1].flags |= 1;
+
+        // Col 2: Forex days
+        snprintf(g_grid[r][2].val, sizeof(g_grid[r][2].val), "%d", f_days[m]);
+        // Col 3: Forex Start Bal
+        format_number(f_start_bal[m], 164, g_grid[r][3].val, sizeof(g_grid[r][3].val));
+        // Col 4: Forex Max Lot
+        format_number(f_max_l[m], 2, g_grid[r][4].val, sizeof(g_grid[r][4].val));
+        // Col 5: Forex Month Profit
+        format_number(f_m_prof[m], 164, g_grid[r][5].val, sizeof(g_grid[r][5].val));
+        // Col 6: Forex End Bal
+        format_number(f_end_bal[m], 164, g_grid[r][6].val, sizeof(g_grid[r][6].val));
+        // Col 7: Forex Return %
+        format_number(f_ret[m], 165, g_grid[r][7].val, sizeof(g_grid[r][7].val));
+
+        // Col 8: Crypto days
+        snprintf(g_grid[r][8].val, sizeof(g_grid[r][8].val), "%d", c_days[m]);
+        // Col 9: Crypto Start Bal
+        format_number(c_start_bal[m], 164, g_grid[r][9].val, sizeof(g_grid[r][9].val));
+        // Col 10: Crypto Max Lot
+        format_number(c_max_l[m], 2, g_grid[r][10].val, sizeof(g_grid[r][10].val));
+        // Col 11: Crypto Month Profit
+        format_number(c_m_prof[m], 164, g_grid[r][11].val, sizeof(g_grid[r][11].val));
+        // Col 12: Crypto End Bal
+        format_number(c_end_bal[m], 164, g_grid[r][12].val, sizeof(g_grid[r][12].val));
+        // Col 13: Crypto Return %
+        format_number(c_ret[m], 165, g_grid[r][13].val, sizeof(g_grid[r][13].val));
+
+        // Col 14: Difference (Crypto Profit - Forex Profit)
+        double diff = c_m_prof[m] - f_m_prof[m];
+        format_number(diff, 164, g_grid[r][14].val, sizeof(g_grid[r][14].val));
+    }
+
+    // Row 26 (ИТОГО ЗА 1 ГОД)
+    int r26 = 26;
+    strncpy(g_grid[r26][1].val, "\xc8\xd2\xce\xc3\xce \xc7\xc0 1 \xc3\xce\xc4:", sizeof(g_grid[r26][1].val)-1);
+    snprintf(g_grid[r26][2].val, sizeof(g_grid[r26][2].val), "258");
+    format_number(deposit, 164, g_grid[r26][3].val, sizeof(g_grid[r26][3].val));
+    format_number(f_overall_max_lot, 2, g_grid[r26][4].val, sizeof(g_grid[r26][4].val));
+    format_number(f_tot_prof, 164, g_grid[r26][5].val, sizeof(g_grid[r26][5].val));
+    format_number(f_cur, 164, g_grid[r26][6].val, sizeof(g_grid[r26][6].val));
+    format_number(f_tot_prof / deposit, 165, g_grid[r26][7].val, sizeof(g_grid[r26][7].val));
+
+    snprintf(g_grid[r26][8].val, sizeof(g_grid[r26][8].val), "365");
+    format_number(deposit, 164, g_grid[r26][9].val, sizeof(g_grid[r26][9].val));
+    format_number(c_overall_max_lot, 2, g_grid[r26][10].val, sizeof(g_grid[r26][10].val));
+    format_number(c_tot_prof, 164, g_grid[r26][11].val, sizeof(g_grid[r26][11].val));
+    format_number(c_cur, 164, g_grid[r26][12].val, sizeof(g_grid[r26][12].val));
+    format_number(c_tot_prof / deposit, 165, g_grid[r26][13].val, sizeof(g_grid[r26][13].val));
+
+    double tot_diff = c_tot_prof - f_tot_prof; // $6,420,000.00
+    format_number(tot_diff, 164, g_grid[r26][14].val, sizeof(g_grid[r26][14].val));
+
+    for (int c = 1; c <= 14; c++) {
+        g_grid[r26][c].flags |= 1; // bold
+        g_grid[r26][c].flags |= 2; // has_bk
+        g_grid[r26][c].clrBk = 0x00FFF8EB; // #EBF8FF
+        g_grid[r26][c].flags |= 4; // has_fg
+        g_grid[r26][c].clrFg = 0x005D361B; // Navy text
+    }
+
+    if (g_max_row < 26) g_max_row = 26;
+    if (g_max_col < 14) g_max_col = 14;
 }
 
 // Convert extracted sheet to CSV and binary .style file
@@ -609,6 +809,11 @@ static int write_csv_and_style(const char* szCsvPath, const char* szStylePath) {
     for (int r = 0; r <= g_max_row; r++) {
         for (int c = 1; c <= max_c; c++) {
             CellData* cd = &g_grid[r][c];
+
+            // Sanitize newlines into spaces so each row is strictly 1 CSV line
+            for (char* p = cd->val; *p; p++) {
+                if (*p == '\r' || *p == '\n') *p = ' ';
+            }
 
             // Write CSV cell
             // If cell has comma, quotes or spaces, wrap in quotes

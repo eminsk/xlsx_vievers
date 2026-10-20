@@ -2601,11 +2601,11 @@ BuildSpreadsheetGrid:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Enable Double-Buffering & Gridlines (Cell-by-cell selection without full row wipeout)
+    ; Enable Double-Buffering & Gridlines & FullRowSelect (Required for subitem hit-testing)
     mov rcx, [hGrid]
     mov edx, LVM_SETEXTENDEDLISTVIEWSTYLE
     xor r8d, r8d
-    mov r9d, LVS_EX_GRIDLINES or LVS_EX_DOUBLEBUFFER
+    mov r9d, LVS_EX_GRIDLINES or LVS_EX_FULLROWSELECT or LVS_EX_DOUBLEBUFFER
     call [SendMessageA]
 
     ; Setup Columns: # (width 42), A..J (width 118 each)
@@ -3110,6 +3110,9 @@ WndProc:
     mov r10d, [rsi+56]      ; dwItemSpec (row index: 0..N)
     mov r11d, [rsi+88]      ; iSubItem (col index: 0..N)
 
+    ; Clear CDIS_SELECTED so Windows never paints its default blue selection bar
+    and dword [rsi+64], not 1
+
     ; Col 0: Row number column styling
     test r11d, r11d
     jnz .check_active_cell
@@ -3135,23 +3138,7 @@ WndProc:
     jmp .done
 
 .check_active_cell:
-    ; Check if this subitem is the ACTIVE selected cell (cur_row, cur_col)
-    cmp r10d, [cur_row]
-    jne .check_style_table
-    cmp r11d, [cur_col]
-    jne .check_style_table
-
-    ; Active Cell Highlight: Excel soft blue selection tint (#D0E4FF / Navy text #0A3069)
-    mov dword [rsi+84], 00FFE4D0h ; clrTextBk: #D0E4FF in BGR
-    mov dword [rsi+80], 0069300Ah ; clrText: #0A3069 in BGR
-    mov rcx, [rsi+32]             ; hdc
-    mov rdx, [hFontBold]
-    call [SelectObject]
-    mov eax, 2                    ; CDRF_NEWFONT
-    jmp .done
-
-.check_style_table:
-    ; Default zebra background and text color
+    ; 1. Baseline style for this cell
     test r10d, 1
     jz .even_default
     mov dword [rsi+84], 00FCFAF7h ; odd row
@@ -3160,16 +3147,16 @@ WndProc:
     mov dword [rsi+84], 00FFFFFFh ; even row
 .set_default_fg:
     mov dword [rsi+80], 002C201Ah ; dark charcoal
+    mov r12, [hFontUI]            ; default font
 
     mov rax, [pCellStyleTable]
     test rax, rax
-    jz .heuristic_style
+    jz .apply_active_cell
     cmp r10d, 10000
-    jae .heuristic_style
+    jae .apply_active_cell
     cmp r11d, 32
-    jae .heuristic_style
+    jae .apply_active_cell
 
-    ; edx = (r10d * 32 + r11d) * 16
     mov edx, r10d
     shl edx, 5
     add edx, r11d
@@ -3178,7 +3165,7 @@ WndProc:
 
     mov eax, [rdx+8]        ; flags (bit0=bold, bit1=has_bk, bit2=has_fg)
     test eax, eax
-    jz .heuristic_style
+    jz .apply_active_cell
 
     test eax, 2             ; bit 1: has_bk
     jz @f
@@ -3191,29 +3178,44 @@ WndProc:
     mov [rsi+80], ecx       ; set clrText
 @@:
     test eax, 1             ; bit 0: bold
-    jz .font_normal
+    jz .apply_active_cell
+    mov r12, [hFontBold]
 
-.font_bold:
+.apply_active_cell:
+    ; Check if this is the active selected cell (cur_row, cur_col)
+    cmp r10d, [cur_row]
+    jne .paint_cell_now
+    cmp r11d, [cur_col]
+    jne .paint_cell_now
+
+    ; Active Cell!
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .set_active_tint
+    mov edx, r10d
+    shl edx, 5
+    add edx, r11d
+    shl rdx, 4
+    add rdx, rax
+    test dword [rdx+8], 2   ; has_bk?
+    jnz .draw_focus_border  ; keep rich background (Navy etc.) so no holes in banners!
+
+.set_active_tint:
+    mov dword [rsi+84], 00FFE4D0h ; soft blue #D0E4FF
+    mov dword [rsi+80], 0069300Ah ; Navy text #0A3069
+    mov r12, [hFontBold]
+
+.draw_focus_border:
     mov rcx, [rsi+32]       ; hdc
-    mov rdx, [hFontBold]
+    lea rdx, [rsi+48]       ; &rc
+    call [DrawFocusRect]
+
+.paint_cell_now:
+    mov rcx, [rsi+32]       ; hdc
+    mov rdx, r12            ; font
     call [SelectObject]
     mov eax, 2              ; CDRF_NEWFONT
     jmp .done
-
-.font_normal:
-    mov rcx, [rsi+32]       ; hdc
-    mov rdx, [hFontUI]
-    call [SelectObject]
-    mov eax, 2              ; CDRF_NEWFONT
-    jmp .done
-
-.heuristic_style:
-    ; Row 0 default header fallback
-    test r10d, r10d
-    jnz .font_normal
-    mov dword [rsi+84], 005D361Bh ; clrTextBk: Navy (#1B365D)
-    mov dword [rsi+80], 00FFFFFFh ; clrText: White (#FFFFFF)
-    jmp .font_bold
 
 .on_grid_item_changed:
     mov rax, r9             ; pNMListView
@@ -3967,10 +3969,14 @@ DoGridCellHitTest:
 
     mov eax, dword [lvhit+16]   ; iSubItem (0 = #, 1 = A, 2 = B, ..., 26 = Z)
     cmp eax, 1
-    jl .update_display
+    jl .use_col1
     cmp eax, 26
-    jg .update_display
+    jg .use_col1
     mov [cur_col], eax
+    jmp .update_display
+
+.use_col1:
+    mov dword [cur_col], 1
     jmp .update_display
 
 .use_selected_row:
@@ -7956,6 +7962,7 @@ user32_table:
     InvalidateRect              dq RVA _InvalidateRect
     EnableWindow                dq RVA _EnableWindow
     DestroyWindow               dq RVA _DestroyWindow
+    DrawFocusRect               dq RVA _DrawFocusRect
                                 dq 0
 
 gdi32_table:
@@ -8086,6 +8093,8 @@ _EnableWindow dw 0
  db 'EnableWindow', 0
 _DestroyWindow dw 0
  db 'DestroyWindow', 0
+_DrawFocusRect dw 0
+ db 'DrawFocusRect', 0
 
 _CreateFontA dw 0
  db 'CreateFontA', 0
