@@ -62,6 +62,8 @@ section '.data' data readable writeable
     m_fmt_rub       db 'Format: Currency (P)', 0
     m_fmt_pct       db 'Format: Percentage (%)', 0
     m_fmt_num       db 'Format: Number (2 Decimals)', 0
+    m_fmt_fill_color db 'Cell &Fill Color (Background)...', 0
+    m_fmt_text_color db 'Cell &Font Color (Text)...', 0
 
     m_formulas      db 'F&ormulas', 0
     m_recalc        db '&Recalculate Sheet (SIMD)', 9, 'F9', 0
@@ -639,9 +641,22 @@ section '.data' data readable writeable
     cur_ribbon_tab  dd 0
 
     ; Cell Fill & Text Color Picker Storage
-    cur_fill_color  dd 00CCF2FFh ; default light yellow (#FFF2CC in BGR format)
-    cur_text_color  dd 000000C0h ; default dark red (#C00000 in BGR format)
-    cust_colors     dd 16 dup(00FFFFFFh) ; 16 custom color slots for ChooseColorA
+    cur_fill_color  dd 0000FFFFh ; default bright yellow (RGB 255, 255, 0 in BGR)
+    cur_text_color  dd 000000FFh ; default vivid red (RGB 255, 0, 0 in BGR)
+    cust_colors     dd 0000FFFFh, 0000FF00h, 00FF0000h, 0000A5FFh ; Yellow, Lime, Blue, Orange
+                    dd 00CCF2FFh, 00DAEFE2h, 00F7EBDDh, 00D6E4FCh ; Light Yellow, Green, Blue, Orange
+                    dd 000000C0h, 00784E1Fh, 00235637h, 001159C6h ; Dark Red, Dark Blue, Dark Green, Dark Orange
+                    dd 00333333h, 00FFFFFFh, 00000000h, 009A572Bh ; Dark Charcoal, White, Black, Ribbon Blue
+
+    pt_bucket_poly  dd 8 dup(0)
+    pt_drop_poly    dd 8 dup(0)
+    rc_color_bar    dd 4 dup(0)
+    rc_glyph_a      dd 4 dup(0)
+
+    szStatusFillApplied db 'Fill Color: Applied background color to selection.', 0
+    szStatusFillPicked  db 'Fill Color: New background color selected and applied.', 0
+    szStatusTextApplied db 'Font Color: Applied text color to selection.', 0
+    szStatusTextPicked  db 'Font Color: New text color selected and applied.', 0
 
     ; GDI Brushes & Pens for Ribbon Button Icons
     hBrBtnFace      dq 0
@@ -655,6 +670,7 @@ section '.data' data readable writeable
     hBrCyan         dq 0
     hBrWhite        dq 0
     hBrGray         dq 0
+    hBrSlate        dq 0
 
     hPenBorder      dq 0
     hPenBorderPress dq 0

@@ -836,6 +836,8 @@ WndProc:
     jne .pcn_do_draw
     test dword [rdx+8], 2    ; has_bk?
     jnz .pcn_do_draw
+    test dword [rdx+8], 4    ; has_fg?
+    jnz .pcn_do_draw
     jmp .pcn_default
 
 .pcn_do_draw:

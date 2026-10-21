@@ -1788,7 +1788,19 @@ ToggleCellStrike:
 ; =============================================================================
 ; Pick & Apply Cell Fill / Background Color (ChooseColorA)
 ; =============================================================================
+; Pick & Apply Cell Fill Color (ChooseColorA / 1-Click Fast Apply)
+; =============================================================================
 DoPickFillColor:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 0A0h
+    mov [rbp-8], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+    jmp ToggleCellFill.tc_fill_dialog_core
+
 ToggleCellFill:
     push rbp
     mov rbp, rsp
@@ -1799,6 +1811,61 @@ ToggleCellFill:
     mov [rbp-20h], r12
     mov [rbp-28h], r13
 
+    ; 1. Check if Shift key is down
+    mov ecx, 10h            ; VK_SHIFT
+    call [GetKeyState]
+    test ax, 8000h
+    jnz .tc_fill_dialog_core
+
+    ; 2. Query mouse cursor position in screen coords
+    lea rcx, [rbp-80h]      ; POINT { x, y }
+    call [GetCursorPos]
+
+    ; Convert to Fill button client coordinates
+    mov rcx, [hWnd]
+    mov edx, ID_BTN_FILL_COLOR
+    call [GetDlgItem]
+    test rax, rax
+    jz .tc_fill_check_cell
+
+    mov rcx, rax
+    lea rdx, [rbp-80h]
+    call [ScreenToClient]
+
+    ; If cursor X >= 20 (clicked the dropdown chevron ▼), open dialog!
+    cmp dword [rbp-80h], 20
+    jge .tc_fill_dialog_core
+
+.tc_fill_check_cell:
+    ; If the active cell already has cur_fill_color, open dialog so user can change it!
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .tc_fill_apply_direct
+
+    mov edx, [cur_row]
+    cmp edx, 10000
+    jae .tc_fill_apply_direct
+    mov ecx, [cur_col]
+    cmp ecx, 32
+    jae .tc_fill_apply_direct
+
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, rax            ; rdx = pointer to CellStyleRecord
+    test dword [rdx+8], 2   ; has_bk?
+    jz .tc_fill_apply_direct
+    mov eax, [rdx]          ; clrBk
+    cmp eax, [cur_fill_color]
+    je .tc_fill_dialog_core ; already this color -> open dialog to pick another!
+
+.tc_fill_apply_direct:
+    mov edi, [cur_fill_color]
+    lea rcx, [szStatusFillApplied]
+    call ShowInfoStatus
+    jmp .tc_fill_apply_loop
+
+.tc_fill_dialog_core:
     ; Clear CHOOSECOLORA structure (72 bytes at rbp-70h)
     lea rdi, [rbp-70h]
     xor eax, eax
@@ -1823,7 +1890,10 @@ ToggleCellFill:
     mov eax, dword [rbp-70h + 24]
     mov [cur_fill_color], eax
     mov edi, eax                              ; edi = chosen COLORREF
+    lea rcx, [szStatusFillPicked]
+    call ShowInfoStatus
 
+.tc_fill_apply_loop:
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .dpfc_done
@@ -1905,9 +1975,19 @@ ToggleCellFill:
 
 
 ; =============================================================================
-; Pick & Apply Cell Text Color (ChooseColorA)
+; Pick & Apply Cell Text Color (ChooseColorA / 1-Click Fast Apply)
 ; =============================================================================
 DoPickTextColor:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 0A0h
+    mov [rbp-8], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+    jmp ToggleCellTextColor.tc_text_dialog_core
+
 ToggleCellTextColor:
     push rbp
     mov rbp, rsp
@@ -1918,6 +1998,61 @@ ToggleCellTextColor:
     mov [rbp-20h], r12
     mov [rbp-28h], r13
 
+    ; 1. Check if Shift key is down
+    mov ecx, 10h            ; VK_SHIFT
+    call [GetKeyState]
+    test ax, 8000h
+    jnz .tc_text_dialog_core
+
+    ; 2. Query mouse cursor position in screen coords
+    lea rcx, [rbp-80h]      ; POINT { x, y }
+    call [GetCursorPos]
+
+    ; Convert to Text button client coordinates
+    mov rcx, [hWnd]
+    mov edx, ID_BTN_TEXT_COLOR
+    call [GetDlgItem]
+    test rax, rax
+    jz .tc_text_check_cell
+
+    mov rcx, rax
+    lea rdx, [rbp-80h]
+    call [ScreenToClient]
+
+    ; If cursor X >= 20 (clicked the dropdown chevron ▼), open dialog!
+    cmp dword [rbp-80h], 20
+    jge .tc_text_dialog_core
+
+.tc_text_check_cell:
+    ; If the active cell already has cur_text_color, open dialog so user can change it!
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .tc_text_apply_direct
+
+    mov edx, [cur_row]
+    cmp edx, 10000
+    jae .tc_text_apply_direct
+    mov ecx, [cur_col]
+    cmp ecx, 32
+    jae .tc_text_apply_direct
+
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, rax            ; rdx = pointer to CellStyleRecord
+    test dword [rdx+8], 4   ; has_fg?
+    jz .tc_text_apply_direct
+    mov eax, [rdx+4]        ; clrText
+    cmp eax, [cur_text_color]
+    je .tc_text_dialog_core ; already this color -> open dialog to pick another!
+
+.tc_text_apply_direct:
+    mov edi, [cur_text_color]
+    lea rcx, [szStatusTextApplied]
+    call ShowInfoStatus
+    jmp .tc_text_apply_loop
+
+.tc_text_dialog_core:
     ; Clear CHOOSECOLORA structure (72 bytes at rbp-70h)
     lea rdi, [rbp-70h]
     xor eax, eax
@@ -1942,7 +2077,10 @@ ToggleCellTextColor:
     mov eax, dword [rbp-70h + 24]
     mov [cur_text_color], eax
     mov edi, eax                              ; edi = chosen COLORREF
+    lea rcx, [szStatusTextPicked]
+    call ShowInfoStatus
 
+.tc_text_apply_loop:
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .dptc_done

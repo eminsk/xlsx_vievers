@@ -269,6 +269,21 @@ BuildAppMenu:
     mov r8d, ID_MENU_FMT_COMMA
     lea r9, [m_fmt_num]
     call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_BTN_FILL_COLOR
+    lea r9, [m_fmt_fill_color]
+    call [AppendMenuA]
+    mov rcx, rbx
+    mov edx, MF_STRING
+    mov r8d, ID_BTN_TEXT_COLOR
+    lea r9, [m_fmt_text_color]
+    call [AppendMenuA]
     mov rcx, [hMenu]
     mov edx, MF_POPUP
     mov r8, rbx
