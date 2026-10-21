@@ -1477,18 +1477,26 @@ WndProc:
     cmp eax, ID_BTN_DEC_DECIMAL
     je .on_dec_decimal
 
+    cmp eax, ID_BTN_SAVE
+    je .on_save_csv
     cmp eax, ID_BTN_INSERT_CELL
     je .on_insert_row
     cmp eax, ID_BTN_DELETE_CELL
     je .on_delete_row
+    cmp eax, ID_BTN_AUTOFIT
+    je .on_autofit
 
     cmp eax, ID_BTN_AUTOSUM
     je .on_autosum
+    cmp eax, ID_BTN_CLEAR
+    je .on_del_cell
     cmp eax, ID_BTN_SORT_FILTER
     je .on_sort_asc
     cmp eax, ID_BTN_FIND_SELECT
     je .on_find
     cmp eax, ID_BTN_COND_FMT
+    je .on_cond_format
+    cmp eax, ID_BTN_FMT_CELLS
     je .on_cond_format
     cmp eax, ID_BTN_FX
     je .on_insert_fx
@@ -1856,6 +1864,43 @@ WndProc:
 
 .on_cond_format:
     call DoConditionalFormat
+    jmp .ret0
+
+.on_autofit:
+    push rbx
+    mov rcx, [hGrid]
+    mov edx, 101Eh             ; LVM_SETCOLUMNWIDTH
+    xor r8d, r8d
+    mov r9d, -2                ; LVSCW_AUTOSIZE_USEHEADER
+    call [SendMessageA]
+
+    mov ebx, 1
+.af_loop:
+    cmp ebx, 26
+    jg .af_done
+    mov rcx, [hGrid]
+    mov edx, 101Eh             ; LVM_SETCOLUMNWIDTH
+    mov r8d, ebx
+    mov r9d, -1                ; LVSCW_AUTOSIZE
+    call [SendMessageA]
+
+    mov rcx, [hGrid]
+    mov edx, 101Dh             ; LVM_GETCOLUMNWIDTH
+    mov r8d, ebx
+    xor r9d, r9d
+    call [SendMessageA]
+    cmp eax, 75
+    jge @f
+    mov rcx, [hGrid]
+    mov edx, 101Eh             ; LVM_SETCOLUMNWIDTH
+    mov r8d, ebx
+    mov r9d, 75
+    call [SendMessageA]
+@@:
+    inc ebx
+    jmp .af_loop
+.af_done:
+    pop rbx
     jmp .ret0
 
 .on_eval_formula:

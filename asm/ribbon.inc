@@ -83,17 +83,60 @@ BuildRibbonBar:
     call [SendMessageA]
 
     ; -------------------------------------------------------------------------
-    ; Quick Access Toolbar (Excel QAT: Undo & Redo persistent across tabs)
+    ; Group 1: Undo (x=10, y=26, w=72, h=88)
     ; -------------------------------------------------------------------------
+    xor ecx, ecx
+    lea rdx, [btn_class]
+    lea r8, [grp_undo_txt]
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_GROUPBOX
+    mov dword [rsp+20h], 10
+    mov dword [rsp+28h], 26
+    mov dword [rsp+30h], 72
+    mov dword [rsp+38h], 88
+    mov rax, [hWnd]
+    mov qword [rsp+40h], rax
+    mov qword [rsp+48h], ID_GRP_UNDO
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontSmall]
+    mov r9d, 1
+    call [SendMessageA]
+
+    ; Save Button (Green Outline Accent Button)
+    xor ecx, ecx
+    lea rdx, [btn_class]
+    lea r8, [btn_save_txt]
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 16
+    mov dword [rsp+28h], 42
+    mov dword [rsp+30h], 60
+    mov dword [rsp+38h], 20
+    mov rax, [hWnd]
+    mov qword [rsp+40h], rax
+    mov qword [rsp+48h], ID_BTN_SAVE
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontSmall]
+    mov r9d, 1
+    call [SendMessageA]
+
     ; Undo Button
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_undo_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 340
-    mov dword [rsp+28h], 3
-    mov dword [rsp+30h], 24
-    mov dword [rsp+38h], 22
+    mov dword [rsp+20h], 16
+    mov dword [rsp+28h], 64
+    mov dword [rsp+30h], 60
+    mov dword [rsp+38h], 20
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_UNDO
@@ -112,10 +155,10 @@ BuildRibbonBar:
     lea rdx, [btn_class]
     lea r8, [btn_redo_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 368
-    mov dword [rsp+28h], 3
-    mov dword [rsp+30h], 24
-    mov dword [rsp+38h], 22
+    mov dword [rsp+20h], 16
+    mov dword [rsp+28h], 86
+    mov dword [rsp+30h], 60
+    mov dword [rsp+38h], 20
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_REDO
@@ -130,15 +173,15 @@ BuildRibbonBar:
     call [SendMessageA]
 
     ; -------------------------------------------------------------------------
-    ; Group 1: Clipboard
+    ; Group 2: Clipboard (x=88, y=26, w=122, h=88)
     ; -------------------------------------------------------------------------
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_clip_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_GROUPBOX
-    mov dword [rsp+20h], 10
+    mov dword [rsp+20h], 88
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 115
+    mov dword [rsp+30h], 122
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -153,12 +196,12 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Paste Big Button
+    ; Paste Big Button (Solid Accent Blue)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_paste_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 16
+    mov dword [rsp+20h], 94
     mov dword [rsp+28h], 42
     mov dword [rsp+30h], 48
     mov dword [rsp+38h], 64
@@ -175,14 +218,14 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Cut, Copy, Format small buttons
+    ; Cut Button
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_cut_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 68
+    mov dword [rsp+20h], 146
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 50
+    mov dword [rsp+30h], 58
     mov dword [rsp+38h], 20
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -197,13 +240,14 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Copy Button
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_copy_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 68
+    mov dword [rsp+20h], 146
     mov dword [rsp+28h], 64
-    mov dword [rsp+30h], 50
+    mov dword [rsp+30h], 58
     mov dword [rsp+38h], 20
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -218,13 +262,14 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Format Button
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_format_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 68
+    mov dword [rsp+20h], 146
     mov dword [rsp+28h], 86
-    mov dword [rsp+30h], 50
+    mov dword [rsp+30h], 58
     mov dword [rsp+38h], 20
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -240,15 +285,15 @@ BuildRibbonBar:
     call [SendMessageA]
 
     ; -------------------------------------------------------------------------
-    ; Group 2: Font
+    ; Group 3: Font (x=212, y=26, w=212, h=88)
     ; -------------------------------------------------------------------------
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_font_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_GROUPBOX
-    mov dword [rsp+20h], 129
+    mov dword [rsp+20h], 212
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 205
+    mov dword [rsp+30h], 212
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -268,9 +313,9 @@ BuildRibbonBar:
     lea rdx, [combo_class]
     xor r8, r8
     mov r9d, WS_CHILD or WS_VISIBLE or CBS_DROPDOWNLIST or WS_VSCROLL
-    mov dword [rsp+20h], 135
+    mov dword [rsp+20h], 218
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 90
+    mov dword [rsp+30h], 96
     mov dword [rsp+38h], 160
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -316,7 +361,7 @@ BuildRibbonBar:
     lea rdx, [combo_class]
     xor r8, r8
     mov r9d, WS_CHILD or WS_VISIBLE or CBS_DROPDOWNLIST or WS_VSCROLL
-    mov dword [rsp+20h], 229
+    mov dword [rsp+20h], 318
     mov dword [rsp+28h], 42
     mov dword [rsp+30h], 42
     mov dword [rsp+38h], 160
@@ -374,14 +419,14 @@ BuildRibbonBar:
     xor r9d, r9d
     call [SendMessageA]
 
-    ; A+ / A-
+    ; A+ (Increase font)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_inc_f_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 275
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 364
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 25
+    mov dword [rsp+30h], 26
     mov dword [rsp+38h], 22
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -396,13 +441,14 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; A- (Decrease font)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_dec_f_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 303
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 392
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 25
+    mov dword [rsp+30h], 26
     mov dword [rsp+38h], 22
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -417,14 +463,15 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
-    ; B, I, U, S, Border, Fill, Text Color
+    ; B, I, U, S, Border, Fill, Text Color row (y=70, h=24)
+    ; Bold Button
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_bold_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 135
-    mov dword [rsp+28h], 72
-    mov dword [rsp+30h], 24
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 218
+    mov dword [rsp+28h], 70
+    mov dword [rsp+30h], 22
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -439,13 +486,14 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Italic Button
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_italic_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 161
-    mov dword [rsp+28h], 72
-    mov dword [rsp+30h], 24
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 242
+    mov dword [rsp+28h], 70
+    mov dword [rsp+30h], 22
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -460,13 +508,14 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Underline Button
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_under_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 187
-    mov dword [rsp+28h], 72
-    mov dword [rsp+30h], 24
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 266
+    mov dword [rsp+28h], 70
+    mov dword [rsp+30h], 22
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -481,13 +530,14 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Strike Button
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_strike_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 213
-    mov dword [rsp+28h], 72
-    mov dword [rsp+30h], 24
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 290
+    mov dword [rsp+28h], 70
+    mov dword [rsp+30h], 22
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -502,12 +552,13 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Border Button
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_border_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 239
-    mov dword [rsp+28h], 72
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 314
+    mov dword [rsp+28h], 70
     mov dword [rsp+30h], 26
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
@@ -523,13 +574,14 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Fill Color Button (Split Button with Color Strip & Chevron)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_fill_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 267
-    mov dword [rsp+28h], 72
-    mov dword [rsp+30h], 31
+    mov dword [rsp+20h], 344
+    mov dword [rsp+28h], 70
+    mov dword [rsp+30h], 36
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -544,13 +596,14 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Text Color Button (Split Button with Color Strip & Chevron)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_col_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 301
-    mov dword [rsp+28h], 72
-    mov dword [rsp+30h], 31
+    mov dword [rsp+20h], 384
+    mov dword [rsp+28h], 70
+    mov dword [rsp+30h], 36
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -566,15 +619,15 @@ BuildRibbonBar:
     call [SendMessageA]
 
     ; -------------------------------------------------------------------------
-    ; Group 3: Alignment
+    ; Group 4: Alignment (x=430, y=26, w=174, h=88)
     ; -------------------------------------------------------------------------
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_align_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_GROUPBOX
-    mov dword [rsp+20h], 338
+    mov dword [rsp+20h], 430
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 198
+    mov dword [rsp+30h], 174
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -589,14 +642,14 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Top/Mid/Bot row
+    ; Top/Mid/Bot row (y=42)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_top_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 344
+    mov dword [rsp+20h], 436
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 26
+    mov dword [rsp+30h], 24
     mov dword [rsp+38h], 22
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -615,9 +668,9 @@ BuildRibbonBar:
     lea rdx, [btn_class]
     lea r8, [btn_mid_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 372
+    mov dword [rsp+20h], 462
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 26
+    mov dword [rsp+30h], 24
     mov dword [rsp+38h], 22
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -636,9 +689,9 @@ BuildRibbonBar:
     lea rdx, [btn_class]
     lea r8, [btn_bot_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 400
+    mov dword [rsp+20h], 488
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 26
+    mov dword [rsp+30h], 24
     mov dword [rsp+38h], 22
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -653,14 +706,36 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Left/Center/Right row
+    ; Wrap Text Button
+    xor ecx, ecx
+    lea rdx, [btn_class]
+    lea r8, [btn_wrap_txt]
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 516
+    mov dword [rsp+28h], 42
+    mov dword [rsp+30h], 82
+    mov dword [rsp+38h], 22
+    mov rax, [hWnd]
+    mov qword [rsp+40h], rax
+    mov qword [rsp+48h], ID_BTN_WRAP
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontSmall]
+    mov r9d, 1
+    call [SendMessageA]
+
+    ; Left/Center/Right row (y=68)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_left_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 344
-    mov dword [rsp+28h], 66
-    mov dword [rsp+30h], 26
+    mov dword [rsp+20h], 436
+    mov dword [rsp+28h], 68
+    mov dword [rsp+30h], 24
     mov dword [rsp+38h], 22
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -679,9 +754,9 @@ BuildRibbonBar:
     lea rdx, [btn_class]
     lea r8, [btn_center_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 372
-    mov dword [rsp+28h], 66
-    mov dword [rsp+30h], 26
+    mov dword [rsp+20h], 462
+    mov dword [rsp+28h], 68
+    mov dword [rsp+30h], 24
     mov dword [rsp+38h], 22
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -700,9 +775,9 @@ BuildRibbonBar:
     lea rdx, [btn_class]
     lea r8, [btn_right_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 400
-    mov dword [rsp+28h], 66
-    mov dword [rsp+30h], 26
+    mov dword [rsp+20h], 488
+    mov dword [rsp+28h], 68
+    mov dword [rsp+30h], 24
     mov dword [rsp+38h], 22
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -717,35 +792,14 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
-    ; Wrap & Merge Side Buttons
-    xor ecx, ecx
-    lea rdx, [btn_class]
-    lea r8, [btn_wrap_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 430
-    mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 102
-    mov dword [rsp+38h], 22
-    mov rax, [hWnd]
-    mov qword [rsp+40h], rax
-    mov qword [rsp+48h], ID_BTN_WRAP
-    mov rax, [hInst]
-    mov qword [rsp+50h], rax
-    mov qword [rsp+58h], 0
-    call [CreateWindowExA]
-    mov rcx, rax
-    mov edx, WM_SETFONT
-    mov r8, [hFontSmall]
-    mov r9d, 1
-    call [SendMessageA]
-
+    ; Merge & Ctr Button
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_merge_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 430
-    mov dword [rsp+28h], 66
-    mov dword [rsp+30h], 102
+    mov dword [rsp+20h], 516
+    mov dword [rsp+28h], 68
+    mov dword [rsp+30h], 82
     mov dword [rsp+38h], 22
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -761,15 +815,15 @@ BuildRibbonBar:
     call [SendMessageA]
 
     ; -------------------------------------------------------------------------
-    ; Group 4: Number
+    ; Group 5: Number (x=610, y=26, w=170, h=88)
     ; -------------------------------------------------------------------------
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_num_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_GROUPBOX
-    mov dword [rsp+20h], 540
+    mov dword [rsp+20h], 610
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 180
+    mov dword [rsp+30h], 170
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -789,9 +843,9 @@ BuildRibbonBar:
     lea rdx, [combo_class]
     xor r8, r8
     mov r9d, WS_CHILD or WS_VISIBLE or CBS_DROPDOWNLIST or WS_VSCROLL
-    mov dword [rsp+20h], 546
+    mov dword [rsp+20h], 616
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 168
+    mov dword [rsp+30h], 158
     mov dword [rsp+38h], 160
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -832,13 +886,13 @@ BuildRibbonBar:
     xor r9d, r9d
     call [SendMessageA]
 
-    ; Currency & Decimal buttons (₽, $, %, ,, .0+, .0-)
+    ; Currency & Decimal buttons (₽, $, %, ,, .0+, .0-) y=68, h=24
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_rub_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 546
-    mov dword [rsp+28h], 72
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 616
+    mov dword [rsp+28h], 68
     mov dword [rsp+30h], 24
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
@@ -857,9 +911,9 @@ BuildRibbonBar:
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_usd_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 572
-    mov dword [rsp+28h], 72
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 642
+    mov dword [rsp+28h], 68
     mov dword [rsp+30h], 24
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
@@ -878,9 +932,9 @@ BuildRibbonBar:
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_pct_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 598
-    mov dword [rsp+28h], 72
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 668
+    mov dword [rsp+28h], 68
     mov dword [rsp+30h], 24
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
@@ -899,9 +953,9 @@ BuildRibbonBar:
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_com_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 624
-    mov dword [rsp+28h], 72
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 694
+    mov dword [rsp+28h], 68
     mov dword [rsp+30h], 24
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
@@ -920,10 +974,10 @@ BuildRibbonBar:
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_idec_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 652
-    mov dword [rsp+28h], 72
-    mov dword [rsp+30h], 30
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 720
+    mov dword [rsp+28h], 68
+    mov dword [rsp+30h], 26
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -941,10 +995,10 @@ BuildRibbonBar:
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ddec_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 684
-    mov dword [rsp+28h], 72
-    mov dword [rsp+30h], 30
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 748
+    mov dword [rsp+28h], 68
+    mov dword [rsp+30h], 26
     mov dword [rsp+38h], 24
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -960,15 +1014,15 @@ BuildRibbonBar:
     call [SendMessageA]
 
     ; -------------------------------------------------------------------------
-    ; Group 5: Styles
+    ; Group 6: Styles (x=786, y=26, w=142, h=88)
     ; -------------------------------------------------------------------------
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_styles_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_GROUPBOX
-    mov dword [rsp+20h], 724
+    mov dword [rsp+20h], 786
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 85
+    mov dword [rsp+30h], 142
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -983,14 +1037,15 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Conditional Formatting Button (Teal Outline Accent Button)
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_cf_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 730
+    mov dword [rsp+20h], 792
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 73
-    mov dword [rsp+38h], 54
+    mov dword [rsp+30h], 130
+    mov dword [rsp+38h], 34
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_COND_FMT
@@ -1004,16 +1059,38 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Format Cells Button
+    xor ecx, ecx
+    lea rdx, [btn_class]
+    lea r8, [btn_fmt_cells_txt]
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 792
+    mov dword [rsp+28h], 80
+    mov dword [rsp+30h], 130
+    mov dword [rsp+38h], 24
+    mov rax, [hWnd]
+    mov qword [rsp+40h], rax
+    mov qword [rsp+48h], ID_BTN_FMT_CELLS
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontSmall]
+    mov r9d, 1
+    call [SendMessageA]
+
     ; -------------------------------------------------------------------------
-    ; Group 6: Cells
+    ; Group 7: Cells (x=934, y=26, w=88, h=88)
     ; -------------------------------------------------------------------------
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_cells_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_GROUPBOX
-    mov dword [rsp+20h], 813
+    mov dword [rsp+20h], 934
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 85
+    mov dword [rsp+30h], 88
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -1028,14 +1105,15 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Insert Button
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_ins_c_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 819
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 940
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 73
-    mov dword [rsp+38h], 25
+    mov dword [rsp+30h], 76
+    mov dword [rsp+38h], 20
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_INSERT_CELL
@@ -1049,14 +1127,15 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Delete Button
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_del_c_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
-    mov dword [rsp+20h], 819
-    mov dword [rsp+28h], 70
-    mov dword [rsp+30h], 73
-    mov dword [rsp+38h], 25
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 940
+    mov dword [rsp+28h], 64
+    mov dword [rsp+30h], 76
+    mov dword [rsp+38h], 20
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_DELETE_CELL
@@ -1070,16 +1149,38 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Auto-fit Button
+    xor ecx, ecx
+    lea rdx, [btn_class]
+    lea r8, [btn_autofit_txt]
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 940
+    mov dword [rsp+28h], 86
+    mov dword [rsp+30h], 76
+    mov dword [rsp+38h], 20
+    mov rax, [hWnd]
+    mov qword [rsp+40h], rax
+    mov qword [rsp+48h], ID_BTN_AUTOFIT
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontSmall]
+    mov r9d, 1
+    call [SendMessageA]
+
     ; -------------------------------------------------------------------------
-    ; Group 7: Editing
+    ; Group 8: Editing (x=1028, y=26, w=182, h=88)
     ; -------------------------------------------------------------------------
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [grp_edit_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_GROUPBOX
-    mov dword [rsp+20h], 902
+    mov dword [rsp+20h], 1028
     mov dword [rsp+28h], 26
-    mov dword [rsp+30h], 100
+    mov dword [rsp+30h], 182
     mov dword [rsp+38h], 88
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
@@ -1094,14 +1195,15 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; AutoSum Button (Blue Outline Accent Button) - Col 1 Top
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_autosum_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 908
+    mov dword [rsp+20h], 1034
     mov dword [rsp+28h], 42
-    mov dword [rsp+30h], 88
-    mov dword [rsp+38h], 20
+    mov dword [rsp+30h], 96
+    mov dword [rsp+38h], 28
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_AUTOSUM
@@ -1115,14 +1217,15 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Sort & Filter Button - Col 1 Bottom
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_sort_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 908
-    mov dword [rsp+28h], 64
-    mov dword [rsp+30h], 88
-    mov dword [rsp+38h], 20
+    mov dword [rsp+20h], 1034
+    mov dword [rsp+28h], 74
+    mov dword [rsp+30h], 96
+    mov dword [rsp+38h], 26
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_SORT_FILTER
@@ -1136,14 +1239,37 @@ BuildRibbonBar:
     mov r9d, 1
     call [SendMessageA]
 
+    ; Clear Button - Col 2 Top
+    xor ecx, ecx
+    lea rdx, [btn_class]
+    lea r8, [btn_clear_txt]
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
+    mov dword [rsp+20h], 1136
+    mov dword [rsp+28h], 42
+    mov dword [rsp+30h], 68
+    mov dword [rsp+38h], 28
+    mov rax, [hWnd]
+    mov qword [rsp+40h], rax
+    mov qword [rsp+48h], ID_BTN_CLEAR
+    mov rax, [hInst]
+    mov qword [rsp+50h], rax
+    mov qword [rsp+58h], 0
+    call [CreateWindowExA]
+    mov rcx, rax
+    mov edx, WM_SETFONT
+    mov r8, [hFontSmall]
+    mov r9d, 1
+    call [SendMessageA]
+
+    ; Find & Select Button - Col 2 Bottom
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [btn_find_txt]
     mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
-    mov dword [rsp+20h], 908
-    mov dword [rsp+28h], 86
-    mov dword [rsp+30h], 88
-    mov dword [rsp+38h], 20
+    mov dword [rsp+20h], 1136
+    mov dword [rsp+28h], 74
+    mov dword [rsp+30h], 68
+    mov dword [rsp+38h], 26
     mov rax, [hWnd]
     mov qword [rsp+40h], rax
     mov qword [rsp+48h], ID_BTN_FIND_SELECT
@@ -1304,6 +1430,44 @@ InitRibbonGdiResources:
     call [CreatePen]
     mov [hPenNull], rax
 
+    ; hBrAccentBlue (#2B66D2)
+    mov ecx, 00D2662Bh
+    call [CreateSolidBrush]
+    mov [hBrAccentBlue], rax
+
+    ; hBrAccentHover (#3B7CE8)
+    mov ecx, 00E87C3Bh
+    call [CreateSolidBrush]
+    mov [hBrAccentHover], rax
+
+    ; hPenAccentBlue (#2B66D2)
+    xor ecx, ecx
+    mov edx, 1
+    mov r8d, 00D2662Bh
+    call [CreatePen]
+    mov [hPenAccentBlue], rax
+
+    ; hPenAccentGreen (#217346)
+    xor ecx, ecx
+    mov edx, 1
+    mov r8d, 00467321h
+    call [CreatePen]
+    mov [hPenAccentGreen], rax
+
+    ; hPenAccentTeal (#0284C7)
+    xor ecx, ecx
+    mov edx, 1
+    mov r8d, 00C78402h
+    call [CreatePen]
+    mov [hPenAccentTeal], rax
+
+    ; hPenAccentRed (#D72D1E)
+    xor ecx, ecx
+    mov edx, 1
+    mov r8d, 001E2DD7h
+    call [CreatePen]
+    mov [hPenAccentRed], rax
+
     leave
     ret
 
@@ -1422,6 +1586,36 @@ CleanupRibbonGdiResources:
     jz @f
     call [DeleteObject]
 @@:
+    mov rcx, [hBrAccentBlue]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hBrAccentHover]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hPenAccentBlue]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hPenAccentGreen]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hPenAccentTeal]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hPenAccentRed]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
     ; Clean up dynamic cell font cache
     xor ebx, ebx
 .cleanup_font_cache:
@@ -1463,12 +1657,16 @@ DrawRibbonOwnerButton:
     ; rcItem is at rsi+40
     mov eax, [rsi+40]
     mov [rbp-40h], eax      ; left
+    mov [rcGlyphTemp], eax
     mov eax, [rsi+44]
     mov [rbp-44h], eax      ; top
+    mov [rcGlyphTemp+4], eax
     mov eax, [rsi+48]
     mov [rbp-48h], eax      ; right
+    mov [rcGlyphTemp+8], eax
     mov eax, [rsi+52]
     mov [rbp-4Ch], eax      ; bottom
+    mov [rcGlyphTemp+12], eax
 
     ; width = right - left, height = bottom - top
     mov eax, [rbp-48h]
@@ -1479,6 +1677,17 @@ DrawRibbonOwnerButton:
     mov [rbp-54h], eax      ; height
 
     ; 1. Draw modern button background
+    cmp r13d, ID_BTN_PASTE
+    je .bg_paste_btn
+    cmp r13d, ID_BTN_FX
+    je .bg_fx_btn
+    cmp r13d, ID_BTN_SAVE
+    je .bg_save_btn
+    cmp r13d, ID_BTN_COND_FMT
+    je .bg_cond_fmt_btn
+    cmp r13d, ID_BTN_AUTOSUM
+    je .bg_autosum_btn
+
     test r14d, 1            ; ODS_SELECTED?
     jz .bg_not_pressed
     mov rdx, [hBrBtnPress]
@@ -1505,6 +1714,151 @@ DrawRibbonOwnerButton:
     mov rcx, r12
     call [SelectObject]
     mov rdx, [hPenBorder]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+
+.bg_paste_btn:
+    test r14d, 1
+    jz @f
+    mov rdx, [hBrBlue]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentBlue]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+@@:
+    test r14d, 40h
+    jz @f
+    mov rdx, [hBrAccentHover]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentBlue]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+@@:
+    mov rdx, [hBrAccentBlue]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentBlue]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+
+.bg_fx_btn:
+    test r14d, 1
+    jz @f
+    mov rdx, [hBrGreen]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenDark]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+@@:
+    test r14d, 40h
+    jz @f
+    mov rdx, [hBrGreen]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenBorderPress]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+@@:
+    mov rdx, [hBrGreen]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenGreen]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+
+.bg_save_btn:
+    test r14d, 1
+    jz @f
+    mov rdx, [hBrBtnPress]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentGreen]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+@@:
+    test r14d, 40h
+    jz @f
+    mov rdx, [hBrBtnHover]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentGreen]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+@@:
+    mov rdx, [hBrWhite]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentGreen]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+
+.bg_cond_fmt_btn:
+    test r14d, 1
+    jz @f
+    mov rdx, [hBrBtnPress]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentTeal]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+@@:
+    test r14d, 40h
+    jz @f
+    mov rdx, [hBrBtnHover]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentTeal]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+@@:
+    mov rdx, [hBrWhite]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentTeal]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+
+.bg_autosum_btn:
+    test r14d, 1
+    jz @f
+    mov rdx, [hBrBtnPress]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentBlue]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+@@:
+    test r14d, 40h
+    jz @f
+    mov rdx, [hBrBtnHover]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentBlue]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+@@:
+    mov rdx, [hBrWhite]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentBlue]
     mov rcx, r12
     call [SelectObject]
 
@@ -1557,16 +1911,38 @@ DrawRibbonOwnerButton:
     mov [rbp-58h], ebx
     mov [rbp-5Ch], edx
 
+    cmp r13d, ID_BTN_SAVE
+    je .ico_save
     cmp r13d, ID_BTN_UNDO
     je .ico_undo
     cmp r13d, ID_BTN_REDO
     je .ico_redo
-    cmp r13d, ID_BTN_LEFT
-    je .ico_align_left
-    cmp r13d, ID_BTN_CENTER
-    je .ico_align_center
-    cmp r13d, ID_BTN_RIGHT
-    je .ico_align_right
+    cmp r13d, ID_BTN_PASTE
+    je .ico_paste
+    cmp r13d, ID_BTN_CUT
+    je .ico_cut
+    cmp r13d, ID_BTN_COPY
+    je .ico_copy
+    cmp r13d, ID_BTN_FORMAT
+    je .ico_format
+    cmp r13d, ID_BTN_INC_FONT
+    je .ico_font_inc
+    cmp r13d, ID_BTN_DEC_FONT
+    je .ico_font_dec
+    cmp r13d, ID_BTN_BOLD
+    je .ico_font_bold
+    cmp r13d, ID_BTN_ITALIC
+    je .ico_font_italic
+    cmp r13d, ID_BTN_UNDERLINE
+    je .ico_font_under
+    cmp r13d, ID_BTN_STRIKE
+    je .ico_font_strike
+    cmp r13d, ID_BTN_BORDER
+    je .ico_border
+    cmp r13d, ID_BTN_FILL_COLOR
+    je .ico_fill_color
+    cmp r13d, ID_BTN_TEXT_COLOR
+    je .ico_text_color
     cmp r13d, ID_BTN_TOP
     je .ico_align_top
     cmp r13d, ID_BTN_MID
@@ -1575,12 +1951,46 @@ DrawRibbonOwnerButton:
     je .ico_align_bot
     cmp r13d, ID_BTN_WRAP
     je .ico_wrap_text
+    cmp r13d, ID_BTN_LEFT
+    je .ico_align_left
+    cmp r13d, ID_BTN_CENTER
+    je .ico_align_center
+    cmp r13d, ID_BTN_RIGHT
+    je .ico_align_right
     cmp r13d, ID_BTN_MERGE
     je .ico_merge_center
-    cmp r13d, ID_BTN_FILL_COLOR
-    je .ico_fill_color
-    cmp r13d, ID_BTN_TEXT_COLOR
-    je .ico_text_color
+    cmp r13d, ID_BTN_RUBLE
+    je .ico_ruble
+    cmp r13d, ID_BTN_DOLLAR
+    je .ico_dollar
+    cmp r13d, ID_BTN_PERCENT
+    je .ico_percent
+    cmp r13d, ID_BTN_COMMA
+    je .ico_comma
+    cmp r13d, ID_BTN_INC_DECIMAL
+    je .ico_inc_dec
+    cmp r13d, ID_BTN_DEC_DECIMAL
+    je .ico_dec_dec
+    cmp r13d, ID_BTN_COND_FMT
+    je .ico_cond_fmt
+    cmp r13d, ID_BTN_FMT_CELLS
+    je .ico_table
+    cmp r13d, ID_BTN_INSERT_CELL
+    je .ico_insert_cell
+    cmp r13d, ID_BTN_DELETE_CELL
+    je .ico_delete_cell
+    cmp r13d, ID_BTN_AUTOFIT
+    je .ico_autofit
+    cmp r13d, ID_BTN_AUTOSUM
+    je .ico_autosum
+    cmp r13d, ID_BTN_CLEAR
+    je .ico_clear_btn
+    cmp r13d, ID_BTN_SORT_FILTER
+    je .ico_sort_asc
+    cmp r13d, ID_BTN_FIND_SELECT
+    je .ico_lookup
+    cmp r13d, ID_BTN_FX
+    je .ico_formula_fx
 
     cmp r13d, ID_BTN_INS_TABLE
     je .ico_table
@@ -1632,8 +2042,6 @@ DrawRibbonOwnerButton:
     je .ico_fx
     cmp r13d, ID_BTN_FORM_AUTOSUM
     je .ico_autosum
-    cmp r13d, ID_BTN_AUTOSUM
-    je .ico_autosum
     cmp r13d, ID_BTN_FORM_FIN
     je .ico_finance
     cmp r13d, ID_BTN_FORM_LOGIC
@@ -1676,21 +2084,761 @@ DrawRibbonOwnerButton:
     je .ico_freeze
     cmp r13d, ID_BTN_VIEW_NEW_WND
     je .ico_new_wnd
-    cmp r13d, ID_BTN_PASTE
-    je .ico_paste
-    cmp r13d, ID_BTN_CUT
-    je .ico_cut
-    cmp r13d, ID_BTN_COPY
-    je .ico_copy
-    cmp r13d, ID_BTN_FORMAT
-    je .ico_format
-    cmp r13d, ID_BTN_COND_FMT
-    je .ico_cond_fmt
-    cmp r13d, ID_BTN_FIND_SELECT
-    je .ico_lookup
-    cmp r13d, ID_BTN_BORDER
-    je .ico_gridlines
     jmp .ico_sheet_normal
+
+.ico_save:
+    mov rdx, [hBrGreen]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenGreen]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-6]
+    lea r9d, [ebx+6]
+    lea eax, [eax+6]
+    mov [rsp+20h], eax
+    call [Rectangle]
+
+    mov rdx, [hBrWhite]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenWhite]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-4]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-6]
+    lea r9d, [ebx+2]
+    lea eax, [eax-2]
+    mov [rsp+20h], eax
+    call [Rectangle]
+
+    mov rcx, r12
+    lea edx, [ebx-4]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+1]
+    lea r9d, [ebx+4]
+    lea eax, [eax+5]
+    mov [rsp+20h], eax
+    call [Rectangle]
+    jmp .render_btn_text
+
+.ico_font_inc:
+    mov rcx, r12
+    mov edx, 1
+    call [SetBkMode]
+    mov rcx, r12
+    mov edx, 00202020h
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBold]
+    call [SelectObject]
+
+    mov eax, ebx
+    sub eax, 10
+    mov [rcGlyphTemp], eax
+    mov eax, [rbp-5Ch]
+    sub eax, 8
+    mov [rcGlyphTemp+4], eax
+    mov eax, ebx
+    mov [rcGlyphTemp+8], eax
+    mov eax, [rbp-5Ch]
+    add eax, 8
+    mov [rcGlyphTemp+12], eax
+
+    mov rcx, r12
+    lea rdx, [szGlyphA]
+    mov r8d, 1
+    lea r9, [rcGlyphTemp]
+    mov dword [rsp+20h], 0825h
+    call [DrawTextA]
+
+    mov rdx, [hPenAccentGreen]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx+5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+5]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-4]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx+2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-1]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-4]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx+8]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-1]
+    call [LineTo]
+    jmp .btn_drawn
+
+.ico_font_dec:
+    mov rcx, r12
+    mov edx, 1
+    call [SetBkMode]
+    mov rcx, r12
+    mov edx, 00202020h
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontSmall]
+    call [SelectObject]
+
+    mov eax, ebx
+    sub eax, 10
+    mov [rcGlyphTemp], eax
+    mov eax, [rbp-5Ch]
+    sub eax, 6
+    mov [rcGlyphTemp+4], eax
+    mov eax, ebx
+    mov [rcGlyphTemp+8], eax
+    mov eax, [rbp-5Ch]
+    add eax, 8
+    mov [rcGlyphTemp+12], eax
+
+    mov rcx, r12
+    lea rdx, [szGlyphA]
+    mov r8d, 1
+    lea r9, [rcGlyphTemp]
+    mov dword [rsp+20h], 0825h
+    call [DrawTextA]
+
+    mov rdx, [hPenAccentRed]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx+5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-4]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+5]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx+2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+5]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx+8]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
+    call [LineTo]
+    jmp .btn_drawn
+
+.ico_font_bold:
+    mov rcx, r12
+    mov edx, 1
+    call [SetBkMode]
+    mov rcx, r12
+    mov edx, 00202020h
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBold]
+    call [SelectObject]
+
+    mov rcx, r12
+    lea rdx, [szGlyphB]
+    mov r8d, 1
+    lea r9, [rcGlyphTemp]
+    mov dword [rsp+20h], 0825h
+    call [DrawTextA]
+    jmp .btn_drawn
+
+.ico_font_italic:
+    mov rcx, r12
+    mov edx, 1
+    call [SetBkMode]
+    mov rcx, r12
+    mov edx, 00202020h
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBoldItalic]
+    call [SelectObject]
+
+    mov rcx, r12
+    lea rdx, [szGlyphI]
+    mov r8d, 1
+    lea r9, [rcGlyphTemp]
+    mov dword [rsp+20h], 0825h
+    call [DrawTextA]
+    jmp .btn_drawn
+
+.ico_font_under:
+    mov rcx, r12
+    mov edx, 1
+    call [SetBkMode]
+    mov rcx, r12
+    mov edx, 00202020h
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBold]
+    call [SelectObject]
+
+    mov rcx, r12
+    lea rdx, [szGlyphU]
+    mov r8d, 1
+    lea r9, [rcGlyphTemp]
+    mov dword [rsp+20h], 0825h
+    call [DrawTextA]
+
+    mov rdx, [hPenDark2]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+6]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+6]
+    call [LineTo]
+    jmp .btn_drawn
+
+.ico_font_strike:
+    mov rcx, r12
+    mov edx, 1
+    call [SetBkMode]
+    mov rcx, r12
+    mov edx, 00202020h
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBold]
+    call [SelectObject]
+
+    mov rcx, r12
+    lea rdx, [szGlyphS]
+    mov r8d, 1
+    lea r9, [rcGlyphTemp]
+    mov dword [rsp+20h], 0825h
+    call [DrawTextA]
+
+    mov rdx, [hPenAccentRed]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov r8d, [rbp-5Ch]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+7]
+    mov r8d, [rbp-5Ch]
+    call [LineTo]
+    jmp .btn_drawn
+
+.ico_border:
+    mov rdx, [hBrWhite]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenDark]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-7]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-6]
+    lea r9d, [ebx+3]
+    lea eax, [eax+6]
+    mov [rsp+20h], eax
+    call [Rectangle]
+
+    mov rcx, r12
+    lea edx, [ebx-7]
+    mov r8d, [rbp-5Ch]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+3]
+    mov r8d, [rbp-5Ch]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx-2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-6]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx-2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+6]
+    call [LineTo]
+
+    mov rdx, [hPenDark]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx+5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-1]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+10]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-1]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx+6]
+    mov r8d, [rbp-5Ch]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+9]
+    mov r8d, [rbp-5Ch]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx+7]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+1]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+8]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+1]
+    call [LineTo]
+    jmp .btn_drawn
+
+.ico_ruble:
+    mov rdx, [hPenGreen]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-3]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-6]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx-3]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+6]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx-3]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-6]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+3]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-6]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx+3]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-1]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx-3]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-1]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx-5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+1]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+1]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx-5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+3]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+1]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+3]
+    call [LineTo]
+    jmp .btn_drawn
+
+.ico_dollar:
+    mov rcx, r12
+    mov edx, 1
+    call [SetBkMode]
+    mov rcx, r12
+    mov edx, 00467321h
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBold]
+    call [SelectObject]
+
+    mov rcx, r12
+    lea rdx, [szGlyphUSD]
+    mov r8d, 1
+    lea r9, [rcGlyphTemp]
+    mov dword [rsp+20h], 0825h
+    call [DrawTextA]
+    jmp .btn_drawn
+
+.ico_percent:
+    mov rcx, r12
+    mov edx, 1
+    call [SetBkMode]
+    mov rcx, r12
+    mov edx, 00D2662Bh
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBold]
+    call [SelectObject]
+
+    mov rcx, r12
+    lea rdx, [szGlyphPCT]
+    mov r8d, 1
+    lea r9, [rcGlyphTemp]
+    mov dword [rsp+20h], 0825h
+    call [DrawTextA]
+    jmp .btn_drawn
+
+.ico_comma:
+    mov rcx, r12
+    mov edx, 1
+    call [SetBkMode]
+    mov rcx, r12
+    mov edx, 00202020h
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBold]
+    call [SelectObject]
+
+    mov eax, [rbp-40h]
+    mov [rcGlyphTemp], eax
+    mov eax, [rbp-44h]
+    sub eax, 3
+    mov [rcGlyphTemp+4], eax
+    mov eax, [rbp-48h]
+    mov [rcGlyphTemp+8], eax
+    mov eax, [rbp-4Ch]
+    sub eax, 3
+    mov [rcGlyphTemp+12], eax
+
+    mov rcx, r12
+    lea rdx, [comma_str]
+    mov r8d, 1
+    lea r9, [rcGlyphTemp]
+    mov dword [rsp+20h], 0825h
+    call [DrawTextA]
+    jmp .btn_drawn
+
+.ico_inc_dec:
+    mov rcx, r12
+    mov edx, 1
+    call [SetBkMode]
+    mov rcx, r12
+    mov edx, 00D2662Bh
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontSmall]
+    call [SelectObject]
+
+    mov rcx, r12
+    lea rdx, [btn_idec_txt]
+    mov r8d, -1
+    lea r9, [rcGlyphTemp]
+    mov dword [rsp+20h], 0825h
+    call [DrawTextA]
+    jmp .btn_drawn
+
+.ico_dec_dec:
+    mov rcx, r12
+    mov edx, 1
+    call [SetBkMode]
+    mov rcx, r12
+    mov edx, 00D2662Bh
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontSmall]
+    call [SelectObject]
+
+    mov rcx, r12
+    lea rdx, [btn_ddec_txt]
+    mov r8d, -1
+    lea r9, [rcGlyphTemp]
+    mov dword [rsp+20h], 0825h
+    call [DrawTextA]
+    jmp .btn_drawn
+
+.ico_insert_cell:
+    mov rdx, [hBrWhite]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentGreen]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-6]
+    lea r9d, [ebx+6]
+    lea eax, [eax+6]
+    mov [rsp+20h], eax
+    call [Ellipse]
+
+    mov rcx, r12
+    lea edx, [ebx-3]
+    mov r8d, [rbp-5Ch]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+4]
+    mov r8d, [rbp-5Ch]
+    call [LineTo]
+
+    mov rcx, r12
+    mov edx, ebx
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-3]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    mov edx, ebx
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+4]
+    call [LineTo]
+    jmp .render_btn_text
+
+.ico_delete_cell:
+    mov rdx, [hBrWhite]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentRed]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-6]
+    lea r9d, [ebx+6]
+    lea eax, [eax+6]
+    mov [rsp+20h], eax
+    call [Ellipse]
+
+    mov rcx, r12
+    lea edx, [ebx-3]
+    mov r8d, [rbp-5Ch]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+4]
+    mov r8d, [rbp-5Ch]
+    call [LineTo]
+    jmp .render_btn_text
+
+.ico_autofit:
+    mov rdx, [hPenDark]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-5]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+5]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx+6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-5]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+5]
+    call [LineTo]
+
+    mov rdx, [hPenAccentBlue]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-4]
+    mov r8d, [rbp-5Ch]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+5]
+    mov r8d, [rbp-5Ch]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx-2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-2]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx-4]
+    mov r8d, [rbp-5Ch]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx-2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx+2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-2]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+4]
+    mov r8d, [rbp-5Ch]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx+2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
+    call [LineTo]
+    jmp .render_btn_text
+
+.ico_autosum:
+    mov rdx, [hPenAccentBlue]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx+4]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-5]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx-3]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-5]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx+1]
+    mov r8d, [rbp-5Ch]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx-3]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+5]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx+4]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+5]
+    call [LineTo]
+    jmp .render_btn_text
+
+.ico_clear_btn:
+    mov rdx, [hBrWhite]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAccentRed]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-5]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-4]
+    lea r9d, [ebx+5]
+    lea eax, [eax+4]
+    mov [rsp+20h], eax
+    call [Rectangle]
+
+    mov rdx, [hBrOrange]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenNull]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov rcx, r12
+    lea edx, [ebx-4]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-3]
+    mov r9d, ebx
+    lea eax, [eax+3]
+    mov [rsp+20h], eax
+    call [Rectangle]
+    jmp .render_btn_text
+
+.ico_formula_fx:
+    mov rcx, r12
+    mov edx, 1
+    call [SetBkMode]
+    mov rcx, r12
+    mov edx, 00FFFFFFh
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBold]
+    call [SelectObject]
+
+    mov rcx, r12
+    lea rdx, [szGlyphFX]
+    mov r8d, 2
+    lea r9, [rcGlyphTemp]
+    mov dword [rsp+20h], 0825h
+    call [DrawTextA]
+    jmp .btn_drawn
 
 .ico_table:
     mov rdx, [hBrWhite]
@@ -2558,38 +3706,6 @@ DrawRibbonOwnerButton:
     call [LineTo]
     jmp .render_btn_text
 
-.ico_autosum:
-    mov rdx, [hPenBlue]
-    mov rcx, r12
-    call [SelectObject]
-    mov rcx, r12
-    lea edx, [ebx+4]
-    mov eax, [rbp-5Ch]
-    lea r8d, [eax-5]
-    xor r9d, r9d
-    call [MoveToEx]
-    mov rcx, r12
-    lea edx, [ebx-4]
-    mov eax, [rbp-5Ch]
-    lea r8d, [eax-5]
-    call [LineTo]
-    mov rcx, r12
-    mov edx, ebx
-    mov eax, [rbp-5Ch]
-    mov r8d, eax
-    call [LineTo]
-    mov rcx, r12
-    lea edx, [ebx-4]
-    mov eax, [rbp-5Ch]
-    lea r8d, [eax+5]
-    call [LineTo]
-    mov rcx, r12
-    lea edx, [ebx+4]
-    mov eax, [rbp-5Ch]
-    lea r8d, [eax+5]
-    call [LineTo]
-    jmp .render_btn_text
-
 .ico_finance:
     mov rdx, [hBrYellow]
     mov rcx, r12
@@ -3410,7 +4526,7 @@ DrawRibbonOwnerButton:
     jmp .render_btn_text
 
 .ico_undo:
-    mov rdx, [hPenDark]
+    mov rdx, [hPenAccentBlue]
     mov rcx, r12
     call [SelectObject]
     ; Arrowhead left: (cx-5, cy) to (cx-2, cy-3) and (cx-5, cy) to (cx-2, cy+3)
@@ -3454,10 +4570,10 @@ DrawRibbonOwnerButton:
     mov eax, [rbp-5Ch]
     lea r8d, [eax+4]
     call [LineTo]
-    jmp .btn_drawn
+    jmp .render_btn_text
 
 .ico_redo:
-    mov rdx, [hPenDark]
+    mov rdx, [hPenAccentBlue]
     mov rcx, r12
     call [SelectObject]
     ; Arrowhead right: (cx+5, cy) to (cx+2, cy-3) and (cx+5, cy) to (cx+2, cy+3)
@@ -3501,7 +4617,7 @@ DrawRibbonOwnerButton:
     mov eax, [rbp-5Ch]
     lea r8d, [eax+4]
     call [LineTo]
-    jmp .btn_drawn
+    jmp .render_btn_text
 
 .ico_align_left:
     mov rdx, [hPenDark2]
@@ -4411,13 +5527,66 @@ DrawRibbonOwnerButton:
     call [SetBkMode]
 
     mov rcx, r12
-    xor edx, edx            ; Black text
-    call [SetTextColor]
-
-    mov rcx, r12
     mov rdx, [hFontSmall]
     call [SelectObject]
 
+    ; Check text color by button ID
+    cmp r13d, ID_BTN_PASTE
+    je .txt_accent_white
+    cmp r13d, ID_BTN_FX
+    je .txt_accent_white
+    cmp r13d, ID_BTN_SAVE
+    je .txt_accent_green
+    cmp r13d, ID_BTN_COND_FMT
+    je .txt_accent_teal
+    cmp r13d, ID_BTN_AUTOSUM
+    je .txt_accent_blue
+    cmp r13d, ID_BTN_FORM_AUTOSUM
+    je .txt_accent_blue
+
+    ; Default dark text: #202020
+    mov rcx, r12
+    mov edx, 00202020h
+    call [SetTextColor]
+    jmp .txt_layout
+
+.txt_accent_white:
+    mov rcx, r12
+    mov edx, 00FFFFFFh
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBold]
+    call [SelectObject]
+    jmp .txt_layout
+
+.txt_accent_green:
+    mov rcx, r12
+    mov edx, 00467321h      ; #217346
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBold]
+    call [SelectObject]
+    jmp .txt_layout
+
+.txt_accent_teal:
+    mov rcx, r12
+    mov edx, 00C78402h      ; #0284C7
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBold]
+    call [SelectObject]
+    jmp .txt_layout
+
+.txt_accent_blue:
+    mov rcx, r12
+    mov edx, 00D2662Bh      ; #2B66D2
+    call [SetTextColor]
+    mov rcx, r12
+    mov rdx, [hFontBold]
+    call [SelectObject]
+    jmp .txt_layout
+
+.txt_layout:
     cmp dword [rbp-54h], 45
     jl .txt_small_btn
 
@@ -4433,6 +5602,10 @@ DrawRibbonOwnerButton:
     mov [rcBtnDrawText+8], eax
     mov eax, [rbp-4Ch]
     sub eax, 2
+    cmp r13d, ID_BTN_PASTE
+    jne .tall_paste_noadj
+    sub eax, 8
+.tall_paste_noadj:
     mov [rcBtnDrawText+12], eax
 
     mov rcx, r12
@@ -4441,12 +5614,34 @@ DrawRibbonOwnerButton:
     lea r9, [rcBtnDrawText]
     mov dword [rsp+20h], 0811h ; DT_CENTER | DT_WORDBREAK | DT_NOPREFIX
     call [DrawTextA]
+
+    cmp r13d, ID_BTN_PASTE
+    je .draw_paste_chevron
     jmp .btn_drawn
 
 .txt_small_btn:
-    ; Small button text rect: [left+26, top, right-2, bottom]
+    cmp r13d, ID_BTN_COND_FMT
+    je .txt_cond_fmt_btn
+
+    ; Check if button needs right chevron:
+    cmp r13d, ID_BTN_AUTOSUM
+    je .txt_small_has_chev
+    cmp r13d, ID_BTN_FORM_AUTOSUM
+    je .txt_small_has_chev
+    cmp r13d, ID_BTN_INSERT_CELL
+    je .txt_small_has_chev
+    cmp r13d, ID_BTN_DELETE_CELL
+    je .txt_small_has_chev
+    cmp r13d, ID_BTN_CLEAR
+    je .txt_small_has_chev
+    cmp r13d, ID_BTN_SORT_FILTER
+    je .txt_small_has_chev
+    cmp r13d, ID_BTN_FIND_SELECT
+    je .txt_small_has_chev
+
+    ; Button WITHOUT chevron: text rect is [left+24, top, right-2, bottom]
     mov eax, [rbp-40h]
-    add eax, 26
+    add eax, 24
     mov [rcBtnDrawText], eax
     mov eax, [rbp-44h]
     mov [rcBtnDrawText+4], eax
@@ -4462,6 +5657,150 @@ DrawRibbonOwnerButton:
     lea r9, [rcBtnDrawText]
     mov dword [rsp+20h], 0824h ; DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX
     call [DrawTextA]
+    jmp .btn_drawn
+
+.txt_small_has_chev:
+    ; Small button text rect with chevron: [left+24, top, right-14, bottom]
+    mov eax, [rbp-40h]
+    add eax, 24
+    mov [rcBtnDrawText], eax
+    mov eax, [rbp-44h]
+    mov [rcBtnDrawText+4], eax
+    mov eax, [rbp-48h]
+    sub eax, 14
+    mov [rcBtnDrawText+8], eax
+    mov eax, [rbp-4Ch]
+    mov [rcBtnDrawText+12], eax
+
+    mov rcx, r12
+    lea rdx, [szBtnDrawText]
+    mov r8d, -1
+    lea r9, [rcBtnDrawText]
+    mov dword [rsp+20h], 0824h ; DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX
+    call [DrawTextA]
+
+    cmp r13d, ID_BTN_AUTOSUM
+    je .draw_right_chevron_blue
+    cmp r13d, ID_BTN_FORM_AUTOSUM
+    je .draw_right_chevron_blue
+    jmp .draw_right_chevron_dark
+
+.txt_cond_fmt_btn:
+    ; 2-line Conditional Formatting: [left+24, top+2, right-14, bottom-2]
+    mov eax, [rbp-40h]
+    add eax, 24
+    mov [rcBtnDrawText], eax
+    mov eax, [rbp-44h]
+    add eax, 2
+    mov [rcBtnDrawText+4], eax
+    mov eax, [rbp-48h]
+    sub eax, 14
+    mov [rcBtnDrawText+8], eax
+    mov eax, [rbp-4Ch]
+    sub eax, 2
+    mov [rcBtnDrawText+12], eax
+
+    mov rcx, r12
+    lea rdx, [szBtnDrawText]
+    mov r8d, -1
+    lea r9, [rcBtnDrawText]
+    mov dword [rsp+20h], 0810h ; DT_LEFT | DT_WORDBREAK | DT_NOPREFIX
+    call [DrawTextA]
+    jmp .draw_right_chevron_teal
+
+.draw_paste_chevron:
+    mov rdx, [hPenWhite]
+    mov rcx, r12
+    call [SelectObject]
+
+    mov ebx, [rbp-58h]       ; center x
+    mov esi, [rbp-4Ch]       ; bottom
+    sub esi, 6               ; cy
+
+    mov rcx, r12
+    lea edx, [ebx - 2]
+    lea r8d, [esi - 1]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx + 3]
+    lea r8d, [esi - 1]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx - 1]
+    mov r8d, esi
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx + 2]
+    mov r8d, esi
+    call [LineTo]
+
+    mov rcx, r12
+    mov edx, ebx
+    lea r8d, [esi + 1]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx + 1]
+    lea r8d, [esi + 1]
+    call [LineTo]
+    jmp .btn_drawn
+
+.draw_right_chevron_teal:
+    mov rdx, [hPenAccentTeal]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_right_chevron_core
+
+.draw_right_chevron_blue:
+    mov rdx, [hPenAccentBlue]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_right_chevron_core
+
+.draw_right_chevron_dark:
+    mov rdx, [hPenDark]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_right_chevron_core
+
+.draw_right_chevron_core:
+    mov ebx, [rbp-48h]       ; right
+    sub ebx, 8               ; cx
+    mov esi, [rbp-5Ch]       ; center y
+
+    mov rcx, r12
+    lea edx, [ebx - 2]
+    lea r8d, [esi - 1]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx + 3]
+    lea r8d, [esi - 1]
+    call [LineTo]
+
+    mov rcx, r12
+    lea edx, [ebx - 1]
+    mov r8d, esi
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx + 2]
+    mov r8d, esi
+    call [LineTo]
+
+    mov rcx, r12
+    mov edx, ebx
+    lea r8d, [esi + 1]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx + 1]
+    lea r8d, [esi + 1]
+    call [LineTo]
+    jmp .btn_drawn
 
 .btn_drawn:
     mov rbx, [rbp-08h]
@@ -5900,7 +7239,7 @@ BuildFormulaBar:
     xor ecx, ecx
     lea rdx, [btn_class]
     lea r8, [fx_txt]
-    mov r9d, WS_CHILD or WS_VISIBLE or BS_PUSHBUTTON
+    mov r9d, WS_CHILD or WS_VISIBLE or BS_OWNERDRAW
     mov dword [rsp+20h], 80
     mov dword [rsp+28h], 122
     mov dword [rsp+30h], 32

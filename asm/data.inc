@@ -129,6 +129,7 @@ section '.data' data readable writeable
     rtab_view       db '  View  ', 0
 
     ; Ribbon Group Titles
+    grp_undo_txt    db 'Undo', 0
     grp_clip_txt    db 'Clipboard', 0
     grp_font_txt    db 'Font', 0
     grp_align_txt   db 'Alignment', 0
@@ -138,6 +139,9 @@ section '.data' data readable writeable
     grp_edit_txt    db 'Editing', 0
 
     ; Buttons Text
+    btn_save_txt    db 'Save', 0
+    btn_undo_txt    db 'Undo', 0
+    btn_redo_txt    db 'Redo', 0
     btn_paste_txt   db 'Paste', 0
     btn_cut_txt     db 'Cut', 0
     btn_copy_txt    db 'Copy', 0
@@ -153,10 +157,6 @@ section '.data' data readable writeable
     btn_fill_txt    db 'Fill', 0
     btn_col_txt     db 'A', 0
 
-    grp_undo_txt    db 'Undo', 0
-    btn_undo_txt    db '<- Undo', 0
-    btn_redo_txt    db 'Redo ->', 0
-
     btn_top_txt     db '^ Top', 0
     btn_mid_txt     db '= Mid', 0
     btn_bot_txt     db 'v Bot', 0
@@ -164,7 +164,7 @@ section '.data' data readable writeable
     btn_center_txt  db 'Center', 0
     btn_right_txt   db 'Right >', 0
     btn_wrap_txt    db 'Wrap Text', 0
-    btn_merge_txt   db 'Merge & Center', 0
+    btn_merge_txt   db 'Merge & Ctr', 0
 
     btn_rub_txt     db 'P', 0
     btn_usd_txt     db '$', 0
@@ -173,12 +173,15 @@ section '.data' data readable writeable
     btn_idec_txt    db '.0+', 0
     btn_ddec_txt    db '.0-', 0
 
-    btn_cf_txt      db 'Cond. Format', 0
-    btn_ins_c_txt   db '+ Insert', 0
-    btn_del_c_txt   db '- Delete', 0
+    btn_cf_txt      db 'Conditional', 10, 'Formatting', 0
+    btn_fmt_cells_txt db 'Format Cells...', 0
+    btn_ins_c_txt   db 'Insert', 0
+    btn_del_c_txt   db 'Delete', 0
+    btn_autofit_txt db 'Auto-fit', 0
     btn_autosum_txt db 'AutoSum', 0
-    btn_sort_txt    db 'Sort & Filter', 0
-    btn_find_txt    db 'Find & Select', 0
+    btn_sort_txt    db 'Sort', 0
+    btn_find_txt    db 'Find', 0
+    btn_clear_txt   db 'Clear', 0
 
     ; Insert tab labels
     grp_ins_tab_txt   db 'Tables', 0
@@ -631,7 +634,7 @@ section '.data' data readable writeable
     gridlines_act   dd 1
 
     ; Ribbon Tab Controls ID Arrays
-    ids_home dd 1110, 1111, 1112, 1113, 1114, 1120, 1121, 1122, 1123, 1124, 1125, 1126, 1127, 1128, 1129, 1130, 1131, 1140, 1141, 1142, 1143, 1144, 1145, 1146, 1147, 1148, 1150, 1151, 1152, 1153, 1154, 1155, 1156, 1157, 1160, 1161, 1170, 1171, 1172, 1180, 1181, 1182, 1183, 0
+    ids_home dd 1105, 1106, 1107, 1108, 1110, 1111, 1112, 1113, 1114, 1120, 1121, 1122, 1123, 1124, 1125, 1126, 1127, 1128, 1129, 1130, 1131, 1140, 1141, 1142, 1143, 1144, 1145, 1146, 1147, 1148, 1150, 1151, 1152, 1153, 1154, 1155, 1156, 1157, 1160, 1161, 1162, 1170, 1171, 1172, 1173, 1180, 1181, 1182, 1183, 1184, 0
     ids_insert dd 1400, 1401, 1402, 1403, 1404, 1405, 1406, 1407, 1408, 1409, 1410, 1411, 1412, 1413, 1414, 1415, 0
     ids_data dd 1420, 1421, 1422, 1423, 1424, 1425, 1426, 1427, 1428, 1429, 1430, 1431, 1432, 1433, 1434, 0
     ids_formulas dd 1440, 1441, 1442, 1443, 1444, 1445, 1446, 1447, 1448, 1449, 1450, 1451, 1452, 1453, 1454, 1455, 0
@@ -671,6 +674,8 @@ section '.data' data readable writeable
     hBrWhite        dq 0
     hBrGray         dq 0
     hBrSlate        dq 0
+    hBrAccentBlue   dq 0
+    hBrAccentHover  dq 0
 
     hPenBorder      dq 0
     hPenBorderPress dq 0
@@ -682,9 +687,15 @@ section '.data' data readable writeable
     hPenDark2       dq 0
     hPenWhite       dq 0
     hPenNull        dq 0
+    hPenAccentBlue  dq 0
+    hPenAccentGreen dq 0
+    hPenAccentTeal  dq 0
+    hPenAccentRed   dq 0
 
     szBtnDrawText   db 64 dup(0)
     rcBtnDrawText   dd 0, 0, 0, 0
+    rcGlyphTemp     dd 0, 0, 0, 0
+    comma_str       db ',', 0
 
     hAppIcon        dq 0
     szIconFile      db 'app_icon.ico', 0
