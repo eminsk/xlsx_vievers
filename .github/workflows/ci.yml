@@ -48,9 +48,11 @@ jobs:
 
       - name: Install system dependencies (Linux)
         if: steps.setup_python.outcome == 'success' && runner.os == 'Linux'
+        continue-on-error: true
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libjpeg-dev zlib1g-dev
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/packages-microsoft-prod.list || true
+          sudo apt-get update -o Acquire::Retries=3 || true
+          sudo apt-get install -y --no-install-recommends libjpeg-dev zlib1g-dev || true
 
       - name: Install dependencies
         if: steps.setup_python.outcome == 'success'
