@@ -791,10 +791,15 @@ class TestAsmEngine(unittest.TestCase):
 
         self.assertTrue(hwnd_main, "Main window must be found")
         try:
-            h_grid = user32.GetDlgItem(hwnd_main, 1301)
-            h_name = user32.GetDlgItem(hwnd_main, 1201)
-            h_combo_size = user32.GetDlgItem(hwnd_main, 1122)
-            h_combo_font = user32.GetDlgItem(hwnd_main, 1121)
+            h_grid, h_name, h_combo_size, h_combo_font = None, None, None, None
+            for _ in range(30):
+                h_grid = user32.GetDlgItem(hwnd_main, 1301)
+                h_name = user32.GetDlgItem(hwnd_main, 1201)
+                h_combo_size = user32.GetDlgItem(hwnd_main, 1122)
+                h_combo_font = user32.GetDlgItem(hwnd_main, 1121)
+                if h_grid and h_name and h_combo_size and h_combo_font:
+                    break
+                time.sleep(0.05)
             self.assertTrue(h_grid and h_name and h_combo_size and h_combo_font)
 
             def get_text(h):
