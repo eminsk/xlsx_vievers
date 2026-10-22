@@ -102,6 +102,7 @@ gdi32_table:
     CreateCompatibleDC          dq RVA _CreateCompatibleDC
     CreateCompatibleBitmap      dq RVA _CreateCompatibleBitmap
     DeleteDC                    dq RVA _DeleteDC
+    SelectClipRgn               dq RVA _SelectClipRgn
                                 dq 0
 
 comctl_table:
@@ -304,6 +305,8 @@ _CreateCompatibleBitmap dw 0
  db 'CreateCompatibleBitmap', 0
 _DeleteDC dw 0
  db 'DeleteDC', 0
+_SelectClipRgn dw 0
+ db 'SelectClipRgn', 0
 
 _InitCommonControlsEx dw 0
  db 'InitCommonControlsEx', 0

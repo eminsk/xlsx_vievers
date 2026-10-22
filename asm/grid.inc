@@ -893,7 +893,7 @@ BuildSpreadsheetGrid:
     mov rcx, [hGrid]
     mov edx, LVM_SETEXTENDEDLISTVIEWSTYLE
     xor r8d, r8d
-    mov r9d, LVS_EX_GRIDLINES or LVS_EX_FULLROWSELECT or LVS_EX_DOUBLEBUFFER
+    mov r9d, LVS_EX_FULLROWSELECT or LVS_EX_DOUBLEBUFFER
     call [SendMessageA]
 
     ; Subclass Grid ListView for full 2D mouse drag & keyboard selection
@@ -1076,7 +1076,42 @@ DoGridCellHitTest:
     mov [cur_col], eax
     mov [sel_start_col], eax
     mov [sel_end_col], eax
+
+    ; Check if (cur_row, cur_col) is part of a merged range
+    mov ecx, [g_merge_count]
+    test ecx, ecx
+    jz .update_display
+    xor edx, edx
+.hit_scan_merge:
+    cmp edx, ecx
+    jge .update_display
+    lea r8, [g_merge_records+rdx*8]
+    movzx r9d, word [r8]       ; r1
+    movzx r10d, word [r8+2]    ; r2
+    movzx r11d, byte [r8+4]    ; c1
+    movzx eax, byte [r8+5]     ; c2
+
+    cmp [cur_row], r9d
+    jl .hit_next_merge
+    cmp [cur_row], r10d
+    jg .hit_next_merge
+    cmp [cur_col], r11d
+    jl .hit_next_merge
+    cmp [cur_col], eax
+    jg .hit_next_merge
+
+    ; Inside merged cell: redirect to master cell and span
+    mov [cur_row], r9d
+    mov [cur_col], r11d
+    mov [sel_start_row], r9d
+    mov [sel_end_row], r10d
+    mov [sel_start_col], r11d
+    mov [sel_end_col], eax
     jmp .update_display
+
+.hit_next_merge:
+    inc edx
+    jmp .hit_scan_merge
 
 .use_col1:
     mov dword [cur_col], 1
@@ -1412,6 +1447,8 @@ ToggleCellBold:
     test rax, rax
     jz .tcb_done
 
+    call PushStyleUndo
+
     mov eax, [sel_start_row]
     mov edx, [sel_end_row]
     cmp eax, edx
@@ -1507,6 +1544,8 @@ ToggleCellItalic:
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .tci_done
+
+    call PushStyleUndo
 
     mov eax, [sel_start_row]
     mov edx, [sel_end_row]
@@ -1606,6 +1645,8 @@ ToggleCellUnderline:
     test rax, rax
     jz .tcu_done
 
+    call PushStyleUndo
+
     mov eax, [sel_start_row]
     mov edx, [sel_end_row]
     cmp eax, edx
@@ -1703,6 +1744,8 @@ ToggleCellStrike:
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .tcs_done
+
+    call PushStyleUndo
 
     mov eax, [sel_start_row]
     mov edx, [sel_end_row]
@@ -1898,6 +1941,10 @@ ToggleCellFill:
     test rax, rax
     jz .dpfc_done
 
+    push rdi
+    call PushStyleUndo
+    pop rdi
+
     mov eax, [sel_start_row]
     mov edx, [sel_end_row]
     cmp eax, edx
@@ -2084,6 +2131,10 @@ ToggleCellTextColor:
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .dptc_done
+
+    push rdi
+    call PushStyleUndo
+    pop rdi
 
     mov eax, [sel_start_row]
     mov edx, [sel_end_row]
@@ -2324,6 +2375,8 @@ SyncComboSize:
     jmp .sync_loop
 .sync_found:
     mov rcx, [hComboSize]
+    test rcx, rcx
+    jz .sync_done
     mov r8d, edx
     mov edx, CB_SETCURSEL
     xor r9d, r9d
@@ -2342,13 +2395,13 @@ SyncComboSize:
 GetCellFont:
     push rbp
     mov rbp, rsp
-    sub rsp, 80h
-    mov [rbp-8], rbx
-    mov [rbp-16], rsi
-    mov [rbp-24], rdi
-    mov [rbp-32], r12
-    mov [rbp-40], r13
-    mov [rbp-48], r14
+    sub rsp, 0C0h
+    mov [rbp-08h], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+    mov [rbp-30h], r14
 
     test ecx, ecx
     jnz .gcf_custom
@@ -2469,12 +2522,12 @@ GetCellFont:
 .cache_full:
 
 .gcf_ret:
-    mov rbx, [rbp-8]
-    mov rsi, [rbp-16]
-    mov rdi, [rbp-24]
-    mov r12, [rbp-32]
-    mov r13, [rbp-40]
-    mov r14, [rbp-48]
+    mov rbx, [rbp-08h]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
+    mov r14, [rbp-30h]
     leave
     ret
 
@@ -2485,7 +2538,7 @@ GetCellFont:
 ApplySelectionFontSize:
     push rbp
     mov rbp, rsp
-    sub rsp, 40h
+    sub rsp, 60h
     mov [rbp-8], rbx
     mov [rbp-16], rsi
     mov [rbp-24], rdi
@@ -2497,6 +2550,10 @@ ApplySelectionFontSize:
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .asfs_done
+
+    push rdi
+    call PushStyleUndo
+    pop rdi
 
     mov eax, [sel_start_row]
     mov edx, [sel_end_row]
@@ -2608,6 +2665,7 @@ DoIncSelectionFontSize:
     leave
     ret
 
+
 ; =============================================================================
 ; Decrease Font Size for Selected Cell(s) (A-)
 ; =============================================================================
@@ -2659,7 +2717,7 @@ DoDecSelectionFontSize:
 ApplySelectionFontFace:
     push rbp
     mov rbp, rsp
-    sub rsp, 40h
+    sub rsp, 60h
     mov [rbp-8], rbx
     mov [rbp-16], rsi
     mov [rbp-24], rdi
@@ -2671,6 +2729,10 @@ ApplySelectionFontFace:
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .asff_done
+
+    push rdi
+    call PushStyleUndo
+    pop rdi
 
     mov eax, [sel_start_row]
     mov edx, [sel_end_row]
@@ -2781,7 +2843,7 @@ SetColumnAlignment:
 ApplySelectionAlignment:
     push rbp
     mov rbp, rsp
-    sub rsp, 40h
+    sub rsp, 60h
     mov [rbp-8], rbx
     mov [rbp-16], rsi
     mov [rbp-24], rdi
@@ -2793,6 +2855,10 @@ ApplySelectionAlignment:
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .asa_done
+
+    push rdi
+    call PushStyleUndo
+    pop rdi
 
     mov eax, [sel_start_row]
     mov edx, [sel_end_row]

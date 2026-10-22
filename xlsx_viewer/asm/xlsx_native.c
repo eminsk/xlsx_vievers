@@ -28,6 +28,7 @@ typedef struct {
     int fillId;
     int fontId;
     int numFmtId;
+    int align; // 0=default, 1=left, 2=center, 3=right
 } XfInfo;
 
 typedef struct {
@@ -39,8 +40,28 @@ typedef struct {
     char formula[256];
     uint32_t clrBk;
     uint32_t clrFg;
-    uint8_t flags; // bit 0: bold, bit 1: has_bk, bit 2: has_fg
+    uint8_t flags; // bit 0: bold, bit 1: has_bk, bit 2: has_fg, bit 5: slave (0x20), bit 6: master (0x40)
+    uint8_t align; // 0=default, 1=left, 2=center, 3=right
+    uint8_t span_cols;
+    uint8_t span_rows;
 } CellData;
+
+#define MAX_MERGES 512
+
+typedef struct {
+    uint16_t r1;
+    uint16_t r2;
+    uint8_t  c1;
+    uint8_t  c2;
+    uint8_t  align;
+    uint8_t  flags;
+} __attribute__((packed)) MergeRange;
+
+typedef struct {
+    uint16_t row;
+    uint8_t  col;
+    uint8_t  align;
+} __attribute__((packed)) AlignRecord;
 
 typedef struct {
     uint16_t row;
@@ -72,6 +93,12 @@ static int g_shared_count = 0;
 static CellData g_grid[MAX_GRID_ROWS][MAX_GRID_COLS];
 static int g_max_row = 0;
 static int g_max_col = 0;
+
+static MergeRange g_merges[MAX_MERGES];
+static int g_merge_count = 0;
+
+static uint16_t g_col_widths[32];
+static int g_has_custom_col_widths = 0;
 
 // Sheet2 and Sheet3 lookup caches for cross-sheet references:
 // Key: (sheet_idx * 10000 + row) * 32 + col -> double value
@@ -284,6 +311,32 @@ static void parse_styles_xml(const char* path) {
             g_xfs[g_xf_count].fillId = atoi(fillId);
             g_xfs[g_xf_count].fontId = atoi(fontId);
             g_xfs[g_xf_count].numFmtId = atoi(numFmtId);
+            g_xfs[g_xf_count].align = 0;
+
+            // Check for alignment tag inside this xf element
+            char* xf_end = strstr(p, "</xf>");
+            char* xf_self = strstr(p, "/>");
+            char* xf_limit = NULL;
+            if (xf_self && (!xf_end || xf_self < xf_end)) {
+                xf_limit = xf_self;
+            } else if (xf_end) {
+                xf_limit = xf_end;
+            }
+
+            if (xf_limit) {
+                char* align_tag = strstr(p, "<alignment");
+                if (align_tag && align_tag < xf_limit) {
+                    char horiz[32] = {0};
+                    extract_attr(align_tag, "horizontal", horiz, sizeof(horiz));
+                    if (strcmp(horiz, "center") == 0) {
+                        g_xfs[g_xf_count].align = 2; // ALIGN_CENTER
+                    } else if (strcmp(horiz, "right") == 0) {
+                        g_xfs[g_xf_count].align = 3; // ALIGN_RIGHT
+                    } else if (strcmp(horiz, "left") == 0) {
+                        g_xfs[g_xf_count].align = 1; // ALIGN_LEFT
+                    }
+                }
+            }
 
             g_xf_count++;
             if (g_xf_count >= MAX_STYLES) break;
@@ -491,6 +544,37 @@ static void parse_sheet_xml(const char* path) {
     memset(g_grid, 0, sizeof(g_grid));
     g_max_row = 0;
     g_max_col = 0;
+    g_merge_count = 0;
+    memset(g_merges, 0, sizeof(g_merges));
+    memset(g_col_widths, 0, sizeof(g_col_widths));
+    g_has_custom_col_widths = 0;
+
+    // Parse column widths from <cols>
+    char* cols_tag = strstr(buf, "<cols");
+    if (cols_tag) {
+        char* end_cols = strstr(cols_tag, "</cols>");
+        char* cp = cols_tag;
+        while ((cp = strstr(cp, "<col ")) != NULL && (!end_cols || cp < end_cols)) {
+            char min_s[16] = {0}, max_s[16] = {0}, width_s[32] = {0};
+            extract_attr(cp, "min", min_s, sizeof(min_s));
+            extract_attr(cp, "max", max_s, sizeof(max_s));
+            extract_attr(cp, "width", width_s, sizeof(width_s));
+            int min_c = atoi(min_s);
+            int max_c = atoi(max_s);
+            double w = atof(width_s);
+            if (min_c >= 1 && min_c < 32 && w > 0.0) {
+                int px = (int)(w * 9.5 + 14);
+                if (px < 65) px = 65;
+                if (px > 500) px = 500;
+                if (max_c >= 32) max_c = 31;
+                for (int ci = min_c; ci <= max_c; ci++) {
+                    g_col_widths[ci] = (uint16_t)px;
+                }
+                g_has_custom_col_widths = 1;
+            }
+            cp += 5;
+        }
+    }
 
     char* p = buf;
     while ((p = strstr(p, "<c ")) != NULL) {
@@ -535,6 +619,10 @@ static void parse_sheet_xml(const char* path) {
             if (s_idx >= 0 && s_idx < g_xf_count) {
                 int fillId = g_xfs[s_idx].fillId;
                 int fontId = g_xfs[s_idx].fontId;
+
+                if (g_xfs[s_idx].align != 0) {
+                    g_grid[r][c].align = (uint8_t)g_xfs[s_idx].align;
+                }
 
                 if (fillId >= 0 && fillId < g_fill_count && g_fills[fillId].is_valid) {
                     uint32_t bk = g_fills[fillId].clrBk;
@@ -685,7 +773,7 @@ static void parse_sheet_xml(const char* path) {
         p = limit;
     }
 
-    // Propagate background colors across merged cells (e.g. title banners A1:N1, section headers A4:E4)
+    // Parse and register merged cell ranges
     char* merge_tag = strstr(buf, "<mergeCells");
     if (merge_tag) {
         char* m = merge_tag;
@@ -699,14 +787,44 @@ static void parse_sheet_xml(const char* path) {
                     int c1 = col_letters_to_idx(ref, &r1);
                     int c2 = col_letters_to_idx(colon + 1, &r2);
                     r1--; r2--; // convert 1-based row to 0-based
-                    if (r1 >= 0 && r1 < MAX_GRID_ROWS && c1 >= 1 && c1 < MAX_GRID_COLS) {
+                    if (r1 >= 0 && r1 < MAX_GRID_ROWS && c1 >= 1 && c1 < MAX_GRID_COLS &&
+                        r2 >= r1 && c2 >= c1 && g_merge_count < MAX_MERGES) {
+
+                        uint8_t align = 2; // Default to ALIGN_CENTER for merged cells
+                        if (g_grid[r1][c1].align != 0) {
+                            align = g_grid[r1][c1].align;
+                        }
+
+                        g_merges[g_merge_count].r1 = (uint16_t)r1;
+                        g_merges[g_merge_count].r2 = (uint16_t)r2;
+                        g_merges[g_merge_count].c1 = (uint8_t)c1;
+                        g_merges[g_merge_count].c2 = (uint8_t)c2;
+                        g_merges[g_merge_count].align = align;
+                        g_merges[g_merge_count].flags = 0;
+                        g_merge_count++;
+
+                        // Mark master cell
+                        g_grid[r1][c1].flags |= 0x40; // FLAG_MERGE_MASTER
+                        g_grid[r1][c1].align = align;
+                        g_grid[r1][c1].span_cols = (uint8_t)(c2 - c1 + 1);
+                        g_grid[r1][c1].span_rows = (uint8_t)(r2 - r1 + 1);
+
                         uint32_t bk = g_grid[r1][c1].clrBk;
-                        uint8_t flags = g_grid[r1][c1].flags;
-                        if (flags & 2) { // has_bk
-                            for (int mr = r1; mr <= r2 && mr < MAX_GRID_ROWS; mr++) {
-                                for (int mc = c1; mc <= c2 && mc < MAX_GRID_COLS; mc++) {
+                        uint32_t fg = g_grid[r1][c1].clrFg;
+                        uint8_t base_f = g_grid[r1][c1].flags;
+
+                        // Mark slave cells and copy style attributes
+                        for (int mr = r1; mr <= r2 && mr < MAX_GRID_ROWS; mr++) {
+                            for (int mc = c1; mc <= c2 && mc < MAX_GRID_COLS; mc++) {
+                                if (mr == r1 && mc == c1) continue;
+                                g_grid[mr][mc].flags |= 0x20; // FLAG_MERGE_SLAVE
+                                if (base_f & 2) {
                                     g_grid[mr][mc].clrBk = bk;
                                     g_grid[mr][mc].flags |= 2;
+                                }
+                                if (base_f & 4) {
+                                    g_grid[mr][mc].clrFg = fg;
+                                    g_grid[mr][mc].flags |= 4;
                                 }
                             }
                         }
@@ -714,6 +832,20 @@ static void parse_sheet_xml(const char* path) {
                 }
             }
             m += 10;
+        }
+    }
+
+    // Default numeric/currency alignment heuristic: right-align values
+    for (int r = 0; r <= g_max_row; r++) {
+        for (int c = 1; c <= g_max_col; c++) {
+            if (g_grid[r][c].align == 0 && !(g_grid[r][c].flags & 0x60)) {
+                const char* v = g_grid[r][c].val;
+                if (v[0] == '$' || strchr(v, '%') != NULL) {
+                    g_grid[r][c].align = 3; // ALIGN_RIGHT
+                } else if (v[0] != 0 && (isdigit((unsigned char)v[0]) || ((v[0] == '-' || v[0] == '+') && isdigit((unsigned char)v[1])))) {
+                    g_grid[r][c].align = 3; // ALIGN_RIGHT
+                }
+            }
         }
     }
 
@@ -1171,6 +1303,41 @@ static int write_csv_and_style(const char* szCsvPath, const char* szStylePath) {
             }
         }
         fclose(fformula);
+    }
+
+    // Write binary .meta companion file (column widths, merged ranges, and alignment records)
+    char szMetaPath[MAX_PATH];
+    snprintf(szMetaPath, sizeof(szMetaPath), "%s.meta", szCsvPath);
+    FILE* fmeta = fopen(szMetaPath, "wb");
+    if (fmeta) {
+        uint32_t magic_m = 0x4D534C58; // 'XLSM'
+        fwrite(&magic_m, 4, 1, fmeta);
+        fwrite(g_col_widths, sizeof(uint16_t), 32, fmeta);
+        uint32_t mc = (uint32_t)g_merge_count;
+        fwrite(&mc, 4, 1, fmeta);
+        for (int i = 0; i < g_merge_count; i++) {
+            fwrite(&g_merges[i], sizeof(MergeRange), 1, fmeta);
+        }
+
+        // Collect non-zero align records
+        static AlignRecord aligns[10000];
+        int align_count = 0;
+        for (int r = 0; r <= g_max_row && r < 10000; r++) {
+            for (int c = 1; c <= max_c && c < 32; c++) {
+                if (g_grid[r][c].align != 0 && align_count < 10000) {
+                    aligns[align_count].row = (uint16_t)r;
+                    aligns[align_count].col = (uint8_t)c;
+                    aligns[align_count].align = g_grid[r][c].align;
+                    align_count++;
+                }
+            }
+        }
+        uint32_t ac = (uint32_t)align_count;
+        fwrite(&ac, 4, 1, fmeta);
+        for (int i = 0; i < align_count; i++) {
+            fwrite(&aligns[i], sizeof(AlignRecord), 1, fmeta);
+        }
+        fclose(fmeta);
     }
 
     return 0;

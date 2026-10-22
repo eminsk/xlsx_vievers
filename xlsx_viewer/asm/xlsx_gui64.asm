@@ -402,6 +402,8 @@ WndProc:
     mov [rbp-48], r14
     mov [rbp-56], r15
 
+
+
     cmp edx, WM_COMMAND
     je .command
     cmp edx, WM_NOTIFY
@@ -625,18 +627,521 @@ WndProc:
     mov edx, [rsi+24]       ; dwDrawStage
     cmp edx, 1              ; CDDS_PREPAINT
     je .cd_prepaint
+    cmp edx, 2              ; CDDS_POSTPAINT
+    je .cd_postpaint
     cmp edx, 10001h         ; CDDS_ITEMPREPAINT
     je .cd_item_prepaint
+    cmp edx, 10002h         ; CDDS_ITEMPOSTPAINT
+    je .cd_item_postpaint
     cmp edx, 30001h         ; CDDS_SUBITEMPREPAINT
     je .cd_subitem_prepaint
     jmp .ret0
 
 .cd_prepaint:
-    mov eax, 20h            ; CDRF_NOTIFYITEMSPEC
+    mov eax, 30h            ; CDRF_NOTIFYITEMSPEC (20h) or CDRF_NOTIFYPOSTPAINT (10h)
     jmp .done
 
 .cd_item_prepaint:
-    mov eax, 20h            ; CDRF_NOTIFYSUBITEMDRAW
+    mov eax, 30h            ; CDRF_NOTIFYSUBITEMDRAW (20h) or CDRF_NOTIFYPOSTPAINT (10h)
+    jmp .done
+
+.cd_item_postpaint:
+    mov ebx, [rsi+56]       ; dwItemSpec (row index: 0..N)
+    mov ecx, [g_merge_count]
+    test ecx, ecx
+    jz .post_done
+
+    mov dword [post_merge_idx], 0
+.post_scan_merge:
+    mov eax, [post_merge_idx]
+    cmp eax, [g_merge_count]
+    jge .post_done
+
+    lea r8, [g_merge_records+rax*8]
+    movzx edx, word [r8]    ; r1
+    mov [post_merge_r1], edx
+    movzx edx, word [r8+2]  ; r2
+    mov [post_merge_r2], edx
+    movzx edx, byte [r8+4]  ; c1
+    mov [post_merge_c1], edx
+    movzx edx, byte [r8+5]  ; c2
+    mov [post_merge_c2], edx
+    movzx edx, byte [r8+6]  ; align
+    mov [post_merge_align], edx
+
+    ; Check if current row ebx intersects [post_merge_r1..post_merge_r2]
+    mov edx, [post_merge_r1]
+    cmp ebx, edx
+    jl .post_next_merge
+    mov edx, [post_merge_r2]
+    cmp ebx, edx
+    jg .post_next_merge
+
+    ; Master style record
+    mov eax, [post_merge_r1]
+    shl eax, 5
+    add eax, [post_merge_c1]
+    shl rax, 4
+    add rax, [pCellStyleTable]
+
+    mov edx, 00FFFFFFh      ; default white
+    test dword [rax+8], 2   ; has_bk?
+    jz @f
+    mov edx, [rax]          ; clrBk
+@@:
+    mov [post_merge_bk], edx
+
+    mov edx, 002C201Ah      ; default dark charcoal
+    test dword [rax+8], 4   ; has_fg?
+    jz @f
+    mov edx, [rax+4]        ; clrFg
+@@:
+    mov [post_merge_fg], edx
+
+    mov edx, [rax+8]
+    and edx, 1
+    mov [post_merge_bold], edx
+
+    ; Query rcSubItemCd for (r1, c1)
+    lea r9, [rcSubItemCd]
+    mov dword [r9], 0
+    mov edx, [post_merge_c1]
+    mov dword [r9+4], edx
+    mov dword [r9+8], 0
+    mov dword [r9+12], 0
+    mov rcx, [hGrid]
+    mov edx, 1038h
+    mov r8d, [post_merge_r1]
+    call [SendMessageA]
+
+    ; Query rcEndCellCd for (r2, c2)
+    lea r9, [rcEndCellCd]
+    mov dword [r9], 0
+    mov edx, [post_merge_c2]
+    mov dword [r9+4], edx
+    mov dword [r9+8], 0
+    mov dword [r9+12], 0
+    mov rcx, [hGrid]
+    mov edx, 1038h
+    mov r8d, [post_merge_r2]
+    call [SendMessageA]
+
+    ; Encompass full span
+    mov eax, [rcEndCellCd+8]
+    mov [rcSubItemCd+8], eax
+    mov eax, [rcEndCellCd+12]
+    mov [rcSubItemCd+12], eax
+
+    ; Query master cell text
+    mov dword [lvitem_cd], 0001h ; LVIF_TEXT
+    mov eax, [post_merge_r1]
+    mov dword [lvitem_cd+4], eax
+    mov eax, [post_merge_c1]
+    mov dword [lvitem_cd+8], eax
+    lea rax, [szCellTextCd]
+    mov qword [lvitem_cd+24], rax
+    mov dword [lvitem_cd+32], 256
+    mov byte [szCellTextCd], 0
+    mov rcx, [hGrid]
+    mov edx, 102Dh ; LVM_GETITEMTEXTA
+    mov r8d, [post_merge_r1]
+    lea r9, [lvitem_cd]
+    call [SendMessageA]
+
+    ; Remove clip region
+    mov rcx, [rsi+32] ; hdc
+    xor edx, edx
+    call [SelectClipRgn]
+
+    ; Setup background rect
+    mov eax, [rcSubItemCd]
+    mov [rcBgCd], eax
+    mov eax, [rcSubItemCd+4]
+    mov [rcBgCd+4], eax
+    mov eax, [rcSubItemCd+8]
+    cmp dword [gridlines_act], 1
+    jne @f
+    dec eax
+@@:
+    mov [rcBgCd+8], eax
+    mov eax, [rcSubItemCd+12]
+    cmp dword [gridlines_act], 1
+    jne @f
+    dec eax
+@@:
+    mov [rcBgCd+12], eax
+
+    mov ecx, [post_merge_bk]
+    call [CreateSolidBrush]
+    mov r13, rax ; brush
+
+    mov rcx, [rsi+32]
+    lea rdx, [rcBgCd]
+    mov r8, r13
+    call [FillRect]
+
+    mov rcx, r13
+    call [DeleteObject]
+
+    ; Outer gridline borders
+    cmp dword [gridlines_act], 1
+    jne .post_no_border
+
+    mov ecx, 00E0E0E0h ; gridline border color
+    call [CreateSolidBrush]
+    mov r13, rax
+
+    ; Bottom edge
+    mov eax, [rcBgCd]
+    mov [rcEndCellCd], eax
+    mov eax, [rcBgCd+8]
+    mov [rcEndCellCd+8], eax
+    mov eax, [rcBgCd+12]
+    mov [rcEndCellCd+4], eax
+    inc eax
+    mov [rcEndCellCd+12], eax
+    mov rcx, [rsi+32]
+    lea rdx, [rcEndCellCd]
+    mov r8, r13
+    call [FillRect]
+
+    ; Right edge
+    mov eax, [rcBgCd+8]
+    mov [rcEndCellCd], eax
+    inc eax
+    mov [rcEndCellCd+8], eax
+    mov eax, [rcBgCd+4]
+    mov [rcEndCellCd+4], eax
+    mov eax, [rcBgCd+12]
+    mov [rcEndCellCd+12], eax
+    mov rcx, [rsi+32]
+    lea rdx, [rcEndCellCd]
+    mov r8, r13
+    call [FillRect]
+
+    mov rcx, r13
+    call [DeleteObject]
+
+.post_no_border:
+    cmp byte [szCellTextCd], 0
+    je .post_skip_text
+
+    mov rcx, [rsi+32]
+    mov edx, [post_merge_fg]
+    call [SetTextColor]
+
+    mov rcx, [rsi+32]
+    mov edx, 1 ; TRANSPARENT
+    call [SetBkMode]
+
+    ; Font
+    mov rdx, [hFontUI]
+    cmp dword [post_merge_bold], 1
+    jne @f
+    mov rdx, [hFontBold]
+@@:
+    mov rcx, [rsi+32]
+    call [SelectObject]
+
+    ; Text rect with 6px padding
+    mov eax, [rcBgCd]
+    add eax, 6
+    mov [rcSubItemCd], eax
+    mov eax, [rcBgCd+8]
+    sub eax, 6
+    mov [rcSubItemCd+8], eax
+    mov eax, [rcBgCd+4]
+    mov [rcSubItemCd+4], eax
+    mov eax, [rcBgCd+12]
+    mov [rcSubItemCd+12], eax
+
+    mov r14d, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX
+    cmp dword [post_merge_align], 1 ; left?
+    jne @f
+    mov r14d, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX
+    jmp .post_do_dt
+@@:
+    cmp dword [post_merge_align], 3 ; right?
+    jne .post_do_dt
+    mov r14d, DT_RIGHT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX
+.post_do_dt:
+    mov rcx, [rsi+32]
+    lea rdx, [szCellTextCd]
+    mov r8d, -1
+    lea r9, [rcSubItemCd]
+    mov dword [rsp+20h], r14d
+    call [DrawTextA]
+
+.post_skip_text:
+    ; Draw focus rect if active cell inside merge
+    mov edx, [cur_row]
+    cmp edx, [post_merge_r1]
+    jl .post_done_m
+    cmp edx, [post_merge_r2]
+    jg .post_done_m
+    mov edx, [cur_col]
+    cmp edx, [post_merge_c1]
+    jl .post_done_m
+    cmp edx, [post_merge_c2]
+    jg .post_done_m
+    lea rdx, [rcBgCd]
+    mov rcx, [rsi+32]
+    call [DrawFocusRect]
+
+.post_done_m:
+.post_next_merge:
+    inc dword [post_merge_idx]
+    jmp .post_scan_merge
+
+.post_done:
+    xor eax, eax ; CDRF_DODEFAULT
+    jmp .done
+
+.cd_postpaint:
+    mov ecx, [g_merge_count]
+    test ecx, ecx
+    jz .post_all_done
+
+    mov dword [post_merge_idx], 0
+.post_scan_all_merges:
+    mov eax, [post_merge_idx]
+    cmp eax, [g_merge_count]
+    jge .post_all_done
+
+    lea r8, [g_merge_records+rax*8]
+    movzx edx, word [r8]    ; r1
+    mov [post_merge_r1], edx
+    movzx edx, word [r8+2]  ; r2
+    mov [post_merge_r2], edx
+    movzx edx, byte [r8+4]  ; c1
+    mov [post_merge_c1], edx
+    movzx edx, byte [r8+5]  ; c2
+    mov [post_merge_c2], edx
+    movzx edx, byte [r8+6]  ; align
+    mov [post_merge_align], edx
+
+    ; Query rcSubItemCd for (r1, c1)
+    lea r9, [rcSubItemCd]
+    mov dword [r9], 0
+    mov edx, [post_merge_c1]
+    mov dword [r9+4], edx
+    mov dword [r9+8], 0
+    mov dword [r9+12], 0
+    mov rcx, [hGrid]
+    mov edx, 1038h
+    mov r8d, [post_merge_r1]
+    call [SendMessageA]
+    test eax, eax
+    jz .post_next_all_merge
+
+    ; Query rcEndCellCd for (r2, c2)
+    lea r9, [rcEndCellCd]
+    mov dword [r9], 0
+    mov edx, [post_merge_c2]
+    mov dword [r9+4], edx
+    mov dword [r9+8], 0
+    mov dword [r9+12], 0
+    mov rcx, [hGrid]
+    mov edx, 1038h
+    mov r8d, [post_merge_r2]
+    call [SendMessageA]
+    test eax, eax
+    jz .post_next_all_merge
+
+    ; Encompass full span
+    mov eax, [rcEndCellCd+8]
+    mov [rcSubItemCd+8], eax
+    mov eax, [rcEndCellCd+12]
+    mov [rcSubItemCd+12], eax
+
+    ; Query master cell text
+    mov dword [lvitem_cd], 0001h ; LVIF_TEXT
+    mov eax, [post_merge_r1]
+    mov dword [lvitem_cd+4], eax
+    mov eax, [post_merge_c1]
+    mov dword [lvitem_cd+8], eax
+    lea rax, [szCellTextCd]
+    mov qword [lvitem_cd+24], rax
+    mov dword [lvitem_cd+32], 256
+    mov byte [szCellTextCd], 0
+    mov rcx, [hGrid]
+    mov edx, 102Dh ; LVM_GETITEMTEXTA
+    mov r8d, [post_merge_r1]
+    lea r9, [lvitem_cd]
+    call [SendMessageA]
+
+    ; Master style record
+    mov eax, [post_merge_r1]
+    shl eax, 5
+    add eax, [post_merge_c1]
+    shl rax, 4
+    add rax, [pCellStyleTable]
+
+    mov edx, 00FFFFFFh      ; default white
+    test dword [rax+8], 2   ; has_bk?
+    jz @f
+    mov edx, [rax]          ; clrBk
+@@:
+    mov [post_merge_bk], edx
+
+    mov edx, 002C201Ah      ; default dark charcoal
+    test dword [rax+8], 4   ; has_fg?
+    jz @f
+    mov edx, [rax+4]        ; clrFg
+@@:
+    mov [post_merge_fg], edx
+
+    mov edx, [rax+8]
+    and edx, 1
+    mov [post_merge_bold], edx
+
+    ; Remove clip region
+    mov rcx, [rsi+32] ; hdc
+    xor edx, edx
+    call [SelectClipRgn]
+
+    ; Setup background rect
+    mov eax, [rcSubItemCd]
+    mov [rcBgCd], eax
+    mov eax, [rcSubItemCd+4]
+    mov [rcBgCd+4], eax
+    mov eax, [rcSubItemCd+8]
+    cmp dword [gridlines_act], 1
+    jne @f
+    dec eax
+@@:
+    mov [rcBgCd+8], eax
+    mov eax, [rcSubItemCd+12]
+    cmp dword [gridlines_act], 1
+    jne @f
+    dec eax
+@@:
+    mov [rcBgCd+12], eax
+
+    mov ecx, [post_merge_bk]
+    call [CreateSolidBrush]
+    mov r13, rax ; brush
+
+    mov rcx, [rsi+32]
+    lea rdx, [rcBgCd]
+    mov r8, r13
+    call [FillRect]
+
+    mov rcx, r13
+    call [DeleteObject]
+
+    ; Outer gridline borders
+    cmp dword [gridlines_act], 1
+    jne .post_no_all_border
+
+    mov ecx, 00E0E0E0h ; gridline border color
+    call [CreateSolidBrush]
+    mov r13, rax
+
+    ; Bottom edge
+    mov eax, [rcBgCd]
+    mov [rcEndCellCd], eax
+    mov eax, [rcBgCd+8]
+    mov [rcEndCellCd+8], eax
+    mov eax, [rcBgCd+12]
+    mov [rcEndCellCd+4], eax
+    inc eax
+    mov [rcEndCellCd+12], eax
+    mov rcx, [rsi+32]
+    lea rdx, [rcEndCellCd]
+    mov r8, r13
+    call [FillRect]
+
+    ; Right edge
+    mov eax, [rcBgCd+8]
+    mov [rcEndCellCd], eax
+    inc eax
+    mov [rcEndCellCd+8], eax
+    mov eax, [rcBgCd+4]
+    mov [rcEndCellCd+4], eax
+    mov eax, [rcBgCd+12]
+    mov [rcEndCellCd+12], eax
+    mov rcx, [rsi+32]
+    lea rdx, [rcEndCellCd]
+    mov r8, r13
+    call [FillRect]
+
+    mov rcx, r13
+    call [DeleteObject]
+
+.post_no_all_border:
+    cmp byte [szCellTextCd], 0
+    je .post_skip_all_text
+
+    mov rcx, [rsi+32]
+    mov edx, [post_merge_fg]
+    call [SetTextColor]
+
+    mov rcx, [rsi+32]
+    mov edx, 1 ; TRANSPARENT
+    call [SetBkMode]
+
+    ; Font
+    mov rdx, [hFontUI]
+    cmp dword [post_merge_bold], 1
+    jne @f
+    mov rdx, [hFontBold]
+@@:
+    mov rcx, [rsi+32]
+    call [SelectObject]
+
+    ; Text rect with 6px padding
+    mov eax, [rcBgCd]
+    add eax, 6
+    mov [rcSubItemCd], eax
+    mov eax, [rcBgCd+8]
+    sub eax, 6
+    mov [rcSubItemCd+8], eax
+    mov eax, [rcBgCd+4]
+    mov [rcSubItemCd+4], eax
+    mov eax, [rcBgCd+12]
+    mov [rcSubItemCd+12], eax
+
+    mov r14d, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX
+    cmp dword [post_merge_align], 1 ; left?
+    jne @f
+    mov r14d, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX
+    jmp .post_do_all_dt
+@@:
+    cmp dword [post_merge_align], 3 ; right?
+    jne .post_do_all_dt
+    mov r14d, DT_RIGHT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX
+.post_do_all_dt:
+    mov rcx, [rsi+32]
+    lea rdx, [szCellTextCd]
+    mov r8d, -1
+    lea r9, [rcSubItemCd]
+    mov dword [rsp+20h], r14d
+    call [DrawTextA]
+
+.post_skip_all_text:
+    ; Draw focus rect if active cell inside merge
+    mov edx, [cur_row]
+    cmp edx, [post_merge_r1]
+    jl .post_done_all_m
+    cmp edx, [post_merge_r2]
+    jg .post_done_all_m
+    mov edx, [cur_col]
+    cmp edx, [post_merge_c1]
+    jl .post_done_all_m
+    cmp edx, [post_merge_c2]
+    jg .post_done_all_m
+    lea rdx, [rcBgCd]
+    mov rcx, [rsi+32]
+    call [DrawFocusRect]
+
+.post_done_all_m:
+.post_next_all_merge:
+    inc dword [post_merge_idx]
+    jmp .post_scan_all_merges
+
+.post_all_done:
+    xor eax, eax ; CDRF_DODEFAULT
     jmp .done
 
 .cd_subitem_prepaint:
@@ -706,6 +1211,12 @@ WndProc:
     add rdx, rax            ; rdx = pointer to CellStyleRecord
 
     mov eax, [rdx+8]        ; flags (bit0=bold, bit1=has_bk, bit2=has_fg, bit3=italic)
+
+    test eax, 60h           ; bit 5: slave (0x20), bit 6: master (0x40)?
+    jz @f
+    mov eax, 4              ; CDRF_SKIPDEFAULT
+    jmp .done
+@@:
 
     test eax, 2             ; bit 1: has_bk
     jz @f
@@ -814,6 +1325,8 @@ WndProc:
     call [SelectObject]
 
     ; Check if this cell has a custom alignment, font, or fill color in pCellStyleTable
+    cmp dword [gridlines_act], 1
+    je .pcn_do_draw
     mov rax, [pCellStyleTable]
     test rax, rax
     jz .pcn_default
@@ -827,6 +1340,9 @@ WndProc:
     add edx, edi
     shl rdx, 4
     add rdx, rax            ; rdx = pointer to CellStyleRecord
+    test dword [rdx+8], 40h ; FLAG_MERGE_MASTER?
+    jnz .pcn_do_draw
+
     movzx r15d, byte [rdx+12] ; alignment (0=default, 1=left, 2=center, 3=right)
     cmp r15d, 2
     jae .pcn_do_draw
@@ -867,6 +1383,83 @@ WndProc:
     mov r8d, ebx
     call [SendMessageA]
 
+    ; Reload pointer to CellStyleRecord and check for merge master
+    mov eax, ebx
+    shl eax, 5
+    add eax, edi
+    shl rax, 4
+    add rax, [pCellStyleTable]
+
+    test dword [rax+8], 40h    ; FLAG_MERGE_MASTER?
+    jz .pcn_no_expand_span
+
+    ; Cell is merge master! Expand rcSubItemCd horizontally
+    movzx r11d, byte [rax+15]  ; span_cols
+    cmp r11d, 1
+    jle .pcn_check_vspan
+    add r11d, edi
+    dec r11d                  ; r11d = end_col
+    cmp r11d, 31
+    jle @f
+    mov r11d, 31
+@@:
+    lea r9, [rcEndCellCd]
+    mov dword [r9], 0
+    mov dword [r9+4], r11d
+    mov dword [r9+8], 0
+    mov dword [r9+12], 0
+    mov rcx, [hGrid]
+    mov edx, 1038h           ; LVM_GETSUBITEMRECT
+    mov r8d, ebx
+    call [SendMessageA]
+
+    mov eax, [rcEndCellCd+8]
+    mov [rcSubItemCd+8], eax
+
+.pcn_check_vspan:
+    ; Check if vertically merged
+    mov ecx, [g_merge_count]
+    test ecx, ecx
+    jz .pcn_no_expand_span
+    xor eax, eax
+.pcn_scan_merge:
+    cmp eax, ecx
+    jge .pcn_no_expand_span
+    lea r8, [g_merge_records+rax*8]
+    cmp word [r8], bx
+    jne .pcn_next_scan
+    cmp byte [r8+4], dil
+    jne .pcn_next_scan
+
+    movzx r10d, word [r8+2]  ; r2
+    cmp r10d, ebx
+    jle .pcn_no_expand_span
+
+    ; Query bottom edge of row r2
+    movzx r11d, byte [r8+5]  ; c2
+    lea r9, [rcEndCellCd]
+    mov dword [r9], 0
+    mov dword [r9+4], r11d
+    mov dword [r9+8], 0
+    mov dword [r9+12], 0
+    mov rcx, [hGrid]
+    mov edx, 1038h
+    mov r8d, r10d
+    call [SendMessageA]
+    mov eax, [rcEndCellCd+12]
+    mov [rcSubItemCd+12], eax
+    jmp .pcn_no_expand_span
+
+.pcn_next_scan:
+    inc eax
+    jmp .pcn_scan_merge
+
+.pcn_no_expand_span:
+    ; Remove subitem clipping region so drawing can span across merged columns and rows!
+    mov rcx, [rsi+32] ; hdc
+    xor edx, edx      ; NULL
+    call [SelectClipRgn]
+
     ; Create solid brush for background
     mov ecx, [rsi+84]
     call [CreateSolidBrush]
@@ -898,6 +1491,49 @@ WndProc:
     mov rcx, r13
     call [DeleteObject]
 
+    ; Draw bottom and right border if gridlines_act == 1
+    cmp dword [gridlines_act], 1
+    jne .pcn_no_border
+
+    mov ecx, 00E0E0E0h ; gridline border color
+    call [CreateSolidBrush]
+    mov r13, rax
+
+    ; Bottom edge
+    mov eax, [rcSubItemCd]
+    mov [rcEndCellCd], eax
+    mov eax, [rcSubItemCd+8]
+    mov [rcEndCellCd+8], eax
+    mov eax, [rcSubItemCd+12]
+    dec eax
+    mov [rcEndCellCd+4], eax
+    inc eax
+    mov [rcEndCellCd+12], eax
+    mov rcx, [rsi+32]
+    lea rdx, [rcEndCellCd]
+    mov r8, r13
+    call [FillRect]
+
+    ; Right edge
+    mov eax, [rcSubItemCd+8]
+    dec eax
+    mov [rcEndCellCd], eax
+    inc eax
+    mov [rcEndCellCd+8], eax
+    mov eax, [rcSubItemCd+4]
+    mov [rcEndCellCd+4], eax
+    mov eax, [rcSubItemCd+12]
+    mov [rcEndCellCd+12], eax
+    mov rcx, [rsi+32]
+    lea rdx, [rcEndCellCd]
+    mov r8, r13
+    call [FillRect]
+
+    mov rcx, r13
+    call [DeleteObject]
+
+.pcn_no_border:
+
     cmp byte [szCellTextCd], 0
     je .pcn_skip_text
 
@@ -927,6 +1563,14 @@ WndProc:
     mov rcx, [rsi+32]
     mov rdx, r12
     call [SelectObject]
+
+    ; Ensure alignment is fresh from CellStyleRecord
+    mov eax, ebx
+    shl eax, 5
+    add eax, edi
+    shl rax, 4
+    add rax, [pCellStyleTable]
+    movzx r15d, byte [rax+12] ; alignment
 
     ; Determine DrawText flag from r15d
     mov r14d, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX
@@ -1205,6 +1849,8 @@ WndProc:
 .command:
     mov eax, r8d
     and eax, 0FFFFh
+
+
 
     ; Menu Commands - File
     cmp eax, ID_MENU_NEW
@@ -1582,17 +2228,11 @@ WndProc:
     jmp .ret0
 
 .on_toggle_gridlines:
+    xor dword [gridlines_act], 1
     mov rcx, [hGrid]
-    mov edx, LVM_GETEXTENDEDLISTVIEWSTYLE
-    xor r8d, r8d
-    xor r9d, r9d
-    call [SendMessageA]
-    xor eax, LVS_EX_GRIDLINES
-    mov r9d, eax
-    mov rcx, [hGrid]
-    mov edx, LVM_SETEXTENDEDLISTVIEWSTYLE
-    xor r8d, r8d
-    call [SendMessageA]
+    xor edx, edx
+    mov r8d, 1 ; bErase
+    call [InvalidateRect]
     jmp .ret0
 
 .on_toggle_bold:

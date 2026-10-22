@@ -888,6 +888,11 @@ DoLoadSheetByIndex:
     lea rdx, [fmt_temp_formula]
     lea r8, [szTempCsv]
     call [sprintf]
+
+    lea rcx, [szCurMetaPath]
+    lea rdx, [fmt_temp_meta]
+    lea r8, [szTempCsv]
+    call [sprintf]
     jmp .dls_open_csv
 
 .dls_idx_gt0:
@@ -905,6 +910,12 @@ DoLoadSheetByIndex:
 
     lea rcx, [szCurFormulaPath]
     lea rdx, [fmt_sheet_formula]
+    lea r8, [szTempCsv]
+    mov r9d, ebx
+    call [sprintf]
+
+    lea rcx, [szCurMetaPath]
+    lea rdx, [fmt_sheet_meta]
     lea r8, [szTempCsv]
     mov r9d, ebx
     call [sprintf]
@@ -1078,6 +1089,22 @@ DoLoadSheetByIndex:
     call [fclose]
 
 .dls_formula_done:
+    ; Load companion .meta file for sheet
+    mov dword [g_has_custom_col_widths], 0
+    mov dword [g_merge_count], 0
+    lea rdi, [g_col_widths]
+    xor eax, eax
+    mov ecx, 32
+    rep stosd
+    lea rdi, [g_merge_records]
+    mov ecx, 512 * 8 / 8
+    rep stosq
+
+    cmp byte [szCurMetaPath], 0
+    je .dls_meta_done
+    lea rcx, [szCurMetaPath]
+    call LoadMetaFile
+.dls_meta_done:
 
     ; 5. Read CSV rows into ListView
     mov rcx, [hGrid]
@@ -1215,6 +1242,9 @@ DoLoadSheetByIndex:
     mov r8d, 0
     mov r9d, -2 ; LVSCW_AUTOSIZE_USEHEADER
     call [SendMessageA]
+
+    cmp dword [g_has_custom_col_widths], 1
+    je .dls_as_done
 
     mov ebx, 1
 .dls_as_loop:
@@ -1593,10 +1623,34 @@ DoFileOpenDirect:
 .close_formula_done:
     mov rcx, r15
     call [fclose]
-    lea rcx, [szTempFormula]
+.skip_load_formula:
+    ; Reset custom column widths and merge records
+    mov dword [g_has_custom_col_widths], 0
+    mov dword [g_merge_count], 0
+    lea rdi, [g_col_widths]
+    xor eax, eax
+    mov ecx, 32
+    rep stosd
+    lea rdi, [g_merge_records]
+    mov ecx, 512 * 8 / 8
+    rep stosq
+
+    ; If is_temp_file, load companion .meta file
+    cmp byte [is_temp_file], 1
+    jne .skip_load_meta
+
+    lea rcx, [szTempMeta]
+    lea rdx, [fmt_temp_meta]
+    lea r8, [szTempCsv]
+    call [sprintf]
+
+    lea rcx, [szTempMeta]
+    call LoadMetaFile
+
+    lea rcx, [szTempMeta]
     call [remove]
 
-.skip_load_formula:
+.skip_load_meta:
     mov rcx, [hGrid]
     mov edx, LVM_DELETEALLITEMS
     xor r8d, r8d
@@ -1748,6 +1802,9 @@ DoFileOpenDirect:
     mov r8d, 0
     mov r9d, -2 ; LVSCW_AUTOSIZE_USEHEADER
     call [SendMessageA]
+
+    cmp dword [g_has_custom_col_widths], 1
+    je .autosize_done
 
     mov ebx, 1
 .autosize_loop:
@@ -2000,3 +2057,277 @@ DoFileSaveInternal:
     mov r13, [rbp-40]
     leave
     ret
+
+; =============================================================================
+; LoadMetaFile
+; Loads companion .meta binary file: column widths, merged ranges, alignments
+; Argument: rcx = szMetaPath
+; =============================================================================
+LoadMetaFile:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 80h
+    mov [rbp-08h], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+    mov [rbp-30h], r14
+    mov [rbp-38h], r15
+
+    lea rdx, [mode_rb]
+    call [fopen]
+    test rax, rax
+    jz .lmf_done
+    mov r12, rax ; r12 = file handle
+
+    ; Read magic (4 bytes)
+    sub rsp, 20h
+    lea rcx, [rbp-40h]
+    mov edx, 1
+    mov r8d, 4
+    mov r9, r12
+    call [fread]
+    add rsp, 20h
+    cmp eax, 4
+    jne .lmf_close
+    cmp dword [rbp-40h], 4D534C58h ; 'XLSM'
+    jne .lmf_close
+
+    ; Read 32 column widths (uint16_t each = 64 bytes)
+    sub rsp, 60h
+    lea rcx, [rsp+20h]
+    mov edx, 1
+    mov r8d, 64
+    mov r9, r12
+    call [fread]
+    cmp eax, 64
+    jne .lmf_close_sub
+
+    xor ebx, ebx
+    xor esi, esi
+.lmf_cw_loop:
+    cmp ebx, 32
+    jge .lmf_cw_done
+    movzx eax, word [rsp+20h+rbx*2]
+    mov [g_col_widths+rbx*4], eax
+    test eax, eax
+    jz @f
+    mov esi, 1
+@@:
+    inc ebx
+    jmp .lmf_cw_loop
+.lmf_cw_done:
+    add rsp, 60h
+    mov [g_has_custom_col_widths], esi
+
+    ; Read merge_count (4 bytes)
+    sub rsp, 20h
+    lea rcx, [rbp-40h]
+    mov edx, 1
+    mov r8d, 4
+    mov r9, r12
+    call [fread]
+    add rsp, 20h
+    cmp eax, 4
+    jne .lmf_close
+
+    mov r13d, dword [rbp-40h] ; r13d = merge_count
+    cmp r13d, 512
+    jle @f
+    mov r13d, 512
+@@:
+    mov [g_merge_count], r13d
+
+    ; Read merge records if r13d > 0
+    test r13d, r13d
+    jz .lmf_read_aligns
+
+    mov edx, r13d
+    shl edx, 3 ; r13d * 8 bytes
+    sub rsp, 20h
+    lea rcx, [g_merge_records]
+    mov r8d, edx
+    mov edx, 1
+    mov r9, r12
+    call [fread]
+    add rsp, 20h
+
+    ; Apply merges to pCellStyleTable
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .lmf_read_aligns
+
+    xor ebx, ebx
+.lmf_apply_merge_loop:
+    cmp ebx, [g_merge_count]
+    jge .lmf_read_aligns
+
+    lea rsi, [g_merge_records+rbx*8]
+    movzx r8d, word [rsi]      ; r1 (0-based)
+    movzx r9d, word [rsi+2]    ; r2 (0-based)
+    movzx r10d, byte [rsi+4]   ; c1 (1-based)
+    movzx r11d, byte [rsi+5]   ; c2 (1-based)
+    movzx r14d, byte [rsi+6]   ; align
+
+    cmp r8d, 10000
+    jae .lmf_next_m
+    cmp r9d, 10000
+    jae .lmf_next_m
+    cmp r10d, 32
+    jae .lmf_next_m
+    cmp r11d, 32
+    jae .lmf_next_m
+
+    ; Master cell pointer = pCellStyleTable + ((r1 * 32 + c1) * 16)
+    mov ecx, r8d
+    shl ecx, 5
+    add ecx, r10d
+    shl rcx, 4
+    add rcx, [pCellStyleTable]
+
+    or dword [rcx+8], 40h      ; FLAG_MERGE_MASTER
+    mov [rcx+12], r14b         ; align
+    mov eax, r11d
+    sub eax, r10d
+    inc eax
+    mov [rcx+15], al           ; span_cols = c2 - c1 + 1
+
+    mov edi, dword [rcx]       ; master clrBk
+    mov r15d, dword [rcx+4]    ; master clrFg
+
+    ; Mark slave cells: mr = r1..r2, mc = c1..c2
+    mov edx, r8d
+.lmf_slave_row_loop:
+    cmp edx, r9d
+    jg .lmf_next_m
+
+    mov ecx, r10d
+.lmf_slave_col_loop:
+    cmp ecx, r11d
+    jg .lmf_slave_row_next
+
+    cmp edx, r8d
+    jne @f
+    cmp ecx, r10d
+    je .lmf_slave_col_next
+@@:
+    push rdx
+    push rcx
+    mov eax, edx
+    shl eax, 5
+    add eax, ecx
+    shl rax, 4
+    add rax, [pCellStyleTable]
+
+    or dword [rax+8], 20h      ; FLAG_MERGE_SLAVE
+    test edi, edi
+    jz .lmf_skip_sbk
+    mov dword [rax], edi
+    or dword [rax+8], 2        ; has_bk
+.lmf_skip_sbk:
+    test r15d, r15d
+    jz .lmf_skip_sfg
+    mov dword [rax+4], r15d
+    or dword [rax+8], 4        ; has_fg
+.lmf_skip_sfg:
+    pop rcx
+    pop rdx
+
+.lmf_slave_col_next:
+    inc ecx
+    jmp .lmf_slave_col_loop
+
+.lmf_slave_row_next:
+    inc edx
+    jmp .lmf_slave_row_loop
+
+.lmf_next_m:
+    inc ebx
+    jmp .lmf_apply_merge_loop
+
+.lmf_read_aligns:
+    ; Read align_count (4 bytes)
+    sub rsp, 20h
+    lea rcx, [rbp-40h]
+    mov edx, 1
+    mov r8d, 4
+    mov r9, r12
+    call [fread]
+    add rsp, 20h
+    cmp eax, 4
+    jne .lmf_close
+    mov r13d, dword [rbp-40h] ; r13d = align_count
+
+.lmf_align_loop:
+    test r13d, r13d
+    jz .lmf_close
+    sub rsp, 20h
+    lea rcx, [rbp-40h]
+    mov edx, 1
+    mov r8d, 4 ; AlignRecord = row(w), col(b), align(b)
+    mov r9, r12
+    call [fread]
+    add rsp, 20h
+    cmp eax, 4
+    jne .lmf_close
+
+    movzx r8d, word [rbp-40h]   ; row
+    movzx r9d, byte [rbp-3Eh]   ; col
+    movzx r10d, byte [rbp-3Dh]  ; align
+
+    cmp r8d, 10000
+    jae .lmf_next_align
+    cmp r9d, 32
+    jae .lmf_next_align
+
+    mov ecx, r8d
+    shl ecx, 5
+    add ecx, r9d
+    shl rcx, 4
+    add rcx, [pCellStyleTable]
+    mov [rcx+12], r10b
+
+.lmf_next_align:
+    dec r13d
+    jmp .lmf_align_loop
+
+.lmf_close_sub:
+    add rsp, 60h
+.lmf_close:
+    mov rcx, r12
+    call [fclose]
+
+.lmf_done:
+    ; Apply custom column widths to hGrid
+    cmp dword [g_has_custom_col_widths], 1
+    jne .lmf_ret
+
+    mov ebx, 1
+.lmf_apply_cw_loop:
+    cmp ebx, 26
+    jg .lmf_ret
+    mov eax, [g_col_widths+rbx*4]
+    test eax, eax
+    jz @f
+    mov rcx, [hGrid]
+    mov edx, 101Eh ; LVM_SETCOLUMNWIDTH
+    mov r8d, ebx
+    mov r9d, eax
+    call [SendMessageA]
+@@:
+    inc ebx
+    jmp .lmf_apply_cw_loop
+
+.lmf_ret:
+    mov rbx, [rbp-08h]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
+    mov r14, [rbp-30h]
+    mov r15, [rbp-38h]
+    mov rsp, rbp
+    pop rbp
+    ret
+

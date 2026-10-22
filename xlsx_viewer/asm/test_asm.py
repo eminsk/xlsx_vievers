@@ -912,6 +912,94 @@ class TestAsmEngine(unittest.TestCase):
             if proc.poll() is None:
                 proc.kill()
 
+    def test_gui_formatting_undo_redo_and_styles_menu(self):
+        import ctypes
+        import subprocess
+
+        exe_path = Path(__file__).parent / "xlsx_gui64.exe"
+        self.assertTrue(exe_path.exists())
+
+        # 1. Verify PE Binary contains Conditional Formatting & Styles Menu strings
+        pe_bytes = exe_path.read_bytes()
+        self.assertIn(b"Highlight: Greater Than", pe_bytes)
+        self.assertIn(b"Preset Style: Good (Light Green)", pe_bytes)
+        self.assertIn(b"Preset Style: Bad (Light Red)", pe_bytes)
+        self.assertIn(b"Clear Rules from Selected Cells", pe_bytes)
+
+        # 2. Live GUI testing: font size and font face undo/redo rollback
+        user32 = ctypes.windll.user32
+        user32.GetDlgItem.restype = ctypes.c_void_p
+        user32.GetDlgItem.argtypes = [ctypes.c_void_p, ctypes.c_int]
+
+        proc = subprocess.Popen([str(exe_path)])
+        hwnd_main = 0
+
+        def enum_cb(h, _):
+            nonlocal hwnd_main
+            cls = ctypes.create_unicode_buffer(256)
+            user32.GetClassNameW(h, cls, 256)
+            if "ExcelViewerPro_ASM64" in cls.value:
+                hwnd_main = h
+                return False
+            return True
+
+        try:
+            for _ in range(30):
+                user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)(enum_cb), 0)
+                if hwnd_main:
+                    break
+                time.sleep(0.1)
+
+            self.assertTrue(hwnd_main, "Main window must be found")
+            h_combo_size = user32.GetDlgItem(hwnd_main, 1122)
+            h_combo_font = user32.GetDlgItem(hwnd_main, 1121)
+            h_btn_cf = user32.GetDlgItem(hwnd_main, 1161)
+            self.assertTrue(h_combo_size and h_combo_font and h_btn_cf)
+
+            def get_combo_sel(h):
+                return user32.SendMessageW(h, 0x0147, 0, 0)
+
+            # Initial: 10pt (index 2), Segoe UI (index 0)
+            self.assertEqual(get_combo_sel(h_combo_size), 2)
+            self.assertEqual(get_combo_sel(h_combo_font), 0)
+
+            # Step 1: Increase font size (A+ button ID_BTN_INC_FONT = 1123)
+            user32.SendMessageW(hwnd_main, 0x0111, 1123, 0)
+            time.sleep(0.08)
+            self.assertEqual(get_combo_sel(h_combo_size), 4) # 12pt
+
+            # Step 2: Undo formatting (Ctrl+Z / ID_MENU_UNDO = 111) -> rolls back to 10pt!
+            user32.SendMessageW(hwnd_main, 0x0111, 111, 0)
+            time.sleep(0.08)
+            self.assertEqual(get_combo_sel(h_combo_size), 2) # Restored 10pt!
+
+            # Step 3: Redo formatting (Ctrl+Y / ID_MENU_REDO = 112) -> returns to 12pt!
+            user32.SendMessageW(hwnd_main, 0x0111, 112, 0)
+            time.sleep(0.08)
+            self.assertEqual(get_combo_sel(h_combo_size), 4) # Re-applied 12pt!
+
+            # Step 4: Change font face to Calibri (index 1)
+            user32.SendMessageW(h_combo_font, 0x014E, 1, 0)
+            user32.SendMessageW(hwnd_main, 0x0111, (1 << 16) | 1121, h_combo_font)
+            time.sleep(0.08)
+            self.assertEqual(get_combo_sel(h_combo_font), 1)
+
+            # Step 5: Undo font face change -> rolls back to Segoe UI (index 0)!
+            user32.SendMessageW(hwnd_main, 0x0111, 111, 0)
+            time.sleep(0.08)
+            self.assertEqual(get_combo_sel(h_combo_font), 0) # Restored Segoe UI!
+
+            # Step 6: Redo font face change -> returns to Calibri (index 1)!
+            user32.SendMessageW(hwnd_main, 0x0111, 112, 0)
+            time.sleep(0.08)
+            self.assertEqual(get_combo_sel(h_combo_font), 1) # Re-applied Calibri!
+        finally:
+            if hwnd_main:
+                user32.PostMessageW(hwnd_main, 0x0010, 0, 0)
+            time.sleep(0.2)
+            if proc.poll() is None:
+                proc.kill()
+
 
 
 

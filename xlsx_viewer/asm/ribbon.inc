@@ -419,6 +419,7 @@ BuildRibbonBar:
     xor r9d, r9d
     call [SendMessageA]
 
+
     ; A+ (Increase font)
     xor ecx, ecx
     lea rdx, [btn_class]
@@ -7477,3 +7478,6 @@ ShowInfoStatus:
 .done_sis:
     leave
     ret
+
+
+

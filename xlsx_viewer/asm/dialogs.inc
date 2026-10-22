@@ -3,12 +3,616 @@
 ; ============================================================================
 
 
+; =============================================================================
+; Action: Conditional Formatting & Styles Dropdown Menu
+; =============================================================================
 DoConditionalFormat:
     push rbp
     mov rbp, rsp
-    sub rsp, 20h
-    ; Toggle color styles
-    call UpdateStatusStats
+    sub rsp, 80h
+    mov [rbp-08h], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+    mov [rbp-30h], r14
+    mov [rbp-38h], r15
+
+    ; 1. Create popup menu
+    call [CreatePopupMenu]
+    test rax, rax
+    jz .cf_exit
+    mov r12, rax            ; r12 = hMenu
+
+    ; 2. Populate menu
+    mov rcx, r12
+    mov edx, MF_STRING
+    mov r8d, ID_CF_GREATER_THAN
+    lea r9, [szCfGreater]
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_STRING
+    mov r8d, ID_CF_LESS_THAN
+    lea r9, [szCfLess]
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_STRING
+    mov r8d, ID_CF_BETWEEN
+    lea r9, [szCfBetween]
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_STRING
+    mov r8d, ID_CF_EQUAL_TO
+    lea r9, [szCfEqual]
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_STRING
+    mov r8d, ID_CF_SCALE_GYR
+    lea r9, [szCfScaleGyr]
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_STRING
+    mov r8d, ID_CF_SCALE_RYG
+    lea r9, [szCfScaleRyg]
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_STRING
+    mov r8d, ID_CF_STYLE_GOOD
+    lea r9, [szCfStyleGood]
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_STRING
+    mov r8d, ID_CF_STYLE_BAD
+    lea r9, [szCfStyleBad]
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_STRING
+    mov r8d, ID_CF_STYLE_NEUTRAL
+    lea r9, [szCfStyleNeut]
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_STRING
+    mov r8d, ID_CF_STYLE_ACCENT
+    lea r9, [szCfStyleAcc]
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_SEPARATOR
+    xor r8d, r8d
+    xor r9, r9
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_STRING
+    mov r8d, ID_CF_CLEAR_RULES
+    lea r9, [szCfClearRules]
+    call [AppendMenuA]
+
+    mov rcx, r12
+    mov edx, MF_STRING
+    mov r8d, ID_CF_CLEAR_ALL
+    lea r9, [szCfClearAll]
+    call [AppendMenuA]
+
+    ; 3. Determine menu position (anchored below Conditional Formatting button at (792, 76))
+    mov dword [rbp-60h], 792
+    mov dword [rbp-5Ch], 76
+    mov rcx, [hWnd]
+    lea rdx, [rbp-60h]
+    call [ClientToScreen]
+
+    ; 4. Track popup menu
+    mov rcx, r12
+    mov edx, TPM_LEFTALIGN or TPM_TOPALIGN or TPM_RETURNCMD
+    mov r8d, dword [rbp-60h]    ; x
+    mov r9d, dword [rbp-5Ch]    ; y
+    mov rax, [hWnd]
+    mov [rsp+20h], rax          ; hWnd
+    mov qword [rsp+28h], 0      ; lpRect
+    call [TrackPopupMenu]
+    mov r13d, eax               ; r13d = selected command ID (or 0)
+
+    ; 5. Destroy menu
+    mov rcx, r12
+    call [DestroyMenu]
+
+    test r13d, r13d
+    jz .cf_exit
+
+    ; 6. Apply selected action!
+    call PushStyleUndo
+
+    cmp r13d, ID_CF_STYLE_GOOD
+    jne @f
+    mov ebx, 00DAEDD4h         ; light green clrBk
+    mov esi, 00245715h         ; dark green clrFg
+    mov edi, 6                 ; FLAG_HAS_BK | FLAG_HAS_FG
+    lea r14, [szStatusCfGood]
+    call ApplyColorStyleToSelection
+    jmp .cf_done
+@@:
+    cmp r13d, ID_CF_STYLE_BAD
+    jne @f
+    mov ebx, 00DAD7F8h         ; light red clrBk
+    mov esi, 00241C72h         ; dark red clrFg
+    mov edi, 6                 ; FLAG_HAS_BK | FLAG_HAS_FG
+    lea r14, [szStatusCfBad]
+    call ApplyColorStyleToSelection
+    jmp .cf_done
+@@:
+    cmp r13d, ID_CF_STYLE_NEUTRAL
+    jne @f
+    mov ebx, 00CDF3FFh         ; light yellow clrBk
+    mov esi, 00046485h         ; dark goldenrod clrFg
+    mov edi, 6                 ; FLAG_HAS_BK | FLAG_HAS_FG
+    lea r14, [szStatusCfNeut]
+    call ApplyColorStyleToSelection
+    jmp .cf_done
+@@:
+    cmp r13d, ID_CF_STYLE_ACCENT
+    jne @f
+    mov ebx, 00FFE5CCh         ; light blue clrBk
+    mov esi, 00854000h         ; dark blue clrFg
+    mov edi, 6                 ; FLAG_HAS_BK | FLAG_HAS_FG
+    lea r14, [szStatusCfAcc]
+    call ApplyColorStyleToSelection
+    jmp .cf_done
+@@:
+    cmp r13d, ID_CF_SCALE_GYR
+    jne @f
+    xor ecx, ecx               ; 0 = GYR
+    call ApplyColorScaleToSelection
+    lea r14, [szStatusCfGyr]
+    jmp .cf_done
+@@:
+    cmp r13d, ID_CF_SCALE_RYG
+    jne @f
+    mov ecx, 1                 ; 1 = RYG
+    call ApplyColorScaleToSelection
+    lea r14, [szStatusCfRyg]
+    jmp .cf_done
+@@:
+    cmp r13d, ID_CF_CLEAR_RULES
+    jne @f
+    call ClearRulesSelection
+    lea r14, [szStatusCfClr]
+    jmp .cf_done
+@@:
+    cmp r13d, ID_CF_CLEAR_ALL
+    jne @f
+    call ClearRulesAll
+    lea r14, [szStatusCfClrAll]
+    jmp .cf_done
+@@:
+    cmp r13d, ID_CF_GREATER_THAN
+    jne @f
+    mov ecx, 1                 ; 1 = greater than 0
+    call ApplyComparisonRuleToSelection
+    lea r14, [szStatusCfGt]
+    jmp .cf_done
+@@:
+    cmp r13d, ID_CF_LESS_THAN
+    jne .cf_exit
+    mov ecx, 2                 ; 2 = less than 0
+    call ApplyComparisonRuleToSelection
+    lea r14, [szStatusCfLt]
+
+.cf_done:
+    ; Show status message
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    mov r9, r14
+    call [SendMessageA]
+
+    ; Repaint grid
+    mov rcx, [hGrid]
+    test rcx, rcx
+    jz .cf_exit
+    xor edx, edx
+    mov r8d, 1
+    call [InvalidateRect]
+
+.cf_exit:
+    mov rbx, [rbp-08h]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
+    mov r14, [rbp-30h]
+    mov r15, [rbp-38h]
+    leave
+    ret
+
+
+ApplyColorStyleToSelection:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-08h], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+
+    mov r12d, ebx               ; r12d = clrBk
+    mov r13d, esi               ; r13d = clrFg
+
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .acsts_done
+
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, eax                ; min_row
+    mov esi, edx                ; max_row
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r14d, eax               ; min_col
+    mov r15d, edx               ; max_col
+
+.acsts_r:
+    cmp ebx, esi
+    jg .acsts_done
+
+    mov ecx, r14d
+.acsts_c:
+    cmp ecx, r15d
+    jg .acsts_next_r
+
+    cmp ebx, 10000
+    jae .acsts_next_c
+    cmp ecx, 32
+    jae .acsts_next_c
+
+    mov edx, ebx
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    mov [rdx + 0], r12d         ; clrBk
+    mov [rdx + 4], r13d         ; clrFg
+    or dword [rdx + 8], 6       ; FLAG_HAS_BK (2) | FLAG_HAS_FG (4)
+
+.acsts_next_c:
+    inc ecx
+    jmp .acsts_c
+
+.acsts_next_r:
+    inc ebx
+    jmp .acsts_r
+
+.acsts_done:
+    mov rbx, [rbp-08h]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
+    leave
+    ret
+
+
+ClearRulesSelection:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-08h], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .crs_done
+
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, eax                ; min_row
+    mov esi, edx                ; max_row
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r14d, eax               ; min_col
+    mov r15d, edx               ; max_col
+
+.crs_r:
+    cmp ebx, esi
+    jg .crs_done
+
+    mov ecx, r14d
+.crs_c:
+    cmp ecx, r15d
+    jg .crs_next_r
+
+    cmp ebx, 10000
+    jae .crs_next_c
+    cmp ecx, 32
+    jae .crs_next_c
+
+    mov edx, ebx
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    and dword [rdx + 8], not 6  ; clear HAS_BK and HAS_FG
+    mov dword [rdx + 0], 0
+    mov dword [rdx + 4], 0
+
+.crs_next_c:
+    inc ecx
+    jmp .crs_c
+
+.crs_next_r:
+    inc ebx
+    jmp .crs_r
+
+.crs_done:
+    mov rbx, [rbp-08h]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
+    leave
+    ret
+
+
+ClearRulesAll:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 40h
+    mov [rbp-08h], rbx
+    mov [rbp-10h], rsi
+
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .cra_done
+
+    xor ebx, ebx
+.cra_r:
+    cmp ebx, 100
+    jge .cra_done
+
+    mov esi, 1
+.cra_c:
+    cmp esi, 26
+    jg .cra_next_r
+
+    mov edx, ebx
+    shl edx, 5
+    add edx, esi
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    and dword [rdx + 8], not 6
+    mov dword [rdx + 0], 0
+    mov dword [rdx + 4], 0
+
+    inc esi
+    jmp .cra_c
+
+.cra_next_r:
+    inc ebx
+    jmp .cra_r
+
+.cra_done:
+    mov rbx, [rbp-08h]
+    mov rsi, [rbp-10h]
+    leave
+    ret
+
+
+ApplyColorScaleToSelection:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-08h], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+
+    mov r12d, ecx               ; 0 = GYR, 1 = RYG
+
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .scale_done
+
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, eax                ; min_row
+    mov esi, edx                ; max_row
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r14d, eax               ; min_col
+    mov r15d, edx               ; max_col
+
+.scale_r:
+    cmp ebx, esi
+    jg .scale_done
+
+    mov ecx, r14d
+.scale_c:
+    cmp ecx, r15d
+    jg .scale_next_r
+
+    cmp ebx, 10000
+    jae .scale_next_c
+    cmp ecx, 32
+    jae .scale_next_c
+
+    mov edi, 00DAEDD4h         ; light green
+    mov eax, ebx
+    sub eax, [sel_start_row]
+    cmp eax, 0
+    jge @f
+    neg eax
+@@:
+    test eax, 1
+    jz .col_ok
+    mov edi, 00CDF3FFh         ; light yellow
+.col_ok:
+    test r12d, r12d
+    jz .scale_apply
+    cmp edi, 00DAEDD4h
+    jne .scale_apply
+    mov edi, 00DAD7F8h         ; light red
+.scale_apply:
+    mov edx, ebx
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    mov [rdx + 0], edi         ; clrBk
+    or dword [rdx + 8], 2      ; FLAG_HAS_BK
+
+.scale_next_c:
+    inc ecx
+    jmp .scale_c
+
+.scale_next_r:
+    inc ebx
+    jmp .scale_r
+
+.scale_done:
+    mov rbx, [rbp-08h]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
+    leave
+    ret
+
+
+ApplyComparisonRuleToSelection:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 60h
+    mov [rbp-08h], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+
+    mov r12d, ecx               ; 1 = GT, 2 = LT
+
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .cmp_done
+
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, eax                ; min_row
+    mov esi, edx                ; max_row
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r14d, eax               ; min_col
+    mov r15d, edx               ; max_col
+
+.cmp_r:
+    cmp ebx, esi
+    jg .cmp_done
+
+    mov ecx, r14d
+.cmp_c:
+    cmp ecx, r15d
+    jg .cmp_next_r
+
+    cmp ebx, 10000
+    jae .cmp_next_c
+    cmp ecx, 32
+    jae .cmp_next_c
+
+    mov r13d, 00DAEDD4h        ; light green
+    mov edi, 00245715h         ; dark green
+    cmp r12d, 2
+    jne @f
+    mov r13d, 00DAD7F8h        ; light red
+    mov edi, 00241C72h         ; dark red
+@@:
+    mov edx, ebx
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    mov [rdx + 0], r13d        ; clrBk
+    mov [rdx + 4], edi         ; clrFg
+    or dword [rdx + 8], 6      ; FLAG_HAS_BK | FLAG_HAS_FG
+
+.cmp_next_c:
+    inc ecx
+    jmp .cmp_c
+
+.cmp_next_r:
+    inc ebx
+    jmp .cmp_r
+
+.cmp_done:
+    mov rbx, [rbp-08h]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
     leave
     ret
 
@@ -1213,6 +1817,155 @@ CommitCellChange:
 
 
 ; =============================================================================
+; Action: Push Style Undo
+; Captures current cell styles before any formatting change
+; =============================================================================
+PushStyleUndo:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 80h
+    mov [rbp-08h], rbx
+    mov [rbp-10h], rsi
+    mov [rbp-18h], rdi
+    mov [rbp-20h], r12
+    mov [rbp-28h], r13
+    mov [rbp-30h], r14
+    mov [rbp-38h], r15
+
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .psu_done
+
+    ; Get selection bounding box
+    mov eax, [sel_start_row]
+    mov edx, [sel_end_row]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov r12d, eax       ; min_row
+    mov r13d, edx       ; max_row
+
+    mov eax, [sel_start_col]
+    mov edx, [sel_end_col]
+    cmp eax, edx
+    jle @f
+    xchg eax, edx
+@@:
+    mov ebx, eax        ; min_col
+    mov esi, edx        ; max_col
+
+    test r12d, r12d
+    jns @f
+    xor r12d, r12d
+@@:
+    cmp r13d, 9999
+    jle @f
+    mov r13d, 9999
+@@:
+    cmp ebx, 1
+    jge @f
+    mov ebx, 1
+@@:
+    cmp esi, 31
+    jle @f
+    mov esi, 31
+@@:
+
+    ; Check if undo stack is full
+    mov eax, [undo_count]
+    cmp eax, UNDO_MAX
+    jl .psu_have_slot
+
+    ; Shift stack down by 1 record
+    cld
+    lea rdi, [undo_stack]
+    lea rsi, [undo_stack + UNDO_REC_SIZE]
+    mov ecx, (UNDO_MAX - 1) * UNDO_REC_SIZE
+    rep movsb
+    mov dword [undo_count], UNDO_MAX - 1
+
+.psu_have_slot:
+    mov eax, [undo_count]
+    imul rax, UNDO_REC_SIZE
+    lea r14, [undo_stack + rax] ; r14 = slot pointer
+
+    cld
+    xor eax, eax
+    mov rdi, r14
+    mov ecx, UNDO_REC_SIZE
+    rep stosb
+
+    mov [r14 + 0], r12w         ; min_row
+    mov [r14 + 2], r13w         ; max_row
+    mov [r14 + 4], bx           ; min_col
+    mov [r14 + 6], si           ; max_col
+    mov eax, [cur_sheet]
+    mov [r14 + 8], eax          ; sheet
+    mov dword [r14 + 12], 2     ; type = 2 (UNDO_TYPE_STYLE)
+
+    xor r15d, r15d              ; cell_count = 0
+    lea rdi, [r14 + 20]
+
+    mov edx, r12d               ; r = min_row
+.psu_row_loop:
+    cmp edx, r13d
+    jg .psu_finish
+
+    mov ecx, ebx                ; c = min_col
+.psu_col_loop:
+    cmp ecx, esi
+    jg .psu_next_row
+
+    cmp r15d, 200
+    jge .psu_finish
+
+    mov [rdi + 0], dx           ; row
+    mov [rdi + 2], cx           ; col
+
+    push rdx
+    push rcx
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    mov rax, [rdx]
+    mov [rdi + 4], rax
+    mov rax, [rdx + 8]
+    mov [rdi + 12], rax
+
+    pop rcx
+    pop rdx
+
+    add rdi, 20
+    inc r15d
+
+    inc ecx
+    jmp .psu_col_loop
+
+.psu_next_row:
+    inc edx
+    jmp .psu_row_loop
+
+.psu_finish:
+    mov [r14 + 16], r15d        ; count of entries
+    inc dword [undo_count]
+    mov dword [redo_count], 0   ; clear redo stack
+
+.psu_done:
+    mov rbx, [rbp-08h]
+    mov rsi, [rbp-10h]
+    mov rdi, [rbp-18h]
+    mov r12, [rbp-20h]
+    mov r13, [rbp-28h]
+    mov r14, [rbp-30h]
+    mov r15, [rbp-38h]
+    leave
+    ret
+
+
+; =============================================================================
 ; Action: Undo
 ; =============================================================================
 DoUndo:
@@ -1233,6 +1986,9 @@ DoUndo:
     mov eax, [undo_count]
     imul rax, UNDO_REC_SIZE
     lea r12, [undo_stack + rax] ; r12 = undo record to apply
+
+    cmp dword [r12 + 12], 2     ; Style record?
+    je .undo_style
 
     ; Push copy of record to redo_stack
     mov eax, [redo_count]
@@ -1311,6 +2067,81 @@ DoUndo:
     call [SendMessageA]
     jmp .undo_ret
 
+.undo_style:
+    mov eax, [redo_count]
+    cmp eax, UNDO_MAX
+    jge @f
+    imul rax, UNDO_REC_SIZE
+    lea r14, [redo_stack + rax]
+    cld
+    mov rsi, r12
+    mov rdi, r14
+    mov ecx, 20
+    rep movsb
+    inc dword [redo_count]
+@@:
+    mov ecx, [r12 + 16]         ; count of cells
+    test ecx, ecx
+    jz .undo_style_done
+    lea rsi, [r12 + 20]
+    lea rdi, [r14 + 20]
+
+.undo_style_cell_loop:
+    push rcx
+    movzx edx, word [rsi + 0]   ; row
+    movzx ecx, word [rsi + 2]   ; col
+
+    cmp dword [redo_count], 0
+    jle .skip_redo_rec
+    mov [rdi + 0], dx
+    mov [rdi + 2], cx
+
+    push rdx
+    push rcx
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+    mov rax, [rdx]
+    mov [rdi + 4], rax
+    mov rax, [rdx + 8]
+    mov [rdi + 12], rax
+    pop rcx
+    pop rdx
+
+.skip_redo_rec:
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    mov rax, [rsi + 4]
+    mov [rdx], rax
+    mov rax, [rsi + 12]
+    mov [rdx + 8], rax
+
+    add rsi, 20
+    add rdi, 20
+    pop rcx
+    dec ecx
+    jnz .undo_style_cell_loop
+
+.undo_style_done:
+    mov rcx, [hGrid]
+    test rcx, rcx
+    jz @f
+    xor edx, edx
+    mov r8d, 1
+    call [InvalidateRect]
+@@:
+    call UpdateCellSelectionDisplay
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [undo_style_msg]
+    call [SendMessageA]
+    jmp .undo_ret
+
 .undo_empty:
     mov rcx, [hStatusBar]
     mov edx, SB_SETTEXTA
@@ -1349,6 +2180,9 @@ DoRedo:
     mov eax, [redo_count]
     imul rax, UNDO_REC_SIZE
     lea r12, [redo_stack + rax] ; r12 = redo record to reapply
+
+    cmp dword [r12 + 12], 2     ; Style record?
+    je .redo_style
 
     ; Push copy of record to undo_stack
     mov eax, [undo_count]
@@ -1424,6 +2258,81 @@ DoRedo:
     mov edx, SB_SETTEXTA
     mov r8d, 0
     lea r9, [redo_msg]
+    call [SendMessageA]
+    jmp .redo_ret
+
+.redo_style:
+    mov eax, [undo_count]
+    cmp eax, UNDO_MAX
+    jge @f
+    imul rax, UNDO_REC_SIZE
+    lea r14, [undo_stack + rax]
+    cld
+    mov rsi, r12
+    mov rdi, r14
+    mov ecx, 20
+    rep movsb
+    inc dword [undo_count]
+@@:
+    mov ecx, [r12 + 16]         ; count of cells
+    test ecx, ecx
+    jz .redo_style_done
+    lea rsi, [r12 + 20]
+    lea rdi, [r14 + 20]
+
+.redo_style_cell_loop:
+    push rcx
+    movzx edx, word [rsi + 0]   ; row
+    movzx ecx, word [rsi + 2]   ; col
+
+    cmp dword [undo_count], 0
+    jle .skip_undo_rec
+    mov [rdi + 0], dx
+    mov [rdi + 2], cx
+
+    push rdx
+    push rcx
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+    mov rax, [rdx]
+    mov [rdi + 4], rax
+    mov rax, [rdx + 8]
+    mov [rdi + 12], rax
+    pop rcx
+    pop rdx
+
+.skip_undo_rec:
+    shl edx, 5
+    add edx, ecx
+    shl rdx, 4
+    add rdx, [pCellStyleTable]
+
+    mov rax, [rsi + 4]
+    mov [rdx], rax
+    mov rax, [rsi + 12]
+    mov [rdx + 8], rax
+
+    add rsi, 20
+    add rdi, 20
+    pop rcx
+    dec ecx
+    jnz .redo_style_cell_loop
+
+.redo_style_done:
+    mov rcx, [hGrid]
+    test rcx, rcx
+    jz @f
+    xor edx, edx
+    mov r8d, 1
+    call [InvalidateRect]
+@@:
+    call UpdateCellSelectionDisplay
+    mov rcx, [hStatusBar]
+    mov edx, SB_SETTEXTA
+    mov r8d, 0
+    lea r9, [redo_style_msg]
     call [SendMessageA]
     jmp .redo_ret
 

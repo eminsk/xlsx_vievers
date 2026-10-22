@@ -93,6 +93,7 @@ section '.data' data readable writeable
     ofn_title_save  db 'Save Spreadsheet File', 0
     mode_r          db 'r', 0
     mode_w          db 'w', 0
+
     csv_line_fmt    db '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s', 13, 10, 0
     sort_asc_msg    db 'Column sorted in ascending order (A to Z / 0 to 9)!', 0
     sort_desc_msg   db 'Column sorted in descending order (Z to A / 9 to 0)!', 0
@@ -742,9 +743,11 @@ section '.data' data readable writeable
     redo_msg        db 'Action redone.', 0
     undo_empty_msg  db 'Nothing to undo.', 0
     redo_empty_msg  db 'Nothing to redo.', 0
+    undo_style_msg  db 'Formatting undo complete (restored cell styles).', 0
+    redo_style_msg  db 'Formatting redo complete (restored cell styles).', 0
 
     UNDO_MAX        = 64
-    UNDO_REC_SIZE   = 512
+    UNDO_REC_SIZE   = 4096
 
     undo_count      dd 0
     redo_count      dd 0
@@ -758,6 +761,31 @@ section '.data' data readable writeable
     align 16
     undo_stack      rb UNDO_MAX * UNDO_REC_SIZE
     redo_stack      rb UNDO_MAX * UNDO_REC_SIZE
+
+    szCfGreater     db 'Highlight: Greater Than ( > 0 )...', 0
+    szCfLess        db 'Highlight: Less Than ( < 0 )...', 0
+    szCfBetween     db 'Highlight: Between ( 10 to 100 )...', 0
+    szCfEqual       db 'Highlight: Equal To ( 0 )...', 0
+    szCfTextCont    db 'Highlight: Text that Contains...', 0
+    szCfScaleGyr    db 'Color Scale: Green - Yellow - Red', 0
+    szCfScaleRyg    db 'Color Scale: Red - Yellow - Green', 0
+    szCfStyleGood   db 'Preset Style: Good (Light Green)', 0
+    szCfStyleBad    db 'Preset Style: Bad (Light Red)', 0
+    szCfStyleNeut   db 'Preset Style: Neutral (Light Yellow)', 0
+    szCfStyleAcc    db 'Preset Style: Accent (Light Blue)', 0
+    szCfClearRules  db 'Clear Rules from Selected Cells', 0
+    szCfClearAll    db 'Clear Rules from Entire Sheet', 0
+
+    szStatusCfGood  db 'Applied Preset Style: Good (Light Green)', 0
+    szStatusCfBad   db 'Applied Preset Style: Bad (Light Red)', 0
+    szStatusCfNeut  db 'Applied Preset Style: Neutral (Light Yellow)', 0
+    szStatusCfAcc   db 'Applied Preset Style: Accent (Light Blue)', 0
+    szStatusCfGyr   db 'Applied Color Scale: Green - Yellow - Red', 0
+    szStatusCfRyg   db 'Applied Color Scale: Red - Yellow - Green', 0
+    szStatusCfGt    db 'Highlighted values > 0 (Green)', 0
+    szStatusCfLt    db 'Highlighted values < 0 (Red)', 0
+    szStatusCfClr   db 'Cleared formatting rules from selected cells', 0
+    szStatusCfClrAll db 'Cleared formatting rules from entire worksheet', 0
 
     fmt_painter_msg db 'Format Painter: Style copied. Click destination cell.', 0
     wrap_txt_msg    db 'Word Wrap enabled for selected column.', 0
@@ -774,15 +802,35 @@ section '.data' data readable writeable
     fmt_temp_style   db '%s.style', 0
     fmt_temp_formula db '%s.formula', 0
     szTempFormula    rb 512
+    fmt_temp_meta    db '%s.meta', 0
+    szTempMeta       rb 512
     fmt_temp_sheets  db '%s.sheets', 0
     fmt_sheet_csv    db '%s.%d', 0
     fmt_sheet_style  db '%s.%d', 0
     fmt_sheet_formula db '%s.%d.formula', 0
+    fmt_sheet_meta   db '%s.%d.meta', 0
     szTempSheets     rb 512
     szCurCsvPath     rb 512
     szCurStylePath   rb 512
     szCurFormulaPath rb 512
+    szCurMetaPath    rb 512
     g_sheet_names    rb 16 * 128
+    g_col_widths            rd 32
+    g_has_custom_col_widths dd 0
+    g_merge_count           dd 0
+    g_merge_records         rb 512 * 8
+    rcEndCellCd             dd 0, 0, 0, 0
+    post_merge_idx          dd 0
+    post_merge_r1           dd 0
+    post_merge_r2           dd 0
+    post_merge_c1           dd 0
+    post_merge_c2           dd 0
+    post_merge_align        dd 0
+    post_merge_bk           dd 0
+    post_merge_fg           dd 0
+    post_merge_bold         dd 0
+    stage_log               rd 16
+    stage_log_count         dd 0
     pCellStyleTable  dq 0
     pCellFormulaTable dq 0
     hFormulaHeap     dq 0
