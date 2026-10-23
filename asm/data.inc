@@ -587,6 +587,7 @@ section '.data' data readable writeable
     hFontBoldItalic dq 0
     hFontMono       dq 0
     hFontGrid       dq 0
+    hFontRibbonSmall = hFontSmall
 
     ; Controls
     hRibbonTabs     dq 0
@@ -692,6 +693,107 @@ section '.data' data readable writeable
     hPenAccentGreen dq 0
     hPenAccentTeal  dq 0
     hPenAccentRed   dq 0
+
+    hPenFluentBlue      dq 0
+    hPenFluentBlue2     dq 0
+    hPenSlateLine       dq 0
+    hPenDarkSlate       dq 0
+    hPenLightDivider    dq 0
+    hPenBoxOutline      dq 0
+    hPenAlignSelected   dq 0
+    hBrAlignSelected    dq 0
+    hBrFluentBlue       dq 0
+
+    ; Chart window & visualization structures
+    CHART_TYPE_COLUMN   = 1
+    CHART_TYPE_LINE     = 2
+    CHART_TYPE_PIE      = 3
+    CHART_TYPE_BAR      = 4
+    CHART_TYPE_AREA     = 5
+
+    chart_class_name    db 'XlsxChartWindow', 0
+    chart_title_fmt     db 'Excel Chart Viewer - %s', 0
+    chart_type_names:
+        dq szChartColTitle
+        dq szChartLineTitle
+        dq szChartPieTitle
+        dq szChartBarTitle
+        dq szChartAreaTitle
+
+    szChartColTitle     db 'Clustered Column Chart', 0
+    szChartLineTitle    db 'Line Chart with Markers', 0
+    szChartPieTitle     db 'Pie Chart Analysis', 0
+    szChartBarTitle     db 'Horizontal Bar Chart', 0
+    szChartAreaTitle    db 'Area Chart', 0
+
+    szBtnColTxt         db '  Column', 0
+    szBtnLineTxt        db '  Line', 0
+    szBtnPieTxt         db '  Pie', 0
+    szBtnBarTxt         db '  Bar', 0
+    szBtnAreaTxt        db '  Area', 0
+    szBtnThemeTxt       db '  Theme', 0
+    szBtnCopyTxt        db '  Copy Image', 0
+    szBtnCloseTxt       db '  Close', 0
+
+    szChartCopiedMsg    db 'Chart copied to clipboard! Ready to paste into Word, PowerPoint or Paint.', 0
+    szChartCopiedTitle  db 'Excel Chart Export', 0
+
+    szSampleQ1          db 'Q1', 0
+    szSampleQ2          db 'Q2', 0
+    szSampleQ3          db 'Q3', 0
+    szSampleQ4          db 'Q4', 0
+    szSampleS1          db 'Revenue', 0
+    szSampleS2          db 'Expenses', 0
+    szSampleS3          db 'Profit', 0
+
+    chart_fmt_float     db '%.1f', 0
+    chart_fmt_int       db '%.0f', 0
+    chart_fmt_pct       db '%.1f%%', 0
+    chart_fmt_pie_lbl   db '%s (%.1f%%)', 0
+    chart_val_buf       db 64 dup(0)
+
+    hChartWnd           dq 0
+    cur_chart_type      dd 1
+    cur_chart_theme     dd 0
+    chart_num_cats      dd 4
+    chart_num_series    dd 3
+    chart_min_val       dq 0.0
+    chart_max_val       dq 100.0
+
+    align 8
+    chart_cat_names     rb 16 * 64
+    chart_series_names  rb 8 * 64
+    chart_data          rq 16 * 8
+    chart_wc            rb 80
+    chart_ps            rb 72
+    debug_step          dd 0
+
+    plot_left           dd 70
+    plot_top            dd 85
+    plot_right          dd 700
+    plot_bottom         dd 540
+    plot_slot_w         dd 0
+    plot_bar_w          dd 0
+    pie_cx              dd 0
+    pie_cy              dd 0
+    pie_radius          dd 0
+    pie_r_mid           dd 0
+    pie_x_start         dd 0
+    pie_y_start         dd 0
+    pie_x_end           dd 0
+    pie_y_end           dd 0
+    chart_poly_pts      rd 36
+
+    align 8
+    pie_cur_angle       dq 0.0
+    pie_next_angle      dq 0.0
+    pie_d_angle         dq 0.0
+    pie_mid_angle       dq 0.0
+    pie_total_val       dq 0.0
+    const_two_pi        dq 6.283185307179586
+    const_half          dq 0.5
+    const_hundred       dq 100.0
+    const_five          dq 5.0
 
     szBtnDrawText   db 64 dup(0)
     rcBtnDrawText   dd 0, 0, 0, 0

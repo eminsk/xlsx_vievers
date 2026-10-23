@@ -82,6 +82,9 @@ user32_table:
     SetMenuItemInfoA            dq RVA _SetMenuItemInfoA
     TrackPopupMenu              dq RVA _TrackPopupMenu
     DestroyMenu                 dq RVA _DestroyMenu
+    BeginPaint                  dq RVA _BeginPaint
+    EndPaint                    dq RVA _EndPaint
+    GetClientRect               dq RVA _GetClientRect
                                 dq 0
 
 gdi32_table:
@@ -103,6 +106,9 @@ gdi32_table:
     CreateCompatibleBitmap      dq RVA _CreateCompatibleBitmap
     DeleteDC                    dq RVA _DeleteDC
     SelectClipRgn               dq RVA _SelectClipRgn
+    BitBlt                      dq RVA _BitBlt
+    Pie                         dq RVA _Pie
+    TextOutA                    dq RVA _TextOutA
                                 dq 0
 
 comctl_table:
@@ -269,6 +275,12 @@ _TrackPopupMenu dw 0
  db 'TrackPopupMenu', 0
 _DestroyMenu dw 0
  db 'DestroyMenu', 0
+_BeginPaint dw 0
+ db 'BeginPaint', 0
+_EndPaint dw 0
+ db 'EndPaint', 0
+_GetClientRect dw 0
+ db 'GetClientRect', 0
 
 _CreateFontA dw 0
  db 'CreateFontA', 0
@@ -307,6 +319,12 @@ _DeleteDC dw 0
  db 'DeleteDC', 0
 _SelectClipRgn dw 0
  db 'SelectClipRgn', 0
+_BitBlt dw 0
+ db 'BitBlt', 0
+_Pie dw 0
+ db 'Pie', 0
+_TextOutA dw 0
+ db 'TextOutA', 0
 
 _InitCommonControlsEx dw 0
  db 'InitCommonControlsEx', 0

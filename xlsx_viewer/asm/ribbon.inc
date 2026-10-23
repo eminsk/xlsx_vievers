@@ -1469,6 +1469,65 @@ InitRibbonGdiResources:
     call [CreatePen]
     mov [hPenAccentRed], rax
 
+    ; hPenFluentBlue (#185ABD = BGR 0x00BD5A18, width=1)
+    xor ecx, ecx
+    mov edx, 1
+    mov r8d, 00BD5A18h
+    call [CreatePen]
+    mov [hPenFluentBlue], rax
+
+    ; hPenFluentBlue2 (#185ABD, width=2)
+    xor ecx, ecx
+    mov edx, 2
+    mov r8d, 00BD5A18h
+    call [CreatePen]
+    mov [hPenFluentBlue2], rax
+
+    ; hPenSlateLine (#5A646E = BGR 0x006E645A, width=1)
+    xor ecx, ecx
+    mov edx, 1
+    mov r8d, 006E645Ah
+    call [CreatePen]
+    mov [hPenSlateLine], rax
+
+    ; hPenDarkSlate (#323C46 = BGR 0x00463C32, width=1)
+    xor ecx, ecx
+    mov edx, 1
+    mov r8d, 00463C32h
+    call [CreatePen]
+    mov [hPenDarkSlate], rax
+
+    ; hPenLightDivider (#B4BEC8 = BGR 0x00C8BEB4, width=1)
+    xor ecx, ecx
+    mov edx, 1
+    mov r8d, 00C8BEB4h
+    call [CreatePen]
+    mov [hPenLightDivider], rax
+
+    ; hPenBoxOutline (#28323C = BGR 0x003C3228, width=1)
+    xor ecx, ecx
+    mov edx, 1
+    mov r8d, 003C3228h
+    call [CreatePen]
+    mov [hPenBoxOutline], rax
+
+    ; hPenAlignSelected (#7A9AB8 = BGR 0x00B89A7A, width=1)
+    xor ecx, ecx
+    mov edx, 1
+    mov r8d, 00B89A7Ah
+    call [CreatePen]
+    mov [hPenAlignSelected], rax
+
+    ; hBrAlignSelected (#D4E2F0 = BGR 0x00F0E2D4)
+    mov ecx, 00F0E2D4h
+    call [CreateSolidBrush]
+    mov [hBrAlignSelected], rax
+
+    ; hBrFluentBlue (#185ABD = BGR 0x00BD5A18)
+    mov ecx, 00BD5A18h
+    call [CreateSolidBrush]
+    mov [hBrFluentBlue], rax
+
     leave
     ret
 
@@ -1617,6 +1676,51 @@ CleanupRibbonGdiResources:
     jz @f
     call [DeleteObject]
 @@:
+    mov rcx, [hPenFluentBlue]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hPenFluentBlue2]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hPenSlateLine]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hPenDarkSlate]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hPenLightDivider]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hPenBoxOutline]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hPenAlignSelected]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hBrAlignSelected]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
+    mov rcx, [hBrFluentBlue]
+    test rcx, rcx
+    jz @f
+    call [DeleteObject]
+@@:
     ; Clean up dynamic cell font cache
     xor ebx, ebx
 .cleanup_font_cache:
@@ -1701,11 +1805,56 @@ DrawRibbonOwnerButton:
 
 .bg_not_pressed:
     test r14d, 40h          ; ODS_HOTLIGHT?
-    jz .bg_normal
+    jz .bg_check_active
     mov rdx, [hBrBtnHover]
     mov rcx, r12
     call [SelectObject]
     mov rdx, [hPenBlue]
+    mov rcx, r12
+    call [SelectObject]
+    jmp .draw_bg
+
+.bg_check_active:
+    cmp r13d, ID_BTN_MID
+    je .bg_is_active_btn
+
+    mov rax, [pCellStyleTable]
+    test rax, rax
+    jz .bg_normal
+    mov eax, [cur_row]
+    cmp eax, 10000
+    jae .bg_normal
+    mov edx, [cur_col]
+    cmp edx, 32
+    jae .bg_normal
+    shl eax, 5
+    add eax, edx
+    shl rax, 4
+    add rax, [pCellStyleTable]
+    mov eax, [rax+12]       ; 0=default/left, 1=left, 2=center, 3=right
+    cmp eax, 2
+    je .chk_center
+    cmp eax, 3
+    je .chk_right
+    cmp r13d, ID_BTN_LEFT
+    je .bg_is_active_btn
+    jmp .bg_normal
+
+.chk_center:
+    cmp r13d, ID_BTN_CENTER
+    je .bg_is_active_btn
+    jmp .bg_normal
+
+.chk_right:
+    cmp r13d, ID_BTN_RIGHT
+    je .bg_is_active_btn
+    jmp .bg_normal
+
+.bg_is_active_btn:
+    mov rdx, [hBrAlignSelected]
+    mov rcx, r12
+    call [SelectObject]
+    mov rdx, [hPenAlignSelected]
     mov rcx, r12
     call [SelectObject]
     jmp .draw_bg
@@ -4621,32 +4770,46 @@ DrawRibbonOwnerButton:
     jmp .render_btn_text
 
 .ico_align_left:
-    mov rdx, [hPenDark2]
+    mov rdx, [hPenDarkSlate]
     mov rcx, r12
     call [SelectObject]
-    ; Line 1: (cx-6, cy-5) to (cx+3, cy-5)
+    ; Line 1 (12px): (cx-6, cy-5) to (cx+6, cy-5)
     mov rcx, r12
     lea edx, [ebx-6]
     mov eax, [rbp-5Ch]
     lea r8d, [eax-5]
-    xor r9d, r9d
-    call [MoveToEx]
-    mov rcx, r12
-    lea edx, [ebx+3]
-    mov eax, [rbp-5Ch]
-    lea r8d, [eax-5]
-    call [LineTo]
-    ; Line 2: (cx-6, cy) to (cx+6, cy)
-    mov rcx, r12
-    lea edx, [ebx-6]
-    mov r8d, [rbp-5Ch]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
     lea edx, [ebx+6]
-    mov r8d, [rbp-5Ch]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-5]
     call [LineTo]
-    ; Line 3: (cx-6, cy+5) to (cx+1, cy+5)
+    ; Line 2 (8px): (cx-6, cy-2) to (cx+2, cy-2)
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-2]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-2]
+    call [LineTo]
+    ; Line 3 (12px): (cx-6, cy+2) to (cx+6, cy+2)
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
+    call [LineTo]
+    ; Line 4 (6px): (cx-6, cy+5) to (cx, cy+5)
     mov rcx, r12
     lea edx, [ebx-6]
     mov eax, [rbp-5Ch]
@@ -4654,39 +4817,53 @@ DrawRibbonOwnerButton:
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
-    lea edx, [ebx+1]
+    mov edx, ebx
     mov eax, [rbp-5Ch]
     lea r8d, [eax+5]
     call [LineTo]
     jmp .btn_drawn
 
 .ico_align_center:
-    mov rdx, [hPenDark2]
+    mov rdx, [hPenDarkSlate]
     mov rcx, r12
     call [SelectObject]
-    ; Line 1: (cx-4, cy-5) to (cx+4, cy-5)
+    ; Line 1 (12px): (cx-6, cy-5) to (cx+6, cy-5)
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-5]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-5]
+    call [LineTo]
+    ; Line 2 (8px): (cx-4, cy-2) to (cx+4, cy-2)
     mov rcx, r12
     lea edx, [ebx-4]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax-5]
+    lea r8d, [eax-2]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
     lea edx, [ebx+4]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax-5]
+    lea r8d, [eax-2]
     call [LineTo]
-    ; Line 2: (cx-6, cy) to (cx+6, cy)
+    ; Line 3 (12px): (cx-6, cy+2) to (cx+6, cy+2)
     mov rcx, r12
     lea edx, [ebx-6]
-    mov r8d, [rbp-5Ch]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
     lea edx, [ebx+6]
-    mov r8d, [rbp-5Ch]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
     call [LineTo]
-    ; Line 3: (cx-3, cy+5) to (cx+3, cy+5)
+    ; Line 4 (6px): (cx-3, cy+5) to (cx+3, cy+5)
     mov rcx, r12
     lea edx, [ebx-3]
     mov eax, [rbp-5Ch]
@@ -4701,34 +4878,48 @@ DrawRibbonOwnerButton:
     jmp .btn_drawn
 
 .ico_align_right:
-    mov rdx, [hPenDark2]
+    mov rdx, [hPenDarkSlate]
     mov rcx, r12
     call [SelectObject]
-    ; Line 1: (cx-3, cy-5) to (cx+6, cy-5)
-    mov rcx, r12
-    lea edx, [ebx-3]
-    mov eax, [rbp-5Ch]
-    lea r8d, [eax-5]
-    xor r9d, r9d
-    call [MoveToEx]
-    mov rcx, r12
-    lea edx, [ebx+6]
-    mov eax, [rbp-5Ch]
-    lea r8d, [eax-5]
-    call [LineTo]
-    ; Line 2: (cx-6, cy) to (cx+6, cy)
+    ; Line 1 (12px): (cx-6, cy-5) to (cx+6, cy-5)
     mov rcx, r12
     lea edx, [ebx-6]
-    mov r8d, [rbp-5Ch]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-5]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
     lea edx, [ebx+6]
-    mov r8d, [rbp-5Ch]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-5]
     call [LineTo]
-    ; Line 3: (cx-1, cy+5) to (cx+6, cy+5)
+    ; Line 2 (8px): (cx-2, cy-2) to (cx+6, cy-2)
     mov rcx, r12
-    lea edx, [ebx-1]
+    lea edx, [ebx-2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-2]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax-2]
+    call [LineTo]
+    ; Line 3 (12px): (cx-6, cy+2) to (cx+6, cy+2)
+    mov rcx, r12
+    lea edx, [ebx-6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+6]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+2]
+    call [LineTo]
+    ; Line 4 (6px): (cx, cy+5) to (cx+6, cy+5)
+    mov rcx, r12
+    mov edx, ebx
     mov eax, [rbp-5Ch]
     lea r8d, [eax+5]
     xor r9d, r9d
@@ -4741,22 +4932,26 @@ DrawRibbonOwnerButton:
     jmp .btn_drawn
 
 .ico_align_top:
-    mov rdx, [hPenDark2]
+    ; Top bar: 2px prominent BLUE indicator from (cx-6, cy-5) to (cx+6, cy-5)
+    mov rdx, [hPenFluentBlue2]
     mov rcx, r12
     call [SelectObject]
-    ; Top bar: (cx-6, cy-6) to (cx+6, cy-6)
     mov rcx, r12
     lea edx, [ebx-6]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax-6]
+    lea r8d, [eax-5]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
     lea edx, [ebx+6]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax-6]
+    lea r8d, [eax-5]
     call [LineTo]
-    ; Line 2: (cx-4, cy) to (cx+4, cy)
+
+    ; Middle line: 1px SLATE line from (cx-4, cy) to (cx+4, cy)
+    mov rdx, [hPenSlateLine]
+    mov rcx, r12
+    call [SelectObject]
     mov rcx, r12
     lea edx, [ebx-4]
     mov r8d, [rbp-5Ch]
@@ -4766,37 +4961,42 @@ DrawRibbonOwnerButton:
     lea edx, [ebx+4]
     mov r8d, [rbp-5Ch]
     call [LineTo]
-    ; Line 3: (cx-2, cy+5) to (cx+2, cy+5)
+
+    ; Bottom line: 1px SLATE line from (cx-2, cy+4) to (cx+2, cy+4)
     mov rcx, r12
     lea edx, [ebx-2]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax+5]
+    lea r8d, [eax+4]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
     lea edx, [ebx+2]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax+5]
+    lea r8d, [eax+4]
     call [LineTo]
     jmp .btn_drawn
 
 .ico_align_mid:
-    mov rdx, [hPenDark2]
+    ; Top line: 1px SLATE line from (cx-4, cy-4) to (cx+4, cy-4)
+    mov rdx, [hPenSlateLine]
     mov rcx, r12
     call [SelectObject]
-    ; Line 1: (cx-5, cy-5) to (cx+5, cy-5)
     mov rcx, r12
-    lea edx, [ebx-5]
+    lea edx, [ebx-4]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax-5]
+    lea r8d, [eax-4]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
-    lea edx, [ebx+5]
+    lea edx, [ebx+4]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax-5]
+    lea r8d, [eax-4]
     call [LineTo]
-    ; Line 2: (cx-6, cy) to (cx+6, cy)
+
+    ; Middle bar: 2px prominent BLUE indicator from (cx-6, cy) to (cx+6, cy)
+    mov rdx, [hPenFluentBlue2]
+    mov rcx, r12
+    call [SelectObject]
     mov rcx, r12
     lea edx, [ebx-6]
     mov r8d, [rbp-5Ch]
@@ -4806,37 +5006,42 @@ DrawRibbonOwnerButton:
     lea edx, [ebx+6]
     mov r8d, [rbp-5Ch]
     call [LineTo]
-    ; Line 3: (cx-5, cy+5) to (cx+5, cy+5)
+
+    ; Bottom line: 1px SLATE line from (cx-4, cy+4) to (cx+4, cy+4)
+    mov rdx, [hPenSlateLine]
     mov rcx, r12
-    lea edx, [ebx-5]
+    call [SelectObject]
+    mov rcx, r12
+    lea edx, [ebx-4]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax+5]
+    lea r8d, [eax+4]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
-    lea edx, [ebx+5]
+    lea edx, [ebx+4]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax+5]
+    lea r8d, [eax+4]
     call [LineTo]
     jmp .btn_drawn
 
 .ico_align_bot:
-    mov rdx, [hPenDark2]
+    ; Top line: 1px SLATE line from (cx-2, cy-4) to (cx+2, cy-4)
+    mov rdx, [hPenSlateLine]
     mov rcx, r12
     call [SelectObject]
-    ; Line 1: (cx-2, cy-5) to (cx+2, cy-5)
     mov rcx, r12
     lea edx, [ebx-2]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax-5]
+    lea r8d, [eax-4]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
     lea edx, [ebx+2]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax-5]
+    lea r8d, [eax-4]
     call [LineTo]
-    ; Line 2: (cx-4, cy) to (cx+4, cy)
+
+    ; Middle line: 1px SLATE line from (cx-4, cy) to (cx+4, cy)
     mov rcx, r12
     lea edx, [ebx-4]
     mov r8d, [rbp-5Ch]
@@ -4846,110 +5051,110 @@ DrawRibbonOwnerButton:
     lea edx, [ebx+4]
     mov r8d, [rbp-5Ch]
     call [LineTo]
-    ; Bottom bar: (cx-6, cy+6) to (cx+6, cy+6)
+
+    ; Bottom bar: 2px prominent BLUE indicator from (cx-6, cy+5) to (cx+6, cy+5)
+    mov rdx, [hPenFluentBlue2]
+    mov rcx, r12
+    call [SelectObject]
     mov rcx, r12
     lea edx, [ebx-6]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax+6]
+    lea r8d, [eax+5]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
     lea edx, [ebx+6]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax+6]
+    lea r8d, [eax+5]
     call [LineTo]
     jmp .btn_drawn
 
 .ico_wrap_text:
-    ; 1. Top text line: (cx-7, cy-4) to (cx+1, cy-4)
-    mov rdx, [hPenDark2]
+    ; 1. Top text line: 1px dark slate (cx-6, cy-4) to (cx+3, cy-4)
+    mov rdx, [hPenDarkSlate]
     mov rcx, r12
     call [SelectObject]
     mov rcx, r12
-    lea edx, [ebx-7]
+    lea edx, [ebx-6]
     mov eax, [rbp-5Ch]
     lea r8d, [eax-4]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
-    lea edx, [ebx+1]
+    lea edx, [ebx+3]
     mov eax, [rbp-5Ch]
     lea r8d, [eax-4]
     call [LineTo]
 
-    ; 2. Bottom text line: (cx-7, cy+4) to (cx+1, cy+4)
+    ; 2. Mid text line: (cx-6, cy) to (cx-1, cy)
     mov rcx, r12
-    lea edx, [ebx-7]
-    mov eax, [rbp-5Ch]
-    lea r8d, [eax+4]
+    lea edx, [ebx-6]
+    mov r8d, [rbp-5Ch]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
-    lea edx, [ebx+1]
-    mov eax, [rbp-5Ch]
-    lea r8d, [eax+4]
+    lea edx, [ebx-1]
+    mov r8d, [rbp-5Ch]
     call [LineTo]
 
-    ; 3. Curved wrapping arrow in blue
-    mov rdx, [hPenBlue]
+    ; 3. Fluent blue return arrow
+    mov rdx, [hPenFluentBlue]
     mov rcx, r12
     call [SelectObject]
-    ; Start at (cx+1, cy-2), line to (cx+5, cy-2)
+    ; Start from (cx, cy), line to (cx+4, cy)
     mov rcx, r12
-    lea edx, [ebx+1]
-    mov eax, [rbp-5Ch]
-    lea r8d, [eax-2]
+    mov edx, ebx
+    mov r8d, [rbp-5Ch]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
-    lea edx, [ebx+5]
-    mov eax, [rbp-5Ch]
-    lea r8d, [eax-2]
+    lea edx, [ebx+4]
+    mov r8d, [rbp-5Ch]
     call [LineTo]
-    ; Downward curve: (cx+6, cy-1) -> (cx+6, cy+1) -> (cx+5, cy+2)
-    mov rcx, r12
-    lea edx, [ebx+6]
-    mov eax, [rbp-5Ch]
-    lea r8d, [eax-1]
-    call [LineTo]
+    ; Arc down: (cx+6, cy+1) -> (cx+6, cy+3) -> (cx+4, cy+4)
     mov rcx, r12
     lea edx, [ebx+6]
     mov eax, [rbp-5Ch]
     lea r8d, [eax+1]
     call [LineTo]
     mov rcx, r12
-    lea edx, [ebx+5]
+    lea edx, [ebx+6]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax+2]
+    lea r8d, [eax+3]
     call [LineTo]
-    ; Return line left to (cx-3, cy+2)
     mov rcx, r12
-    lea edx, [ebx-3]
+    lea edx, [ebx+4]
     mov eax, [rbp-5Ch]
-    lea r8d, [eax+2]
+    lea r8d, [eax+4]
     call [LineTo]
-    ; Arrow head upper barb: to (cx-1, cy)
+    ; Return straight left to (cx-2, cy+4)
     mov rcx, r12
-    lea edx, [ebx-1]
-    mov r8d, [rbp-5Ch]
+    lea edx, [ebx-2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+4]
     call [LineTo]
-    ; Arrow head lower barb: (cx-3, cy+2) to (cx-1, cy+4)
+    ; Left arrowhead: tip at (cx-4, cy+4)
     mov rcx, r12
-    lea edx, [ebx-3]
+    lea edx, [ebx-2]
     mov eax, [rbp-5Ch]
     lea r8d, [eax+2]
     xor r9d, r9d
     call [MoveToEx]
     mov rcx, r12
-    lea edx, [ebx-1]
+    lea edx, [ebx-4]
     mov eax, [rbp-5Ch]
     lea r8d, [eax+4]
+    call [LineTo]
+    mov rcx, r12
+    lea edx, [ebx-2]
+    mov eax, [rbp-5Ch]
+    lea r8d, [eax+6]
     call [LineTo]
     jmp .render_btn_text
 
 .ico_merge_center:
-    ; 1. White cell rectangle with border
-    mov rdx, [hPenBorder]
+    ; 1. Clean cell rectangle with 1px border & pure white fill
+    mov rdx, [hPenBoxOutline]
     mov rcx, r12
     call [SelectObject]
     mov rdx, [hBrWhite]
@@ -4964,8 +5169,8 @@ DrawRibbonOwnerButton:
     mov [rsp+20h], eax
     call [Rectangle]
 
-    ; 2. Divider ticks on top and bottom showing cell merge boundary
-    mov rdx, [hPenBorder]
+    ; 2. Subtle light gray divider ticks on top and bottom showing cell boundary
+    mov rdx, [hPenLightDivider]
     mov rcx, r12
     call [SelectObject]
     mov rcx, r12
@@ -4992,10 +5197,11 @@ DrawRibbonOwnerButton:
     lea r8d, [eax+5]
     call [LineTo]
 
-    ; 3. Left blue arrow pointing right to center (ebx-1, cy)
-    mov rdx, [hPenBlue]
+    ; 3. Crisp blue inward arrows
+    mov rdx, [hPenFluentBlue]
     mov rcx, r12
     call [SelectObject]
+    ; Left arrow pointing right: shaft (cx-5, cy) to (cx-1, cy)
     mov rcx, r12
     lea edx, [ebx-5]
     mov r8d, [rbp-5Ch]
@@ -5005,6 +5211,7 @@ DrawRibbonOwnerButton:
     lea edx, [ebx-1]
     mov r8d, [rbp-5Ch]
     call [LineTo]
+    ; Barb top to (cx-1, cy)
     mov rcx, r12
     lea edx, [ebx-3]
     mov eax, [rbp-5Ch]
@@ -5015,13 +5222,19 @@ DrawRibbonOwnerButton:
     lea edx, [ebx-1]
     mov r8d, [rbp-5Ch]
     call [LineTo]
+    ; Barb bottom to (cx-1, cy)
     mov rcx, r12
     lea edx, [ebx-3]
     mov eax, [rbp-5Ch]
     lea r8d, [eax+2]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx-1]
+    mov r8d, [rbp-5Ch]
     call [LineTo]
 
-    ; 4. Right blue arrow pointing left to center (ebx+1, cy)
+    ; Right arrow pointing left: shaft (cx+5, cy) to (cx+1, cy)
     mov rcx, r12
     lea edx, [ebx+5]
     mov r8d, [rbp-5Ch]
@@ -5031,6 +5244,7 @@ DrawRibbonOwnerButton:
     lea edx, [ebx+1]
     mov r8d, [rbp-5Ch]
     call [LineTo]
+    ; Barb top to (cx+1, cy)
     mov rcx, r12
     lea edx, [ebx+3]
     mov eax, [rbp-5Ch]
@@ -5041,10 +5255,16 @@ DrawRibbonOwnerButton:
     lea edx, [ebx+1]
     mov r8d, [rbp-5Ch]
     call [LineTo]
+    ; Barb bottom to (cx+1, cy)
     mov rcx, r12
     lea edx, [ebx+3]
     mov eax, [rbp-5Ch]
     lea r8d, [eax+2]
+    xor r9d, r9d
+    call [MoveToEx]
+    mov rcx, r12
+    lea edx, [ebx+1]
+    mov r8d, [rbp-5Ch]
     call [LineTo]
     jmp .render_btn_text
 

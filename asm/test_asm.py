@@ -1005,6 +1005,89 @@ class TestAsmEngine(unittest.TestCase):
             if proc.poll() is None:
                 proc.kill()
 
+    def test_gui_chart_visualization_and_dialog(self):
+        import ctypes
+        import subprocess
+
+        user32 = ctypes.windll.user32
+        exe_path = Path(__file__).parent / "xlsx_gui64.exe"
+        proc = subprocess.Popen([str(exe_path)])
+        time.sleep(1.2)
+        hwnd_main = 0
+        try:
+            def cb_m(h, _):
+                nonlocal hwnd_main
+                cls = ctypes.create_unicode_buffer(256)
+                user32.GetClassNameW(h, cls, 256)
+                if "ExcelViewerPro_ASM64" in cls.value:
+                    hwnd_main = h
+                    return False
+                return True
+
+            user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)(cb_m), 0)
+            self.assertTrue(hwnd_main, "Main window must be found")
+
+            # 1. Trigger Column Chart via Ribbon Command 1408
+            user32.SendMessageW(hwnd_main, 0x0111, 1408, 0)
+            time.sleep(0.5)
+
+            h_chart = 0
+            def cb_c(h, _):
+                nonlocal h_chart
+                cls = ctypes.create_unicode_buffer(256)
+                user32.GetClassNameW(h, cls, 256)
+                if "XlsxChartWindow" in cls.value:
+                    h_chart = h
+                    return False
+                return True
+
+            user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)(cb_c), 0)
+            self.assertTrue(h_chart, "Chart top-level window must be created")
+
+            # Verify title is Clustered Column
+            title_buf = ctypes.create_unicode_buffer(256)
+            user32.GetWindowTextW(h_chart, title_buf, 256)
+            self.assertIn("Column", title_buf.value)
+
+            # 2. Switch to Line Chart (3002)
+            user32.SendMessageW(h_chart, 0x0111, 3002, 0)
+            time.sleep(0.2)
+            user32.GetWindowTextW(h_chart, title_buf, 256)
+            self.assertIn("Line", title_buf.value)
+
+            # 3. Switch to Pie Chart (3003)
+            user32.SendMessageW(h_chart, 0x0111, 3003, 0)
+            time.sleep(0.2)
+            user32.GetWindowTextW(h_chart, title_buf, 256)
+            self.assertIn("Pie", title_buf.value)
+
+            # 4. Switch to Bar Chart (3004)
+            user32.SendMessageW(h_chart, 0x0111, 3004, 0)
+            time.sleep(0.2)
+            user32.GetWindowTextW(h_chart, title_buf, 256)
+            self.assertIn("Bar", title_buf.value)
+
+            # 5. Switch to Area Chart (3005)
+            user32.SendMessageW(h_chart, 0x0111, 3005, 0)
+            time.sleep(0.2)
+            user32.GetWindowTextW(h_chart, title_buf, 256)
+            self.assertIn("Area", title_buf.value)
+
+            # 6. Cycle theme (3006)
+            user32.SendMessageW(h_chart, 0x0111, 3006, 0)
+            time.sleep(0.2)
+
+            # 7. Close Chart Window (3008)
+            user32.SendMessageW(h_chart, 0x0111, 3008, 0)
+            time.sleep(0.3)
+            self.assertFalse(user32.IsWindow(h_chart), "Chart window must be closed")
+        finally:
+            if hwnd_main:
+                user32.PostMessageW(hwnd_main, 0x0010, 0, 0)
+            time.sleep(0.2)
+            if proc.poll() is None:
+                proc.kill()
+
 
 
 

@@ -1654,6 +1654,8 @@ WndProc:
     je .key_f5
     cmp r8d, VK_F9
     je .key_f9
+    cmp r8d, 7Ah        ; VK_F11 (Excel standard create chart)
+    je .key_f11
 
     ; Forward navigation keys to Grid if received by main window
     cmp r8d, 25h ; VK_LEFT
@@ -1761,6 +1763,11 @@ WndProc:
 
 .key_f9:
     call DoRecalculateAll
+    jmp .ret0
+
+.key_f11:
+    mov ecx, 1          ; CHART_TYPE_COLUMN
+    call ShowChartDialog
     jmp .ret0
 
 .on_tab_change:
@@ -1999,13 +2006,13 @@ WndProc:
     cmp eax, ID_BTN_INS_ICONS
     je .on_ins_ico
     cmp eax, ID_BTN_INS_COL_CHART
-    je .on_ins_chart
+    je .on_ins_col_chart
     cmp eax, ID_BTN_INS_LINE_CHART
-    je .on_ins_chart
+    je .on_ins_line_chart
     cmp eax, ID_BTN_INS_PIE_CHART
-    je .on_ins_chart
+    je .on_ins_pie_chart
     cmp eax, ID_BTN_INS_BAR_CHART
-    je .on_ins_chart
+    je .on_ins_bar_chart
     cmp eax, ID_BTN_INS_LINK
     je .on_ins_link
     cmp eax, ID_BTN_INS_TEXTBOX
@@ -2273,9 +2280,28 @@ WndProc:
 .on_ins_pic:
 .on_ins_shp:
 .on_ins_ico:
-.on_ins_chart:
     lea rcx, [szChartPrompt]
     call ShowInfoStatus
+    jmp .ret0
+
+.on_ins_col_chart:
+    mov ecx, 1          ; CHART_TYPE_COLUMN
+    call ShowChartDialog
+    jmp .ret0
+
+.on_ins_line_chart:
+    mov ecx, 2          ; CHART_TYPE_LINE
+    call ShowChartDialog
+    jmp .ret0
+
+.on_ins_pie_chart:
+    mov ecx, 3          ; CHART_TYPE_PIE
+    call ShowChartDialog
+    jmp .ret0
+
+.on_ins_bar_chart:
+    mov ecx, 4          ; CHART_TYPE_BAR
+    call ShowChartDialog
     jmp .ret0
 
 .on_ins_link:
@@ -2618,6 +2644,7 @@ include 'grid.inc'
 include 'formulas.inc'
 include 'file_io.inc'
 include 'dialogs.inc'
+include 'chart.inc'
 
 include 'import.inc'
 include 'rsrc.inc'

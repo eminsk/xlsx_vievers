@@ -271,6 +271,7 @@ CS_HREDRAW          = 0002h
 CS_VREDRAW          = 0001h
 WM_CREATE           = 0001h
 WM_DESTROY          = 0002h
+WM_PAINT            = 000Fh
 WM_CLOSE            = 0010h
 WM_SIZE             = 0005h
 WM_SETFONT          = 0030h
