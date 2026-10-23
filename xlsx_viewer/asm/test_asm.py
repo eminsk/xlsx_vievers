@@ -433,6 +433,9 @@ class TestAsmEngine(unittest.TestCase):
             h_name = user32.GetDlgItem(hwnd_main, 1201)
             h_form = user32.GetDlgItem(hwnd_main, 1203)
             self.assertTrue(h_grid and h_name and h_form, "Controls must exist")
+            user32.SetForegroundWindow(hwnd_main)
+            user32.SetFocus(h_grid)
+            time.sleep(0.1)
 
             def gt_a(hw):
                 l = user32.SendMessageA(hw, 0xE, 0, 0)
