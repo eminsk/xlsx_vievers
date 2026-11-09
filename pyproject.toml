@@ -87,7 +87,7 @@ xv = "xlsx_viewer.cli:main"
 xlsx-mcp = "xlsx_viewer.mcp_server:main_mcp"
 
 [project.urls]
-Homepage = "https://github.com/eminsk/xlsx_vievers"
+Homepage = "https://eminsk.github.io/#xlsx-viewer-pro"
 Repository = "https://github.com/eminsk/xlsx_vievers"
 Issues = "https://github.com/eminsk/xlsx_vievers/issues"
 Changelog = "https://github.com/eminsk/xlsx_vievers/releases"
